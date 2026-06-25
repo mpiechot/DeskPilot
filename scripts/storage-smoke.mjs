@@ -16,7 +16,7 @@ import {
   updateCategory
 } from "../dist-electron/main/storage.js";
 import { loadWindowBounds, saveWindowBounds } from "../dist-electron/main/windowSettings.js";
-import { startBrowserBridge } from "../dist-electron/main/browserBridge.js";
+import { getBrowserBridgeStatus, startBrowserBridge } from "../dist-electron/main/browserBridge.js";
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "deskpilot-storage-"));
 
@@ -95,6 +95,14 @@ const bridgeServer = startBrowserBridge();
 await new Promise((resolve) => bridgeServer.once("listening", resolve));
 
 try {
+  const bridgeStatus = getBrowserBridgeStatus(bridgeServer);
+  assert(bridgeStatus.running, "Expected browser bridge status to report running");
+  assert(bridgeStatus.host === "127.0.0.1", "Expected bridge to bind to localhost");
+  assert(bridgeStatus.port === 17383, "Expected bridge status to report the browser bridge port");
+
+  const forbiddenResponse = await fetch("http://127.0.0.1:17383/categories");
+  assert(forbiddenResponse.status === 403, "Expected origin-less bridge request to be forbidden");
+
   const categoriesResponse = await fetch("http://127.0.0.1:17383/categories", {
     headers: { origin: "chrome-extension://deskpilot-test" }
   });

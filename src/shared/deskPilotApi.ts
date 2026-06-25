@@ -2,6 +2,7 @@ import type { SessionCategory } from "./sessions.js";
 
 export type DeskPilotApi = {
   version: string;
+  bridgeStatus: () => Promise<BridgeStatus>;
   listCategories: () => Promise<SessionCategory[]>;
   createCategory: (input: CategoryInput) => Promise<SessionCategory[]>;
   updateCategory: (id: string, input: CategoryInput) => Promise<SessionCategory[]>;
@@ -19,6 +20,13 @@ export type DeskPilotApi = {
 export type CategoryInput = {
   name: string;
   description: string;
+};
+
+export type BridgeStatus = {
+  running: boolean;
+  host: string;
+  port: number;
+  allowedOrigins: string[];
 };
 
 export type CategoryRow = {

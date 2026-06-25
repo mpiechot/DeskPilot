@@ -1,6 +1,7 @@
 import { FolderOpen, PanelTopOpen, Pencil, Plus, Save, ShieldCheck, Trash2, X } from "lucide-react";
 import { type FormEvent, useEffect, useState } from "react";
 import type {
+  BridgeStatus,
   CategoryInput,
   CategoryRecoveryResult,
   SessionMutationResult,
@@ -35,6 +36,7 @@ function App() {
   const [tabDraft, setTabDraft] = useState<SessionTabInput>({ categoryId: selectedCategoryId, url: "", title: "" });
   const [controlMode, setControlMode] = useState<"session" | "categories" | "recovery">("session");
   const [operationMessage, setOperationMessage] = useState("");
+  const [bridgeStatus, setBridgeStatus] = useState<BridgeStatus | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -45,6 +47,15 @@ function App() {
         isMounted = false;
       };
     }
+
+    window.deskPilot
+      .bridgeStatus()
+      .then((status: BridgeStatus) => {
+        if (isMounted) {
+          setBridgeStatus(status);
+        }
+      })
+      .catch(() => undefined);
 
     window.deskPilot
       .listCategories()
@@ -109,6 +120,11 @@ function App() {
           : "Loading local storage.";
 
   const isStorageWritable = storageStatus === "ready" && Boolean(window.deskPilot);
+  const bridgeStatusText = !window.deskPilot
+    ? "Bridge: Electron app required"
+    : bridgeStatus?.running
+      ? `Bridge: ${bridgeStatus.host}:${bridgeStatus.port}`
+      : "Bridge: unavailable";
 
   function updateCategories(nextCategories: SessionCategory[]): void {
     setCategories(nextCategories);
@@ -344,7 +360,10 @@ function App() {
             <p className="eyebrow">DeskPilot</p>
             <h1>Browser Sessions</h1>
           </div>
-          <div className="version">v{window.deskPilot?.version ?? "0.1.0"}</div>
+          <div className="headerMeta">
+            <div className="version">v{window.deskPilot?.version ?? "0.1.0"}</div>
+            <div className={bridgeStatus?.running ? "bridgeStatus bridgeStatus-ready" : "bridgeStatus"}>{bridgeStatusText}</div>
+          </div>
         </header>
 
         <section className="quickActions" aria-label="Session actions">

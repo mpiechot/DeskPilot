@@ -1,5 +1,6 @@
 import http from "node:http";
 import type { AddressInfo } from "node:net";
+import type { BridgeStatus } from "../shared/deskPilotApi.js";
 import { addTab, listCategories } from "./storage.js";
 
 type CapturedTab = {
@@ -12,21 +13,31 @@ type CapturePayload = {
   tabs?: unknown;
 };
 
-const bridgePort = 17383;
-const allowedOriginPrefixes = ["chrome-extension://", "edge-extension://"];
+export const bridgeHost = "127.0.0.1";
+export const bridgePort = 17383;
+export const allowedOriginPrefixes = ["chrome-extension://", "edge-extension://"];
 
 export function startBrowserBridge(): http.Server {
   const server = http.createServer((request, response) => {
     void handleRequest(request, response);
   });
 
-  server.listen(bridgePort, "127.0.0.1");
+  server.listen(bridgePort, bridgeHost);
   server.on("listening", () => {
     const address = server.address() as AddressInfo;
     console.log(`DeskPilot browser bridge listening on ${address.address}:${address.port}`);
   });
 
   return server;
+}
+
+export function getBrowserBridgeStatus(server: http.Server | null): BridgeStatus {
+  return {
+    running: Boolean(server?.listening),
+    host: bridgeHost,
+    port: bridgePort,
+    allowedOrigins: allowedOriginPrefixes
+  };
 }
 
 async function handleRequest(request: http.IncomingMessage, response: http.ServerResponse): Promise<void> {

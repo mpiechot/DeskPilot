@@ -30,6 +30,8 @@ Commands:
 More detailed run and verification notes live in `docs/USAGE.md`.
 
 Current state:
-- v0.1 skeleton exists.
-- Browser-session categories are displayed with placeholder local data in a wide touch-panel layout.
-- Real session storage and browser integration are not implemented yet.
+- The Electron control panel exists in a wide, low touch-display layout.
+- Categories and saved URLs are stored locally in a SQLite database.
+- Categories and saved URLs use soft-delete recovery flows.
+- A Chrome/Edge unpacked extension prototype can capture the current browser window through the local bridge.
+- The local browser bridge is origin-restricted to browser-extension origins and visible in the app status area.

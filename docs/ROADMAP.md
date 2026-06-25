@@ -50,6 +50,8 @@ Expected features:
 - send tab list to DeskPilot - prototype done
 - save current window into selected category - prototype done
 - optionally close saved browser window - prototype done with popup checkbox
+- visible bridge status in the app - initial pass done
+- extension error handling - initial pass done
 
 ## v0.4 - Safe Restore And Backup
 

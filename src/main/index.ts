@@ -15,7 +15,7 @@ import {
   restoreTab,
   updateCategory
 } from "./storage.js";
-import { startBrowserBridge } from "./browserBridge.js";
+import { getBrowserBridgeStatus, startBrowserBridge } from "./browserBridge.js";
 import { loadWindowBounds, saveWindowBounds } from "./windowSettings.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -97,6 +97,7 @@ function createTrayIcon() {
 app.whenReady().then(async () => {
   await initializeStorage(app.getPath("userData"));
   bridgeServer = startBrowserBridge();
+  ipcMain.handle("bridge:status", () => getBrowserBridgeStatus(bridgeServer));
   ipcMain.handle("categories:list", () => listCategories());
   ipcMain.handle("categories:create", (_event, input) => createCategory(input));
   ipcMain.handle("categories:update", (_event, id, input) => updateCategory(id, input));

@@ -228,3 +228,18 @@ Current status:
 
 Next recommended step:
 - Add better extension error handling and a visible bridge status in the app.
+
+### Bridge status and extension UX session
+
+Completed:
+- Added an Electron IPC/preload API for reading browser-bridge status.
+- Displayed the local bridge host and port in the control panel status area.
+- Improved the extension popup's disabled state and error messages.
+- Ignored non-http/https tabs when saving the current browser window.
+- Extended smoke coverage for bridge status and forbidden origin-less bridge requests.
+
+Current status:
+- The browser capture prototype is easier to diagnose from both the app and the extension popup.
+
+Next recommended step:
+- Add a guided extension install/checklist view or start export/import backup work before deeper browser workflow polish.

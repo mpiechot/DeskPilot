@@ -27,3 +27,6 @@ Native SQLite packages are awkward in Electron because they need rebuild handlin
 
 Bridge note:
 The local browser bridge is convenient, but every localhost bridge deserves suspicion. Keep the origin checks tight and revisit authentication before treating the extension path as production-ready.
+
+Extension UX note:
+Unpacked extensions fail in ways that look like "nothing happened" unless the popup is blunt about connection, origin and tab filtering problems. Keep error text boring and explicit until the install flow is packaged.

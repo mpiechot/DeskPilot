@@ -98,6 +98,12 @@ h1 {
   white-space: nowrap;
 }
 
+.headerMeta {
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+}
+
 .quickActions {
   display: grid;
   align-content: start;
@@ -397,6 +403,19 @@ h2 {
 .safetyNote svg {
   width: 19px;
   height: 19px;
+  color: #2e493d;
+}
+
+.bridgeStatus {
+  display: block;
+  color: #6d726c;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.bridgeStatus-ready {
   color: #2e493d;
 }
 

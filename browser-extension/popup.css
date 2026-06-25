@@ -46,6 +46,12 @@ button {
   font-weight: 800;
 }
 
+button:disabled {
+  background: #d9d1c3;
+  color: #6d726c;
+  cursor: not-allowed;
+}
+
 p {
   margin: 0;
   color: #5c625d;

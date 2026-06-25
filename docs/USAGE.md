@@ -18,6 +18,8 @@ Working today:
 - remember the desktop window size and position between app runs
 - close the window to the system tray and quit explicitly from the tray menu
 - wide, low touch-display layout
+- visible browser-bridge status in the control panel
+- unpacked browser-extension prototype for saving the current browser window
 - local development, lint and build commands
 
 Not implemented yet:
@@ -89,6 +91,14 @@ To try it during development:
 - load `browser-extension/` as an unpacked extension
 - use the extension popup to save the current browser window to a DeskPilot category
 - enable `Close saved tabs` in the popup only when the current tabs should be closed after a successful save
+
+The control panel shows whether the local browser bridge is running. The prototype bridge listens on:
+
+```text
+127.0.0.1:17383
+```
+
+The bridge currently accepts requests only from Chrome/Edge extension origins. Browser tabs without `http` or `https` URLs are ignored by the popup and are not closed by the optional close-after-save action.
 
 ## Data Safety
 
