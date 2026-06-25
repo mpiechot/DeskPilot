@@ -1,5 +1,6 @@
-import { FolderOpen, PanelTopOpen, Save, ShieldCheck } from "lucide-react";
-import { useEffect, useState } from "react";
+import { FolderOpen, PanelTopOpen, Pencil, Plus, Save, ShieldCheck, Trash2, X } from "lucide-react";
+import { type FormEvent, useEffect, useState } from "react";
+import type { CategoryInput } from "../shared/deskPilotApi";
 import { defaultCategories, type SessionCategory } from "../shared/sessions";
 import "./styles.css";
 
@@ -18,6 +19,10 @@ function statusLabel(status: SessionCategory["status"]): string {
 function App() {
   const [categories, setCategories] = useState<SessionCategory[]>(defaultCategories);
   const [storageStatus, setStorageStatus] = useState<"loading" | "ready" | "fallback" | "error">("loading");
+  const [categoryDraft, setCategoryDraft] = useState<CategoryInput>({ name: "", description: "" });
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState<CategoryInput>({ name: "", description: "" });
+  const [operationMessage, setOperationMessage] = useState("");
 
   useEffect(() => {
     let isMounted = true;
@@ -52,7 +57,105 @@ function App() {
     };
   }, []);
 
-  const storageMessage =
+  const storageMessage = operationMessage
+    ? operationMessage
+    : storageStatus === "ready"
+      ? "Local SQLite storage is active."
+      : storageStatus === "fallback"
+        ? "Browser preview is using fallback categories."
+        : storageStatus === "error"
+          ? "Storage unavailable; showing fallback categories."
+          : "Loading local storage.";
+
+  const isStorageWritable = storageStatus === "ready" && Boolean(window.deskPilot);
+
+  function updateCategories(nextCategories: SessionCategory[]): void {
+    setCategories(nextCategories);
+    setStorageStatus("ready");
+  }
+
+  function handleStorageError(): void {
+    setStorageStatus("error");
+    setOperationMessage("Storage write failed. Existing data was left untouched.");
+  }
+
+  function handleCreateCategory(event: FormEvent<HTMLFormElement>): void {
+    event.preventDefault();
+
+    if (!categoryDraft.name.trim()) {
+      setOperationMessage("Name a category before adding it.");
+      return;
+    }
+
+    if (!isStorageWritable) {
+      setOperationMessage("Category changes require the Electron app.");
+      return;
+    }
+
+    window.deskPilot
+      ?.createCategory(categoryDraft)
+      .then((nextCategories: SessionCategory[]) => {
+        updateCategories(nextCategories);
+        setCategoryDraft({ name: "", description: "" });
+        setOperationMessage("Category added.");
+      })
+      .catch(handleStorageError);
+  }
+
+  function startEditingCategory(category: SessionCategory): void {
+    setEditingCategoryId(category.id);
+    setEditDraft({ name: category.name, description: category.description });
+    setOperationMessage("");
+  }
+
+  function cancelEditingCategory(): void {
+    setEditingCategoryId(null);
+    setEditDraft({ name: "", description: "" });
+  }
+
+  function saveCategoryEdit(id: string): void {
+    if (!editDraft.name.trim()) {
+      setOperationMessage("Category name cannot be empty.");
+      return;
+    }
+
+    if (!isStorageWritable) {
+      setOperationMessage("Category changes require the Electron app.");
+      return;
+    }
+
+    window.deskPilot
+      ?.updateCategory(id, editDraft)
+      .then((nextCategories: SessionCategory[]) => {
+        updateCategories(nextCategories);
+        cancelEditingCategory();
+        setOperationMessage("Category updated.");
+      })
+      .catch(handleStorageError);
+  }
+
+  function removeCategory(id: string): void {
+    const category = categories.find((item) => item.id === id);
+
+    if (!category || !window.confirm(`Remove "${category.name}" from active categories?`)) {
+      return;
+    }
+
+    if (!isStorageWritable) {
+      setOperationMessage("Category changes require the Electron app.");
+      return;
+    }
+
+    window.deskPilot
+      ?.deleteCategory(id)
+      .then((nextCategories: SessionCategory[]) => {
+        updateCategories(nextCategories);
+        setOperationMessage("Category removed safely.");
+      })
+      .catch(handleStorageError);
+  }
+
+  const legacyStorageMessage =
     storageStatus === "ready"
       ? "Local SQLite storage is active."
       : storageStatus === "fallback"
@@ -83,9 +186,32 @@ function App() {
           </button>
         </section>
 
+        <form className="categoryForm" onSubmit={handleCreateCategory}>
+          <input
+            aria-label="Category name"
+            maxLength={40}
+            onChange={(event) => setCategoryDraft({ ...categoryDraft, name: event.target.value })}
+            placeholder="New category"
+            type="text"
+            value={categoryDraft.name}
+          />
+          <input
+            aria-label="Category description"
+            maxLength={140}
+            onChange={(event) => setCategoryDraft({ ...categoryDraft, description: event.target.value })}
+            placeholder="Short description"
+            type="text"
+            value={categoryDraft.description}
+          />
+          <button type="submit" className="addCategoryAction">
+            <Plus aria-hidden="true" />
+            Add Category
+          </button>
+        </form>
+
         <footer className="safetyNote">
           <ShieldCheck aria-hidden="true" />
-          <span>{storageMessage}</span>
+          <span>{storageMessage || legacyStorageMessage}</span>
         </footer>
       </aside>
 
@@ -96,15 +222,66 @@ function App() {
               <FolderOpen aria-hidden="true" />
             </div>
             <div className="categoryBody">
-              <div className="categoryTitleRow">
-                <h2>{category.name}</h2>
-                <span className={`status status-${category.status}`}>{statusLabel(category.status)}</span>
-              </div>
-              <p>{category.description}</p>
-              <div className="categoryMeta">
-                <span>{category.tabCount} tabs</span>
-                <span>{category.lastSavedLabel}</span>
-              </div>
+              {editingCategoryId === category.id ? (
+                <div className="editStack">
+                  <input
+                    aria-label={`Rename ${category.name}`}
+                    maxLength={40}
+                    onChange={(event) => setEditDraft({ ...editDraft, name: event.target.value })}
+                    type="text"
+                    value={editDraft.name}
+                  />
+                  <textarea
+                    aria-label={`Description for ${category.name}`}
+                    maxLength={140}
+                    onChange={(event) => setEditDraft({ ...editDraft, description: event.target.value })}
+                    value={editDraft.description}
+                  />
+                  <div className="cardActions">
+                    <button
+                      type="button"
+                      className="iconAction"
+                      onClick={() => saveCategoryEdit(category.id)}
+                      title="Save category"
+                    >
+                      <Save aria-hidden="true" />
+                    </button>
+                    <button type="button" className="iconAction" onClick={cancelEditingCategory} title="Cancel editing">
+                      <X aria-hidden="true" />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="categoryTitleRow">
+                    <h2>{category.name}</h2>
+                    <span className={`status status-${category.status}`}>{statusLabel(category.status)}</span>
+                  </div>
+                  <p>{category.description}</p>
+                  <div className="categoryMeta">
+                    <span>{category.tabCount} tabs</span>
+                    <span>{category.lastSavedLabel}</span>
+                  </div>
+                  <div className="cardActions">
+                    <button
+                      type="button"
+                      className="iconAction"
+                      onClick={() => startEditingCategory(category)}
+                      title="Edit category"
+                    >
+                      <Pencil aria-hidden="true" />
+                    </button>
+                    <button
+                      type="button"
+                      className="iconAction dangerAction"
+                      onClick={() => removeCategory(category.id)}
+                      title="Remove category"
+                    >
+                      <Trash2 aria-hidden="true" />
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </article>
         ))}

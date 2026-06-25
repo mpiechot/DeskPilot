@@ -1,7 +1,7 @@
 import { app, BrowserWindow, ipcMain, nativeTheme, Tray, Menu } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { initializeStorage, listCategories } from "./storage.js";
+import { createCategory, deleteCategory, initializeStorage, listCategories, updateCategory } from "./storage.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -46,6 +46,9 @@ function createTray(): void {
 app.whenReady().then(async () => {
   await initializeStorage(app.getPath("userData"));
   ipcMain.handle("categories:list", () => listCategories());
+  ipcMain.handle("categories:create", (_event, input) => createCategory(input));
+  ipcMain.handle("categories:update", (_event, id, input) => updateCategory(id, input));
+  ipcMain.handle("categories:delete", (_event, id) => deleteCategory(id));
 
   createMainWindow();
 

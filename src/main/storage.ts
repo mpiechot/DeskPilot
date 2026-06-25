@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import initSqlJs, { type Database, type SqlJsStatic } from "sql.js";
 import { defaultCategories, type SessionCategory } from "../shared/sessions.js";
-import type { CategoryRow } from "../shared/deskPilotApi.js";
+import type { CategoryInput, CategoryRow } from "../shared/deskPilotApi.js";
 
 type StoragePaths = {
   databasePath: string;
@@ -60,6 +60,73 @@ export function listCategories(): SessionCategory[] {
     const row = Object.fromEntries(columns.map((column, index) => [column, value[index]])) as CategoryRow;
     return mapCategoryRow(row);
   });
+}
+
+export function createCategory(input: CategoryInput): SessionCategory[] {
+  const db = getDatabase();
+  const normalized = normalizeCategoryInput(input);
+  const id = createCategoryId(normalized.name);
+  const position = getNextCategoryPosition(db);
+
+  db.run(
+    `
+      INSERT INTO categories (id, name, description, position)
+      VALUES ($id, $name, $description, $position)
+    `,
+    {
+      $id: id,
+      $name: normalized.name,
+      $description: normalized.description,
+      $position: position
+    }
+  );
+
+  saveDatabase();
+  return listCategories();
+}
+
+export function updateCategory(id: string, input: CategoryInput): SessionCategory[] {
+  const db = getDatabase();
+  const normalized = normalizeCategoryInput(input);
+  const safeId = normalizeCategoryId(id);
+
+  db.run(
+    `
+      UPDATE categories
+      SET name = $name,
+          description = $description,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = $id AND deleted_at IS NULL
+    `,
+    {
+      $id: safeId,
+      $name: normalized.name,
+      $description: normalized.description
+    }
+  );
+
+  saveDatabase();
+  return listCategories();
+}
+
+export function deleteCategory(id: string): SessionCategory[] {
+  const db = getDatabase();
+  const safeId = normalizeCategoryId(id);
+
+  db.run(
+    `
+      UPDATE categories
+      SET deleted_at = CURRENT_TIMESTAMP,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = $id AND deleted_at IS NULL
+    `,
+    {
+      $id: safeId
+    }
+  );
+
+  saveDatabase();
+  return listCategories();
 }
 
 function getStoragePaths(userDataPath: string): StoragePaths {
@@ -121,6 +188,79 @@ function seedDefaultCategories(db: Database): void {
   } finally {
     statement.free();
   }
+}
+
+function normalizeCategoryInput(input: CategoryInput): CategoryInput {
+  const name = input.name.trim();
+  const description = input.description.trim();
+
+  if (!name) {
+    throw new Error("Category name is required.");
+  }
+
+  if (name.length > 40) {
+    throw new Error("Category name must be 40 characters or less.");
+  }
+
+  if (description.length > 140) {
+    throw new Error("Category description must be 140 characters or less.");
+  }
+
+  return { name, description };
+}
+
+function normalizeCategoryId(id: string): string {
+  const safeId = id.trim();
+
+  if (!safeId) {
+    throw new Error("Category id is required.");
+  }
+
+  return safeId;
+}
+
+function createCategoryId(name: string): string {
+  const baseSlug =
+    name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "") || "category";
+  const existingIds = getAllCategoryIds();
+
+  if (!existingIds.has(baseSlug)) {
+    return baseSlug;
+  }
+
+  let suffix = 2;
+  let nextId = `${baseSlug}-${suffix}`;
+
+  while (existingIds.has(nextId)) {
+    suffix += 1;
+    nextId = `${baseSlug}-${suffix}`;
+  }
+
+  return nextId;
+}
+
+function getAllCategoryIds(): Set<string> {
+  const db = getDatabase();
+  const result = db.exec("SELECT id FROM categories");
+
+  if (result.length === 0) {
+    return new Set();
+  }
+
+  return new Set(result[0].values.map((value) => String(value[0])));
+}
+
+function getNextCategoryPosition(db: Database): number {
+  const result = db.exec("SELECT COALESCE(MAX(position), -1) + 1 AS next_position FROM categories");
+
+  if (result.length === 0) {
+    return 0;
+  }
+
+  return Number(result[0].values[0][0]);
 }
 
 function saveDatabase(): void {

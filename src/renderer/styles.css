@@ -24,19 +24,41 @@ button {
   font: inherit;
 }
 
+input,
+textarea {
+  width: 100%;
+  border: 1px solid #c9c0b2;
+  border-radius: 8px;
+  background: rgba(255, 250, 240, 0.9);
+  color: #20242a;
+  font: inherit;
+  font-size: 0.86rem;
+}
+
+input {
+  min-height: 36px;
+  padding: 0 10px;
+}
+
+textarea {
+  min-height: 76px;
+  resize: none;
+  padding: 10px 11px;
+}
+
 .shell {
   display: grid;
   grid-template-columns: minmax(250px, 300px) 1fr;
   min-height: 100vh;
-  gap: 14px;
-  padding: 16px;
+  gap: 12px;
+  padding: 12px;
 }
 
 .controlRail {
   display: grid;
-  min-height: calc(100vh - 32px);
-  grid-template-rows: auto 1fr auto;
-  gap: 14px;
+  min-height: calc(100vh - 24px);
+  grid-template-rows: auto auto auto auto;
+  gap: 8px;
 }
 
 .appHeader {
@@ -62,7 +84,7 @@ p {
 
 h1 {
   color: #1c2025;
-  font-size: 1.55rem;
+  font-size: 1.45rem;
   line-height: 1.1;
 }
 
@@ -83,9 +105,10 @@ h1 {
 }
 
 .primaryAction,
-.secondaryAction {
+.secondaryAction,
+.addCategoryAction {
   display: inline-flex;
-  min-height: 64px;
+  min-height: 52px;
   align-items: center;
   justify-content: center;
   gap: 10px;
@@ -96,7 +119,8 @@ h1 {
 }
 
 .primaryAction svg,
-.secondaryAction svg {
+.secondaryAction svg,
+.addCategoryAction svg {
   width: 20px;
   height: 20px;
 }
@@ -110,6 +134,19 @@ h1 {
   border-color: #c9c0b2;
   background: #fffaf0;
   color: #27312d;
+}
+
+.categoryForm {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+}
+
+.addCategoryAction {
+  min-height: 42px;
+  border-color: #b9c9b8;
+  background: #e7efe5;
+  color: #243d32;
 }
 
 .categoryList {
@@ -151,6 +188,8 @@ h1 {
 
 .categoryBody {
   min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .categoryTitleRow {
@@ -205,6 +244,41 @@ h2 {
   font-weight: 700;
 }
 
+.cardActions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 0;
+}
+
+.iconAction {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 1px solid #c9c0b2;
+  border-radius: 8px;
+  background: #fffaf0;
+  color: #27312d;
+  cursor: pointer;
+}
+
+.iconAction svg {
+  width: 18px;
+  height: 18px;
+}
+
+.dangerAction {
+  color: #70352d;
+}
+
+.editStack {
+  display: flex;
+  min-height: 100%;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .safetyNote {
   display: grid;
   grid-template-columns: 22px 1fr;
@@ -213,7 +287,7 @@ h2 {
   border: 1px solid #d9d1c3;
   border-radius: 8px;
   background: rgba(231, 239, 229, 0.66);
-  padding: 12px;
+  padding: 9px;
   color: #4f5852;
   font-size: 0.82rem;
   line-height: 1.35;

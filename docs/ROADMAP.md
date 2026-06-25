@@ -29,9 +29,9 @@ In progress. Default categories now load from local SQLite storage.
 
 Expected features:
 - SQLite storage - initial pass done
-- categories - read/seed done, default set now includes Entertainment
+- categories - create/read/update/soft-delete done, default set includes Entertainment
 - saved URLs
-- create/edit/delete categories
+- create/edit/delete categories - initial pass done with soft-delete
 - open category URLs in browser
 
 ## v0.3 - Browser Extension

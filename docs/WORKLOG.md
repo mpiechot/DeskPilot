@@ -82,3 +82,21 @@ Current status:
 
 Next recommended step:
 - Continue with category create/rename/delete operations and soft-delete behavior.
+
+### Category management session
+
+Completed:
+- Added storage APIs for creating, renaming and soft-deleting categories.
+- Added IPC/preload bindings for category writes.
+- Added a compact touch-friendly category form.
+- Added edit and remove controls to category cards.
+- Added confirmation before removing a category from the active list.
+- Added `npm run test:storage` smoke coverage for defaults, create, rename, soft-delete, recreate-after-delete and backup file creation.
+- Rechecked wide and low touch layouts after adding category controls.
+
+Current status:
+- Categories can be managed locally in the Electron app.
+- Browser preview remains read-only fallback data.
+
+Next recommended step:
+- Implement saved tab/session persistence per category and wire the existing Save/Open buttons to stored data.

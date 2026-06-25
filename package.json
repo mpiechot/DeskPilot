@@ -11,7 +11,8 @@
     "build": "tsc -p tsconfig.json && npm run build:electron && vite build",
     "build:electron": "tsc -p tsconfig.electron.json",
     "lint": "eslint .",
-    "preview": "vite preview --host 127.0.0.1"
+    "preview": "vite preview --host 127.0.0.1",
+    "test:storage": "npm run build:electron && node scripts/storage-smoke.mjs"
   },
   "dependencies": {
     "lucide-react": "0.468.0",

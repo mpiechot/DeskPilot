@@ -10,13 +10,13 @@ Working today:
 - Electron desktop shell
 - React control-panel UI
 - default browser-session categories loaded from local SQLite storage: Work, Research, Entertainment, Projects, Later / Inbox
+- create, rename and remove active categories
 - wide, low touch-display layout
 - local development, lint and build commands
 
 Not implemented yet:
 - real browser session storage
 - browser extension integration
-- category editing
 - opening or saving browser windows
 
 ## Requirements
@@ -79,6 +79,8 @@ DeskPilot creates its first local SQLite database in Electron's user-data folder
 
 At this stage, SQLite stores default categories only. Browser tabs are not saved yet.
 If a default category is added in a later build, DeskPilot seeds the missing category on the next start without deleting existing data.
+
+Removing a category currently performs a soft delete. The category is hidden from the active list, but the row remains in the local database for recovery-oriented future work.
 
 Future storage work must preserve these rules:
 - all session data stays local
