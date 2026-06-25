@@ -17,6 +17,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
+let isQuitting = false;
 
 function createMainWindow(): void {
   const bounds = loadWindowBounds(app.getPath("userData"));
@@ -38,9 +39,14 @@ function createMainWindow(): void {
     }
   });
 
-  mainWindow.on("close", () => {
+  mainWindow.on("close", (event) => {
     if (mainWindow) {
       saveWindowBounds(app.getPath("userData"), mainWindow.getBounds());
+    }
+
+    if (!isQuitting) {
+      event.preventDefault();
+      mainWindow?.hide();
     }
   });
 
@@ -58,7 +64,13 @@ function createTray(): void {
     Menu.buildFromTemplate([
       { label: "Show DeskPilot", click: () => mainWindow?.show() },
       { type: "separator" },
-      { label: "Quit", click: () => app.quit() }
+      {
+        label: "Quit",
+        click: () => {
+          isQuitting = true;
+          app.quit();
+        }
+      }
     ])
   );
 }
@@ -116,4 +128,8 @@ app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     app.quit();
   }
+});
+
+app.on("before-quit", () => {
+  isQuitting = true;
 });

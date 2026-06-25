@@ -144,3 +144,16 @@ Current status:
 
 Next recommended step:
 - Add hide-to-tray behavior and decide whether DeskPilot should appear in the normal taskbar.
+
+### Close-to-tray session
+
+Completed:
+- Changed normal window close into hide-to-tray behavior.
+- Kept explicit quit in the tray menu.
+- Preserved window bounds before hiding.
+
+Current status:
+- DeskPilot behaves more like a resident control panel and is less likely to be closed accidentally.
+
+Next recommended step:
+- Add a user-visible recovery/settings view for soft-deleted data or begin the browser-extension bridge.

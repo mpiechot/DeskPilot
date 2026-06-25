@@ -14,6 +14,7 @@ Working today:
 - save http/https URLs into a selected category
 - open saved URLs from the selected category
 - remember the desktop window size and position between app runs
+- close the window to the system tray and quit explicitly from the tray menu
 - wide, low touch-display layout
 - local development, lint and build commands
 

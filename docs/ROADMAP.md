@@ -14,7 +14,7 @@ Expected features:
 - wide low control-panel window - initial pass done
 - large touch-friendly buttons - initial pass done
 - tray icon - initial embedded icon done
-- hidden from normal taskbar when appropriate
+- close-to-tray behavior - initial pass done
 - usage/start documentation - done
 - persistent window position - done
 - basic categories displayed - done
