@@ -1,6 +1,6 @@
 import { FolderOpen, PanelTopOpen, Pencil, Plus, Save, ShieldCheck, Trash2, X } from "lucide-react";
 import { type FormEvent, useEffect, useState } from "react";
-import type { CategoryInput } from "../shared/deskPilotApi";
+import type { CategoryInput, SessionMutationResult, SessionTab, SessionTabInput } from "../shared/deskPilotApi";
 import { defaultCategories, type SessionCategory } from "../shared/sessions";
 import "./styles.css";
 
@@ -22,6 +22,10 @@ function App() {
   const [categoryDraft, setCategoryDraft] = useState<CategoryInput>({ name: "", description: "" });
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<CategoryInput>({ name: "", description: "" });
+  const [selectedCategoryId, setSelectedCategoryId] = useState(defaultCategories[0]?.id ?? "");
+  const [tabs, setTabs] = useState<SessionTab[]>([]);
+  const [tabDraft, setTabDraft] = useState<SessionTabInput>({ categoryId: selectedCategoryId, url: "", title: "" });
+  const [controlMode, setControlMode] = useState<"session" | "categories">("session");
   const [operationMessage, setOperationMessage] = useState("");
 
   useEffect(() => {
@@ -42,6 +46,7 @@ function App() {
         }
 
         setCategories(storedCategories);
+        setSelectedCategoryId((currentId) => currentId || storedCategories[0]?.id || "");
         setStorageStatus("ready");
       })
       .catch(() => {
@@ -57,6 +62,20 @@ function App() {
     };
   }, []);
 
+  useEffect(() => {
+    setTabDraft((currentDraft) => ({ ...currentDraft, categoryId: selectedCategoryId }));
+
+    if (!window.deskPilot || !selectedCategoryId) {
+      setTabs([]);
+      return;
+    }
+
+    window.deskPilot
+      .listTabs(selectedCategoryId)
+      .then((storedTabs: SessionTab[]) => setTabs(storedTabs))
+      .catch(() => setOperationMessage("Could not load saved URLs."));
+  }, [selectedCategoryId]);
+
   const storageMessage = operationMessage
     ? operationMessage
     : storageStatus === "ready"
@@ -71,12 +90,88 @@ function App() {
 
   function updateCategories(nextCategories: SessionCategory[]): void {
     setCategories(nextCategories);
+    setSelectedCategoryId((currentId) => {
+      if (nextCategories.some((category) => category.id === currentId)) {
+        return currentId;
+      }
+
+      return nextCategories[0]?.id ?? "";
+    });
     setStorageStatus("ready");
+  }
+
+  function updateSessionResult(result: SessionMutationResult): void {
+    updateCategories(result.categories);
+    setTabs(result.tabs);
   }
 
   function handleStorageError(): void {
     setStorageStatus("error");
     setOperationMessage("Storage write failed. Existing data was left untouched.");
+  }
+
+  function selectedCategoryName(): string {
+    return categories.find((category) => category.id === selectedCategoryId)?.name ?? "category";
+  }
+
+  function handleSaveUrl(): void {
+    if (!tabDraft.url.trim()) {
+      setOperationMessage("Paste a URL before saving it.");
+      return;
+    }
+
+    if (!isStorageWritable) {
+      setOperationMessage("Saving URLs requires the Electron app.");
+      return;
+    }
+
+    window.deskPilot
+      ?.addTab({ ...tabDraft, categoryId: selectedCategoryId })
+      .then((result: SessionMutationResult) => {
+        updateSessionResult(result);
+        setTabDraft({ categoryId: selectedCategoryId, url: "", title: "" });
+        setOperationMessage(`Saved URL to ${selectedCategoryName()}.`);
+      })
+      .catch(() => {
+        setOperationMessage("Could not save URL. Use a full http or https URL.");
+      });
+  }
+
+  function handleOpenCategory(): void {
+    if (!selectedCategoryId) {
+      setOperationMessage("Select a category first.");
+      return;
+    }
+
+    if (!window.deskPilot) {
+      setOperationMessage("Opening saved URLs requires the Electron app.");
+      return;
+    }
+
+    window.deskPilot
+      .openCategory(selectedCategoryId)
+      .then((openedTabs: SessionTab[]) => {
+        setTabs(openedTabs);
+        setOperationMessage(
+          openedTabs.length > 0 ? `Opened ${openedTabs.length} saved URLs.` : `${selectedCategoryName()} has no saved URLs yet.`
+        );
+      })
+      .catch(() => setOperationMessage("Could not open saved URLs."));
+  }
+
+  function removeTab(id: string): void {
+    if (!isStorageWritable) {
+      setOperationMessage("Removing URLs requires the Electron app.");
+      return;
+    }
+
+    window.deskPilot
+      ?.deleteTab(id)
+      .then((result: SessionMutationResult) => {
+        updateSessionResult(result);
+        setOperationMessage("Saved URL removed safely.");
+      })
+      .catch(handleStorageError);
   }
 
   function handleCreateCategory(event: FormEvent<HTMLFormElement>): void {
@@ -176,38 +271,77 @@ function App() {
         </header>
 
         <section className="quickActions" aria-label="Session actions">
-          <button type="button" className="primaryAction">
+          <button type="button" className="primaryAction" onClick={handleOpenCategory}>
             <PanelTopOpen aria-hidden="true" />
-            Open Current
+            Open Selected
           </button>
-          <button type="button" className="secondaryAction">
+          <button type="button" className="secondaryAction" onClick={handleSaveUrl}>
             <Save aria-hidden="true" />
-            Save Window
+            Save URL
           </button>
         </section>
 
-        <form className="categoryForm" onSubmit={handleCreateCategory}>
-          <input
-            aria-label="Category name"
-            maxLength={40}
-            onChange={(event) => setCategoryDraft({ ...categoryDraft, name: event.target.value })}
-            placeholder="New category"
-            type="text"
-            value={categoryDraft.name}
-          />
-          <input
-            aria-label="Category description"
-            maxLength={140}
-            onChange={(event) => setCategoryDraft({ ...categoryDraft, description: event.target.value })}
-            placeholder="Short description"
-            type="text"
-            value={categoryDraft.description}
-          />
-          <button type="submit" className="addCategoryAction">
-            <Plus aria-hidden="true" />
-            Add Category
+        <div className="modeSwitch" role="tablist" aria-label="Control mode">
+          <button
+            type="button"
+            className={controlMode === "session" ? "modeButton modeButton-active" : "modeButton"}
+            onClick={() => setControlMode("session")}
+          >
+            Session
           </button>
-        </form>
+          <button
+            type="button"
+            className={controlMode === "categories" ? "modeButton modeButton-active" : "modeButton"}
+            onClick={() => setControlMode("categories")}
+          >
+            Categories
+          </button>
+        </div>
+
+        {controlMode === "session" ? (
+          <section className="tabForm" aria-label="Saved URL">
+            <div className="selectedCategoryLabel">Target: {selectedCategoryName()}</div>
+            <input
+              aria-label="URL to save"
+              onChange={(event) => setTabDraft({ ...tabDraft, url: event.target.value })}
+              placeholder="https://example.com"
+              type="url"
+              value={tabDraft.url}
+            />
+            <input
+              aria-label="URL title"
+              maxLength={180}
+              onChange={(event) => setTabDraft({ ...tabDraft, title: event.target.value })}
+              placeholder="Optional title"
+              type="text"
+              value={tabDraft.title}
+            />
+            <div className="savedUrlCount">{tabs.length} saved URLs</div>
+          </section>
+        ) : (
+          <form className="categoryForm" onSubmit={handleCreateCategory}>
+            <input
+              aria-label="Category name"
+              maxLength={40}
+              onChange={(event) => setCategoryDraft({ ...categoryDraft, name: event.target.value })}
+              placeholder="New category"
+              type="text"
+              value={categoryDraft.name}
+            />
+            <input
+              aria-label="Category description"
+              maxLength={140}
+              onChange={(event) => setCategoryDraft({ ...categoryDraft, description: event.target.value })}
+              placeholder="Short description"
+              type="text"
+              value={categoryDraft.description}
+            />
+            <button type="submit" className="addCategoryAction">
+              <Plus aria-hidden="true" />
+              Add Category
+            </button>
+          </form>
+        )}
 
         <footer className="safetyNote">
           <ShieldCheck aria-hidden="true" />
@@ -217,7 +351,11 @@ function App() {
 
       <section className="categoryList" aria-label="Session categories">
         {categories.map((category) => (
-          <article className="categoryCard" key={category.id}>
+          <article
+            className={`categoryCard ${selectedCategoryId === category.id ? "categoryCard-selected" : ""}`}
+            key={category.id}
+            onClick={() => setSelectedCategoryId(category.id)}
+          >
             <div className="categoryIcon">
               <FolderOpen aria-hidden="true" />
             </div>
@@ -241,12 +379,23 @@ function App() {
                     <button
                       type="button"
                       className="iconAction"
-                      onClick={() => saveCategoryEdit(category.id)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        saveCategoryEdit(category.id);
+                      }}
                       title="Save category"
                     >
                       <Save aria-hidden="true" />
                     </button>
-                    <button type="button" className="iconAction" onClick={cancelEditingCategory} title="Cancel editing">
+                    <button
+                      type="button"
+                      className="iconAction"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        cancelEditingCategory();
+                      }}
+                      title="Cancel editing"
+                    >
                       <X aria-hidden="true" />
                     </button>
                   </div>
@@ -266,7 +415,10 @@ function App() {
                     <button
                       type="button"
                       className="iconAction"
-                      onClick={() => startEditingCategory(category)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        startEditingCategory(category);
+                      }}
                       title="Edit category"
                     >
                       <Pencil aria-hidden="true" />
@@ -274,7 +426,10 @@ function App() {
                     <button
                       type="button"
                       className="iconAction dangerAction"
-                      onClick={() => removeCategory(category.id)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        removeCategory(category.id);
+                      }}
                       title="Remove category"
                     >
                       <Trash2 aria-hidden="true" />
@@ -282,6 +437,18 @@ function App() {
                   </div>
                 </>
               )}
+              {selectedCategoryId === category.id && tabs.length > 0 ? (
+                <div className="savedUrlList">
+                  {tabs.slice(0, 3).map((tab) => (
+                    <div className="savedUrlItem" key={tab.id}>
+                      <span>{tab.title}</span>
+                      <button type="button" className="miniDangerAction" onClick={() => removeTab(tab.id)} title="Remove URL">
+                        <X aria-hidden="true" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
             </div>
           </article>
         ))}

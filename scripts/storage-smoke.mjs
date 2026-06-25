@@ -3,9 +3,12 @@ import os from "node:os";
 import path from "node:path";
 import {
   createCategory,
+  addTab,
   deleteCategory,
+  deleteTab,
   initializeStorage,
   listCategories,
+  listTabs,
   updateCategory
 } from "../dist-electron/main/storage.js";
 
@@ -47,6 +50,20 @@ assert(
   categories.some((category) => category.name === "Writing"),
   "Expected Writing category to be creatable after soft delete"
 );
+
+const recreatedWriting = categories.find((category) => category.name === "Writing");
+let result = addTab({
+  categoryId: recreatedWriting.id,
+  url: "https://example.com/notes",
+  title: "Example Notes"
+});
+assert(result.tabs.length === 1, `Expected 1 tab, got ${result.tabs.length}`);
+assert(result.categories.some((category) => category.id === recreatedWriting.id && category.tabCount === 1), "Expected tab count update");
+
+const tab = result.tabs[0];
+result = deleteTab(tab.id);
+assert(result.tabs.length === 0, "Expected soft-deleted tab to be hidden");
+assert(listTabs(recreatedWriting.id).length === 0, "Expected no active tabs after soft delete");
 
 const databasePath = path.join(dir, "storage", "deskpilot.sqlite");
 const backupPath = path.join(dir, "storage", "deskpilot.sqlite.bak");

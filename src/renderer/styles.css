@@ -136,10 +136,40 @@ h1 {
   color: #27312d;
 }
 
-.categoryForm {
+.categoryForm,
+.tabForm {
   display: grid;
   align-content: start;
   gap: 6px;
+}
+
+.selectedCategoryLabel,
+.savedUrlCount {
+  color: #5c625d;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.modeSwitch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.modeButton {
+  min-height: 34px;
+  border: 1px solid #c9c0b2;
+  border-radius: 8px;
+  background: #fffaf0;
+  color: #4f5852;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.modeButton-active {
+  border-color: #789282;
+  background: #e7efe5;
+  color: #243d32;
 }
 
 .addCategoryAction {
@@ -169,6 +199,12 @@ h1 {
   background: rgba(255, 250, 240, 0.78);
   padding: 14px 12px;
   min-height: 100%;
+  cursor: pointer;
+}
+
+.categoryCard-selected {
+  border-color: #789282;
+  box-shadow: inset 0 0 0 2px rgba(69, 103, 83, 0.18);
 }
 
 .categoryIcon {
@@ -279,6 +315,48 @@ h2 {
   gap: 8px;
 }
 
+.savedUrlList {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.savedUrlItem {
+  display: grid;
+  grid-template-columns: 1fr 26px;
+  gap: 6px;
+  align-items: center;
+  border-radius: 8px;
+  background: rgba(231, 239, 229, 0.62);
+  padding: 5px 5px 5px 8px;
+  color: #3f4843;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.savedUrlItem span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.miniDangerAction {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border: 1px solid #d0b6ad;
+  border-radius: 6px;
+  background: #fffaf0;
+  color: #70352d;
+  cursor: pointer;
+}
+
+.miniDangerAction svg {
+  width: 14px;
+  height: 14px;
+}
+
 .safetyNote {
   display: grid;
   grid-template-columns: 22px 1fr;
@@ -317,6 +395,12 @@ h2 {
     grid-auto-flow: row;
     grid-template-columns: repeat(2, minmax(180px, 1fr));
     overflow-x: visible;
+  }
+}
+
+@media (max-height: 400px) {
+  .safetyNote {
+    display: none;
   }
 }
 

@@ -6,7 +6,11 @@ const deskPilot: DeskPilotApi = {
   listCategories: () => ipcRenderer.invoke("categories:list"),
   createCategory: (input) => ipcRenderer.invoke("categories:create", input),
   updateCategory: (id, input) => ipcRenderer.invoke("categories:update", id, input),
-  deleteCategory: (id) => ipcRenderer.invoke("categories:delete", id)
+  deleteCategory: (id) => ipcRenderer.invoke("categories:delete", id),
+  listTabs: (categoryId) => ipcRenderer.invoke("tabs:list", categoryId),
+  addTab: (input) => ipcRenderer.invoke("tabs:add", input),
+  deleteTab: (id) => ipcRenderer.invoke("tabs:delete", id),
+  openCategory: (categoryId) => ipcRenderer.invoke("categories:open", categoryId)
 };
 
 contextBridge.exposeInMainWorld("deskPilot", deskPilot);

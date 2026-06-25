@@ -100,3 +100,21 @@ Current status:
 
 Next recommended step:
 - Implement saved tab/session persistence per category and wire the existing Save/Open buttons to stored data.
+
+### Saved URL session
+
+Completed:
+- Added storage APIs for saved URLs per category.
+- Added soft-delete behavior for saved URLs.
+- Added IPC/preload bindings for listing, adding, removing and opening saved URLs.
+- Wired `Save URL` to store a manual http/https URL in the selected category.
+- Wired `Open Selected` to open saved URLs for the selected category.
+- Added selected-category highlighting and a compact session/category mode switch for the low touch layout.
+- Extended `npm run test:storage` to cover saved URL add/count/delete behavior.
+
+Current status:
+- DeskPilot can now persist categories and manually saved URLs locally.
+- The browser extension is still needed before DeskPilot can save the current browser window automatically.
+
+Next recommended step:
+- Add restore/recovery affordances for soft-deleted categories and URLs, or start the browser-extension bridge.

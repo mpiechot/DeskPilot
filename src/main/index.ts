@@ -1,7 +1,16 @@
-import { app, BrowserWindow, ipcMain, nativeTheme, Tray, Menu } from "electron";
+import { app, BrowserWindow, ipcMain, nativeTheme, shell, Tray, Menu } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { createCategory, deleteCategory, initializeStorage, listCategories, updateCategory } from "./storage.js";
+import {
+  addTab,
+  createCategory,
+  deleteCategory,
+  deleteTab,
+  initializeStorage,
+  listCategories,
+  listTabs,
+  updateCategory
+} from "./storage.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -49,6 +58,18 @@ app.whenReady().then(async () => {
   ipcMain.handle("categories:create", (_event, input) => createCategory(input));
   ipcMain.handle("categories:update", (_event, id, input) => updateCategory(id, input));
   ipcMain.handle("categories:delete", (_event, id) => deleteCategory(id));
+  ipcMain.handle("tabs:list", (_event, categoryId) => listTabs(categoryId));
+  ipcMain.handle("tabs:add", (_event, input) => addTab(input));
+  ipcMain.handle("tabs:delete", (_event, id) => deleteTab(id));
+  ipcMain.handle("categories:open", async (_event, categoryId) => {
+    const tabs = listTabs(categoryId);
+
+    for (const tab of tabs) {
+      await shell.openExternal(tab.url);
+    }
+
+    return tabs;
+  });
 
   createMainWindow();
 

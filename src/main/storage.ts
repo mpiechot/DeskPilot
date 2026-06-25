@@ -2,7 +2,14 @@ import fs from "node:fs";
 import path from "node:path";
 import initSqlJs, { type Database, type SqlJsStatic } from "sql.js";
 import { defaultCategories, type SessionCategory } from "../shared/sessions.js";
-import type { CategoryInput, CategoryRow } from "../shared/deskPilotApi.js";
+import type {
+  CategoryInput,
+  CategoryRow,
+  SessionMutationResult,
+  SessionTab,
+  SessionTabInput,
+  SessionTabRow
+} from "../shared/deskPilotApi.js";
 
 type StoragePaths = {
   databasePath: string;
@@ -129,6 +136,82 @@ export function deleteCategory(id: string): SessionCategory[] {
   return listCategories();
 }
 
+export function listTabs(categoryId: string): SessionTab[] {
+  const db = getDatabase();
+  const safeCategoryId = normalizeCategoryId(categoryId);
+  const result = db.exec(
+    `
+      SELECT id, category_id, url, title, saved_at
+      FROM session_tabs
+      WHERE category_id = $categoryId AND deleted_at IS NULL
+      ORDER BY position ASC, saved_at ASC
+    `,
+    {
+      $categoryId: safeCategoryId
+    }
+  );
+
+  if (result.length === 0) {
+    return [];
+  }
+
+  const columns = result[0].columns;
+  return result[0].values.map((value) => {
+    const row = Object.fromEntries(columns.map((column, index) => [column, value[index]])) as SessionTabRow;
+    return mapSessionTabRow(row);
+  });
+}
+
+export function addTab(input: SessionTabInput): SessionMutationResult {
+  const db = getDatabase();
+  const normalized = normalizeTabInput(input);
+  const position = getNextTabPosition(db, normalized.categoryId);
+  const id = createTabId(normalized.url);
+
+  db.run(
+    `
+      INSERT INTO session_tabs (id, category_id, url, title, position)
+      VALUES ($id, $categoryId, $url, $title, $position)
+    `,
+    {
+      $id: id,
+      $categoryId: normalized.categoryId,
+      $url: normalized.url,
+      $title: normalized.title,
+      $position: position
+    }
+  );
+
+  saveDatabase();
+  return {
+    categories: listCategories(),
+    tabs: listTabs(normalized.categoryId)
+  };
+}
+
+export function deleteTab(id: string): SessionMutationResult {
+  const db = getDatabase();
+  const safeId = normalizeRequiredString(id, "Tab id is required.");
+  const categoryId = getTabCategoryId(db, safeId);
+
+  db.run(
+    `
+      UPDATE session_tabs
+      SET deleted_at = CURRENT_TIMESTAMP
+      WHERE id = $id AND deleted_at IS NULL
+    `,
+    {
+      $id: safeId
+    }
+  );
+
+  saveDatabase();
+  return {
+    categories: listCategories(),
+    tabs: categoryId ? listTabs(categoryId) : []
+  };
+}
+
 function getStoragePaths(userDataPath: string): StoragePaths {
   const storageDirectory = path.join(userDataPath, "storage");
 
@@ -210,13 +293,7 @@ function normalizeCategoryInput(input: CategoryInput): CategoryInput {
 }
 
 function normalizeCategoryId(id: string): string {
-  const safeId = id.trim();
-
-  if (!safeId) {
-    throw new Error("Category id is required.");
-  }
-
-  return safeId;
+  return normalizeRequiredString(id, "Category id is required.");
 }
 
 function createCategoryId(name: string): string {
@@ -261,6 +338,108 @@ function getNextCategoryPosition(db: Database): number {
   }
 
   return Number(result[0].values[0][0]);
+}
+
+function normalizeTabInput(input: SessionTabInput): SessionTabInput {
+  const categoryId = normalizeCategoryId(input.categoryId);
+  const url = normalizeUrl(input.url);
+  const title = input.title.trim().slice(0, 180) || url;
+
+  return { categoryId, url, title };
+}
+
+function normalizeUrl(value: string): string {
+  const rawUrl = normalizeRequiredString(value, "URL is required.");
+  const parsed = new URL(rawUrl);
+
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new Error("Only http and https URLs are supported right now.");
+  }
+
+  return parsed.toString();
+}
+
+function normalizeRequiredString(value: string, message: string): string {
+  const normalized = value.trim();
+
+  if (!normalized) {
+    throw new Error(message);
+  }
+
+  return normalized;
+}
+
+function createTabId(url: string): string {
+  const baseSlug =
+    url
+      .replace(/^https?:\/\//, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "")
+      .slice(0, 48) || "tab";
+  const existingIds = getAllTabIds();
+
+  if (!existingIds.has(baseSlug)) {
+    return baseSlug;
+  }
+
+  let suffix = 2;
+  let nextId = `${baseSlug}-${suffix}`;
+
+  while (existingIds.has(nextId)) {
+    suffix += 1;
+    nextId = `${baseSlug}-${suffix}`;
+  }
+
+  return nextId;
+}
+
+function getAllTabIds(): Set<string> {
+  const db = getDatabase();
+  const result = db.exec("SELECT id FROM session_tabs");
+
+  if (result.length === 0) {
+    return new Set();
+  }
+
+  return new Set(result[0].values.map((value) => String(value[0])));
+}
+
+function getNextTabPosition(db: Database, categoryId: string): number {
+  const result = db.exec(
+    "SELECT COALESCE(MAX(position), -1) + 1 AS next_position FROM session_tabs WHERE category_id = $categoryId",
+    {
+      $categoryId: categoryId
+    }
+  );
+
+  if (result.length === 0) {
+    return 0;
+  }
+
+  return Number(result[0].values[0][0]);
+}
+
+function getTabCategoryId(db: Database, id: string): string | null {
+  const result = db.exec("SELECT category_id FROM session_tabs WHERE id = $id", {
+    $id: id
+  });
+
+  if (result.length === 0) {
+    return null;
+  }
+
+  return String(result[0].values[0][0]);
+}
+
+function mapSessionTabRow(row: SessionTabRow): SessionTab {
+  return {
+    id: row.id,
+    categoryId: row.category_id,
+    url: row.url,
+    title: row.title,
+    savedAt: row.saved_at
+  };
 }
 
 function saveDatabase(): void {
