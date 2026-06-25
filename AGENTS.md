@@ -2,12 +2,13 @@
 
 ## GitHub Identity
 
-Codex must use the GitHub user `portfolio-pirat` for all Git and GitHub operations in this project.
+Codex must use the Git identity `portfolio-pirat <mattzeal@gmail.com>` for local commits in this project.
 
-It is explicitly forbidden to use the GitHub user `mpiechot` for:
+It is acceptable if `git push` uses the existing machine GitHub credential, even if that credential belongs to `mpiechot`.
+
+It is explicitly forbidden to use the GitHub user `mpiechot` for all other GitHub operations, including:
 
 - commits
-- pushes
 - issues
 - labels
 - milestones
@@ -15,7 +16,7 @@ It is explicitly forbidden to use the GitHub user `mpiechot` for:
 - any GitHub API operation
 - any `gh` CLI operation
 
-Before committing or pushing, Codex must verify the active Git identity.
+Before committing, Codex must verify the active local Git identity.
 
 Expected local Git identity for this repository:
 
@@ -27,7 +28,7 @@ git config user.email
 # mattzeal@gmail.com
 ```
 
-If the active identity is not `portfolio-pirat`, Codex must stop and fix the repository-local Git configuration before continuing.
+If the active local Git identity is not `portfolio-pirat`, Codex must stop and fix the repository-local Git configuration before committing.
 
 Preferred setup:
 
@@ -38,6 +39,8 @@ git config user.email "mattzeal@gmail.com"
 
 Codex must not change the global Git identity.
 Use repository-local Git configuration only.
+
+GitHub issue, milestone, label, release, API and `gh` CLI operations remain forbidden unless the user explicitly allows them again.
 
 ## Project Mode
 
@@ -68,13 +71,13 @@ When the user says something like "continue", "mach weiter" or "work on DeskPilo
 2. Read `AGENTS.md`.
 3. Read `README.md`.
 4. Read all files in `docs/`.
-5. Inspect open GitHub issues and milestones.
+5. Inspect local planning documents. Do not inspect GitHub issues or milestones unless GitHub operations have been explicitly allowed again.
 6. Determine the most important next step.
-7. If no suitable issue exists, create one.
+7. If no suitable local plan exists, document one in `docs/WORKLOG.md` or `docs/ROADMAP.md`.
 8. Work on one focused improvement.
 9. Run relevant build, test and lint commands.
 10. Commit directly to `main`.
-11. Update the related issue.
+11. Update the related local planning document.
 12. Update `docs/WORKLOG.md`.
 13. Update `docs/ROADMAP.md` if project planning changed.
 14. Add concerns, risks or annoyances to `docs/GRUMBLE_LOG.md` when useful.
