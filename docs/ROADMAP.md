@@ -41,11 +41,14 @@ Expected features:
 Goal:
 Read the current browser window and save it into DeskPilot.
 
+Status:
+Started. A local bridge and unpacked extension prototype exist.
+
 Expected features:
-- Chrome/Edge-compatible extension
-- read tabs from current browser window
-- send tab list to DeskPilot
-- save current window into selected category
+- Chrome/Edge-compatible extension - prototype done
+- read tabs from current browser window - prototype done
+- send tab list to DeskPilot - prototype done
+- save current window into selected category - prototype done
 - optionally close saved browser window
 
 ## v0.4 - Safe Restore And Backup

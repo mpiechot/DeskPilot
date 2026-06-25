@@ -188,3 +188,18 @@ Current status:
 
 Next recommended step:
 - Begin the browser-extension bridge for capturing live browser windows.
+
+### Browser extension bridge session
+
+Completed:
+- Added a local HTTP bridge bound to `127.0.0.1:17383`.
+- Added bridge endpoints for categories and tab capture.
+- Added an unpacked Chrome/Edge MV3 extension prototype.
+- The extension popup can read the current window tabs and post them to DeskPilot.
+- Captured tabs are saved into the selected local category.
+
+Current status:
+- Browser-window capture has a first end-to-end prototype path.
+
+Next recommended step:
+- Harden the bridge/extension UX, then add optional close-window-after-save behavior.

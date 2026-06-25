@@ -15,6 +15,7 @@ import {
   restoreTab,
   updateCategory
 } from "./storage.js";
+import { startBrowserBridge } from "./browserBridge.js";
 import { loadWindowBounds, saveWindowBounds } from "./windowSettings.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -22,6 +23,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let isQuitting = false;
+let bridgeServer: ReturnType<typeof startBrowserBridge> | null = null;
 
 function createMainWindow(): void {
   const bounds = loadWindowBounds(app.getPath("userData"));
@@ -94,6 +96,7 @@ function createTrayIcon() {
 
 app.whenReady().then(async () => {
   await initializeStorage(app.getPath("userData"));
+  bridgeServer = startBrowserBridge();
   ipcMain.handle("categories:list", () => listCategories());
   ipcMain.handle("categories:create", (_event, input) => createCategory(input));
   ipcMain.handle("categories:update", (_event, id, input) => updateCategory(id, input));
@@ -140,4 +143,5 @@ app.on("window-all-closed", () => {
 
 app.on("before-quit", () => {
   isQuitting = true;
+  bridgeServer?.close();
 });

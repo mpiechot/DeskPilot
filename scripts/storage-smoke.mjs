@@ -16,6 +16,7 @@ import {
   updateCategory
 } from "../dist-electron/main/storage.js";
 import { loadWindowBounds, saveWindowBounds } from "../dist-electron/main/windowSettings.js";
+import { startBrowserBridge } from "../dist-electron/main/browserBridge.js";
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "deskpilot-storage-"));
 
@@ -89,6 +90,34 @@ assert(
     loadedBounds.height === customBounds.height,
   "Expected window bounds to round-trip through settings storage"
 );
+
+const bridgeServer = startBrowserBridge();
+await new Promise((resolve) => bridgeServer.once("listening", resolve));
+
+try {
+  const categoriesResponse = await fetch("http://127.0.0.1:17383/categories", {
+    headers: { origin: "chrome-extension://deskpilot-test" }
+  });
+  const categoriesPayload = await categoriesResponse.json();
+  const categoryId = categoriesPayload.categories[0].id;
+  const captureResponse = await fetch("http://127.0.0.1:17383/capture", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      origin: "chrome-extension://deskpilot-test"
+    },
+    body: JSON.stringify({
+      categoryId,
+      tabs: [{ url: "https://example.com/bridge", title: "Bridge Test" }]
+    })
+  });
+  const capturePayload = await captureResponse.json();
+
+  assert(capturePayload.savedCount === 1, "Expected bridge capture to save one tab");
+  assert(listTabs(categoryId).some((item) => item.title === "Bridge Test"), "Expected captured bridge tab in storage");
+} finally {
+  await new Promise((resolve) => bridgeServer.close(resolve));
+}
 
 console.log(
   JSON.stringify(

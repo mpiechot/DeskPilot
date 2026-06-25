@@ -1,0 +1,39 @@
+body {
+  width: 260px;
+  margin: 0;
+  background: #f5f1e8;
+  color: #20242a;
+  font-family: system-ui, sans-serif;
+}
+
+main {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+select,
+button {
+  min-height: 38px;
+  border: 1px solid #c9c0b2;
+  border-radius: 8px;
+  font: inherit;
+}
+
+button {
+  background: #26352f;
+  color: #fffaf0;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+p {
+  margin: 0;
+  color: #5c625d;
+  font-size: 0.82rem;
+}

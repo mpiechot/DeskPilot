@@ -21,9 +21,8 @@ Working today:
 - local development, lint and build commands
 
 Not implemented yet:
-- browser extension integration
-- opening or saving browser windows
-- reading the current browser window automatically
+- packaged extension installation flow
+- browser-window capture polish
 
 ## Requirements
 
@@ -78,6 +77,17 @@ The expected display shape is wide and not very tall. The UI should therefore pr
 - large touch targets
 - compact status text
 - dense category tiles that remain readable at low height
+
+## Browser Extension Prototype
+
+An unpacked Chrome/Edge-compatible prototype lives in `browser-extension/`.
+
+To try it during development:
+- start DeskPilot with `npm run dev:electron`
+- open the browser extension management page
+- enable developer mode
+- load `browser-extension/` as an unpacked extension
+- use the extension popup to save the current browser window to a DeskPilot category
 
 ## Data Safety
 
