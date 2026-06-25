@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, nativeTheme, shell, Tray, Menu } from "electron";
+import { app, BrowserWindow, ipcMain, nativeImage, nativeTheme, shell, Tray, Menu } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -52,7 +52,7 @@ function createMainWindow(): void {
 }
 
 function createTray(): void {
-  tray = new Tray(path.join(__dirname, "../../assets/tray-icon.png"));
+  tray = new Tray(createTrayIcon());
   tray.setToolTip("DeskPilot");
   tray.setContextMenu(
     Menu.buildFromTemplate([
@@ -61,6 +61,19 @@ function createTray(): void {
       { label: "Quit", click: () => app.quit() }
     ])
   );
+}
+
+function createTrayIcon() {
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+      <rect width="32" height="32" rx="7" fill="#26352f"/>
+      <path d="M8 10.5h16v11H8z" fill="none" stroke="#fffaf0" stroke-width="2"/>
+      <path d="M11 14h10M11 18h6" stroke="#fffaf0" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+  `;
+  const dataUrl = `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`;
+
+  return nativeImage.createFromDataURL(dataUrl);
 }
 
 app.whenReady().then(async () => {

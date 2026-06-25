@@ -13,7 +13,7 @@ Expected features:
 - small control-panel window
 - wide low control-panel window - initial pass done
 - large touch-friendly buttons - initial pass done
-- tray icon - basic placeholder behavior exists, icon asset still needed
+- tray icon - initial embedded icon done
 - hidden from normal taskbar when appropriate
 - usage/start documentation - done
 - persistent window position - done

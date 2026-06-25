@@ -132,3 +132,15 @@ Current status:
 
 Next recommended step:
 - Add a small recovery view for soft-deleted categories/URLs or begin the browser-extension bridge.
+
+### Tray reliability session
+
+Completed:
+- Replaced the missing tray icon file dependency with an embedded native image.
+- Kept the tray menu minimal: show DeskPilot and quit.
+
+Current status:
+- Tray creation should no longer fail because of a missing icon asset.
+
+Next recommended step:
+- Add hide-to-tray behavior and decide whether DeskPilot should appear in the normal taskbar.
