@@ -6,6 +6,8 @@ export type DeskPilotApi = {
   createCategory: (input: CategoryInput) => Promise<SessionCategory[]>;
   updateCategory: (id: string, input: CategoryInput) => Promise<SessionCategory[]>;
   deleteCategory: (id: string) => Promise<SessionCategory[]>;
+  listDeletedCategories: () => Promise<SessionCategory[]>;
+  restoreCategory: (id: string) => Promise<CategoryRecoveryResult>;
   listTabs: (categoryId: string) => Promise<SessionTab[]>;
   addTab: (input: SessionTabInput) => Promise<SessionMutationResult>;
   deleteTab: (id: string) => Promise<SessionMutationResult>;
@@ -44,6 +46,11 @@ export type SessionTabInput = {
 export type SessionMutationResult = {
   categories: SessionCategory[];
   tabs: SessionTab[];
+};
+
+export type CategoryRecoveryResult = {
+  categories: SessionCategory[];
+  deletedCategories: SessionCategory[];
 };
 
 export type SessionTabRow = {

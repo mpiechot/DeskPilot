@@ -137,10 +137,17 @@ h1 {
 }
 
 .categoryForm,
-.tabForm {
+.tabForm,
+.recoveryList {
   display: grid;
   align-content: start;
   gap: 6px;
+}
+
+.recoveryList p {
+  color: #5c625d;
+  font-size: 0.84rem;
+  font-weight: 800;
 }
 
 .selectedCategoryLabel,
@@ -152,7 +159,7 @@ h1 {
 
 .modeSwitch {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 6px;
 }
 
@@ -177,6 +184,16 @@ h1 {
   border-color: #b9c9b8;
   background: #e7efe5;
   color: #243d32;
+}
+
+.restoreAction {
+  min-height: 38px;
+  border: 1px solid #b9c9b8;
+  border-radius: 8px;
+  background: #e7efe5;
+  color: #243d32;
+  cursor: pointer;
+  font-weight: 800;
 }
 
 .categoryList {

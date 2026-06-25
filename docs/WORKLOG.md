@@ -157,3 +157,19 @@ Current status:
 
 Next recommended step:
 - Add a user-visible recovery/settings view for soft-deleted data or begin the browser-extension bridge.
+
+### Category recovery session
+
+Completed:
+- Added storage support for listing soft-deleted categories.
+- Added storage support for restoring soft-deleted categories.
+- Added IPC/preload bindings for category recovery.
+- Added a Recovery mode to the control rail.
+- Extended smoke coverage to prove soft-deleted categories are recoverable.
+
+Current status:
+- Removed categories can now be restored from the app.
+- Removed URLs are still soft-deleted but do not yet have a UI recovery surface.
+
+Next recommended step:
+- Add URL recovery or start the browser-extension bridge for capturing live browser windows.

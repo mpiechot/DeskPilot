@@ -1,6 +1,12 @@
 import { FolderOpen, PanelTopOpen, Pencil, Plus, Save, ShieldCheck, Trash2, X } from "lucide-react";
 import { type FormEvent, useEffect, useState } from "react";
-import type { CategoryInput, SessionMutationResult, SessionTab, SessionTabInput } from "../shared/deskPilotApi";
+import type {
+  CategoryInput,
+  CategoryRecoveryResult,
+  SessionMutationResult,
+  SessionTab,
+  SessionTabInput
+} from "../shared/deskPilotApi";
 import { defaultCategories, type SessionCategory } from "../shared/sessions";
 import "./styles.css";
 
@@ -23,9 +29,10 @@ function App() {
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<CategoryInput>({ name: "", description: "" });
   const [selectedCategoryId, setSelectedCategoryId] = useState(defaultCategories[0]?.id ?? "");
+  const [deletedCategories, setDeletedCategories] = useState<SessionCategory[]>([]);
   const [tabs, setTabs] = useState<SessionTab[]>([]);
   const [tabDraft, setTabDraft] = useState<SessionTabInput>({ categoryId: selectedCategoryId, url: "", title: "" });
-  const [controlMode, setControlMode] = useState<"session" | "categories">("session");
+  const [controlMode, setControlMode] = useState<"session" | "categories" | "recovery">("session");
   const [operationMessage, setOperationMessage] = useState("");
 
   useEffect(() => {
@@ -56,6 +63,15 @@ function App() {
 
         setStorageStatus("error");
       });
+
+    window.deskPilot
+      .listDeletedCategories()
+      .then((storedCategories: SessionCategory[]) => {
+        if (isMounted) {
+          setDeletedCategories(storedCategories);
+        }
+      })
+      .catch(() => undefined);
 
     return () => {
       isMounted = false;
@@ -103,6 +119,11 @@ function App() {
   function updateSessionResult(result: SessionMutationResult): void {
     updateCategories(result.categories);
     setTabs(result.tabs);
+  }
+
+  function updateRecoveryResult(result: CategoryRecoveryResult): void {
+    updateCategories(result.categories);
+    setDeletedCategories(result.deletedCategories);
   }
 
   function handleStorageError(): void {
@@ -245,7 +266,28 @@ function App() {
       ?.deleteCategory(id)
       .then((nextCategories: SessionCategory[]) => {
         updateCategories(nextCategories);
+        return window.deskPilot?.listDeletedCategories();
+      })
+      .then((nextDeletedCategories?: SessionCategory[]) => {
+        if (nextDeletedCategories) {
+          setDeletedCategories(nextDeletedCategories);
+        }
         setOperationMessage("Category removed safely.");
+      })
+      .catch(handleStorageError);
+  }
+
+  function restoreDeletedCategory(id: string): void {
+    if (!isStorageWritable) {
+      setOperationMessage("Recovery requires the Electron app.");
+      return;
+    }
+
+    window.deskPilot
+      ?.restoreCategory(id)
+      .then((result: CategoryRecoveryResult) => {
+        updateRecoveryResult(result);
+        setOperationMessage("Category restored.");
       })
       .catch(handleStorageError);
   }
@@ -296,6 +338,13 @@ function App() {
           >
             Categories
           </button>
+          <button
+            type="button"
+            className={controlMode === "recovery" ? "modeButton modeButton-active" : "modeButton"}
+            onClick={() => setControlMode("recovery")}
+          >
+            Recovery
+          </button>
         </div>
 
         {controlMode === "session" ? (
@@ -318,7 +367,7 @@ function App() {
             />
             <div className="savedUrlCount">{tabs.length} saved URLs</div>
           </section>
-        ) : (
+        ) : controlMode === "categories" ? (
           <form className="categoryForm" onSubmit={handleCreateCategory}>
             <input
               aria-label="Category name"
@@ -341,6 +390,23 @@ function App() {
               Add Category
             </button>
           </form>
+        ) : (
+          <section className="recoveryList" aria-label="Recover categories">
+            {deletedCategories.length === 0 ? (
+              <p>No removed categories.</p>
+            ) : (
+              deletedCategories.map((category) => (
+                <button
+                  type="button"
+                  className="restoreAction"
+                  key={category.id}
+                  onClick={() => restoreDeletedCategory(category.id)}
+                >
+                  Restore {category.name}
+                </button>
+              ))
+            )}
+          </section>
         )}
 
         <footer className="safetyNote">

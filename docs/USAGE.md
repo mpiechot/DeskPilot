@@ -11,6 +11,7 @@ Working today:
 - React control-panel UI
 - default browser-session categories loaded from local SQLite storage: Work, Research, Entertainment, Projects, Later / Inbox
 - create, rename and remove active categories
+- restore removed categories
 - save http/https URLs into a selected category
 - open saved URLs from the selected category
 - remember the desktop window size and position between app runs
@@ -85,6 +86,7 @@ At this stage, SQLite stores categories and manually saved URLs.
 If a default category is added in a later build, DeskPilot seeds the missing category on the next start without deleting existing data.
 
 Removing a category currently performs a soft delete. The category is hidden from the active list, but the row remains in the local database for recovery-oriented future work.
+Removed categories can be restored from the Recovery mode in the control panel.
 Removing a saved URL also performs a soft delete.
 
 Future storage work must preserve these rules:

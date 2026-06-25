@@ -5,6 +5,7 @@ import { defaultCategories, type SessionCategory } from "../shared/sessions.js";
 import type {
   CategoryInput,
   CategoryRow,
+  CategoryRecoveryResult,
   SessionMutationResult,
   SessionTab,
   SessionTabInput,
@@ -41,32 +42,7 @@ export async function initializeStorage(userDataPath: string): Promise<void> {
 }
 
 export function listCategories(): SessionCategory[] {
-  const db = getDatabase();
-  const result = db.exec(`
-    SELECT
-      c.id,
-      c.name,
-      c.description,
-      c.position,
-      c.is_favorite,
-      COUNT(t.id) AS tab_count,
-      MAX(t.saved_at) AS last_saved_at
-    FROM categories c
-    LEFT JOIN session_tabs t ON t.category_id = c.id AND t.deleted_at IS NULL
-    WHERE c.deleted_at IS NULL
-    GROUP BY c.id
-    ORDER BY c.position ASC, c.name ASC
-  `);
-
-  if (result.length === 0) {
-    return [];
-  }
-
-  const columns = result[0].columns;
-  return result[0].values.map((value) => {
-    const row = Object.fromEntries(columns.map((column, index) => [column, value[index]])) as CategoryRow;
-    return mapCategoryRow(row);
-  });
+  return listCategoryRows("c.deleted_at IS NULL");
 }
 
 export function createCategory(input: CategoryInput): SessionCategory[] {
@@ -134,6 +110,33 @@ export function deleteCategory(id: string): SessionCategory[] {
 
   saveDatabase();
   return listCategories();
+}
+
+export function listDeletedCategories(): SessionCategory[] {
+  return listCategoryRows("c.deleted_at IS NOT NULL");
+}
+
+export function restoreCategory(id: string): CategoryRecoveryResult {
+  const db = getDatabase();
+  const safeId = normalizeCategoryId(id);
+
+  db.run(
+    `
+      UPDATE categories
+      SET deleted_at = NULL,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = $id AND deleted_at IS NOT NULL
+    `,
+    {
+      $id: safeId
+    }
+  );
+
+  saveDatabase();
+  return {
+    categories: listCategories(),
+    deletedCategories: listDeletedCategories()
+  };
 }
 
 export function listTabs(categoryId: string): SessionTab[] {
@@ -220,6 +223,35 @@ function getStoragePaths(userDataPath: string): StoragePaths {
     backupPath: path.join(storageDirectory, "deskpilot.sqlite.bak"),
     temporaryPath: path.join(storageDirectory, "deskpilot.sqlite.tmp")
   };
+}
+
+function listCategoryRows(whereClause: string): SessionCategory[] {
+  const db = getDatabase();
+  const result = db.exec(`
+    SELECT
+      c.id,
+      c.name,
+      c.description,
+      c.position,
+      c.is_favorite,
+      COUNT(t.id) AS tab_count,
+      MAX(t.saved_at) AS last_saved_at
+    FROM categories c
+    LEFT JOIN session_tabs t ON t.category_id = c.id AND t.deleted_at IS NULL
+    WHERE ${whereClause}
+    GROUP BY c.id
+    ORDER BY c.position ASC, c.name ASC
+  `);
+
+  if (result.length === 0) {
+    return [];
+  }
+
+  const columns = result[0].columns;
+  return result[0].values.map((value) => {
+    const row = Object.fromEntries(columns.map((column, index) => [column, value[index]])) as CategoryRow;
+    return mapCategoryRow(row);
+  });
 }
 
 function migrate(db: Database): void {

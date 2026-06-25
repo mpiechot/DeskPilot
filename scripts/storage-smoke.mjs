@@ -7,8 +7,10 @@ import {
   deleteCategory,
   deleteTab,
   initializeStorage,
+  listDeletedCategories,
   listCategories,
   listTabs,
+  restoreCategory,
   updateCategory
 } from "../dist-electron/main/storage.js";
 import { loadWindowBounds, saveWindowBounds } from "../dist-electron/main/windowSettings.js";
@@ -42,17 +44,18 @@ assert(
   !categories.some((category) => category.id === writing.id),
   "Expected deleted category to be hidden from active category list"
 );
-
-categories = createCategory({
-  name: "Writing",
-  description: "A recreated category must not collide with a soft-deleted id."
-});
 assert(
-  categories.some((category) => category.name === "Writing"),
-  "Expected Writing category to be creatable after soft delete"
+  listDeletedCategories().some((category) => category.id === writing.id),
+  "Expected soft-deleted category to be recoverable"
 );
 
-const recreatedWriting = categories.find((category) => category.name === "Writing");
+const recovery = restoreCategory(writing.id);
+assert(
+  recovery.categories.some((category) => category.id === writing.id),
+  "Expected restored category to return to active category list"
+);
+
+const recreatedWriting = recovery.categories.find((category) => category.id === writing.id);
 let result = addTab({
   categoryId: recreatedWriting.id,
   url: "https://example.com/notes",
