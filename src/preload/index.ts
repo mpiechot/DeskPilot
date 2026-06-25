@@ -12,6 +12,8 @@ const deskPilot: DeskPilotApi = {
   listTabs: (categoryId) => ipcRenderer.invoke("tabs:list", categoryId),
   addTab: (input) => ipcRenderer.invoke("tabs:add", input),
   deleteTab: (id) => ipcRenderer.invoke("tabs:delete", id),
+  listDeletedTabs: (categoryId) => ipcRenderer.invoke("tabs:deleted", categoryId),
+  restoreTab: (id) => ipcRenderer.invoke("tabs:restore", id),
   openCategory: (categoryId) => ipcRenderer.invoke("categories:open", categoryId)
 };
 

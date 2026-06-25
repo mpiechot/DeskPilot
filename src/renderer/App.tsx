@@ -30,6 +30,7 @@ function App() {
   const [editDraft, setEditDraft] = useState<CategoryInput>({ name: "", description: "" });
   const [selectedCategoryId, setSelectedCategoryId] = useState(defaultCategories[0]?.id ?? "");
   const [deletedCategories, setDeletedCategories] = useState<SessionCategory[]>([]);
+  const [deletedTabs, setDeletedTabs] = useState<SessionTab[]>([]);
   const [tabs, setTabs] = useState<SessionTab[]>([]);
   const [tabDraft, setTabDraft] = useState<SessionTabInput>({ categoryId: selectedCategoryId, url: "", title: "" });
   const [controlMode, setControlMode] = useState<"session" | "categories" | "recovery">("session");
@@ -90,6 +91,11 @@ function App() {
       .listTabs(selectedCategoryId)
       .then((storedTabs: SessionTab[]) => setTabs(storedTabs))
       .catch(() => setOperationMessage("Could not load saved URLs."));
+
+    window.deskPilot
+      .listDeletedTabs(selectedCategoryId)
+      .then((storedTabs: SessionTab[]) => setDeletedTabs(storedTabs))
+      .catch(() => undefined);
   }, [selectedCategoryId]);
 
   const storageMessage = operationMessage
@@ -119,6 +125,18 @@ function App() {
   function updateSessionResult(result: SessionMutationResult): void {
     updateCategories(result.categories);
     setTabs(result.tabs);
+  }
+
+  function refreshDeletedTabs(): void {
+    if (!window.deskPilot || !selectedCategoryId) {
+      setDeletedTabs([]);
+      return;
+    }
+
+    window.deskPilot
+      .listDeletedTabs(selectedCategoryId)
+      .then((storedTabs: SessionTab[]) => setDeletedTabs(storedTabs))
+      .catch(() => undefined);
   }
 
   function updateRecoveryResult(result: CategoryRecoveryResult): void {
@@ -190,7 +208,24 @@ function App() {
       ?.deleteTab(id)
       .then((result: SessionMutationResult) => {
         updateSessionResult(result);
+        refreshDeletedTabs();
         setOperationMessage("Saved URL removed safely.");
+      })
+      .catch(handleStorageError);
+  }
+
+  function restoreDeletedTab(id: string): void {
+    if (!isStorageWritable) {
+      setOperationMessage("URL recovery requires the Electron app.");
+      return;
+    }
+
+    window.deskPilot
+      ?.restoreTab(id)
+      .then((result: SessionMutationResult) => {
+        updateSessionResult(result);
+        refreshDeletedTabs();
+        setOperationMessage("Saved URL restored.");
       })
       .catch(handleStorageError);
   }
@@ -392,20 +427,30 @@ function App() {
           </form>
         ) : (
           <section className="recoveryList" aria-label="Recover categories">
-            {deletedCategories.length === 0 ? (
-              <p>No removed categories.</p>
-            ) : (
-              deletedCategories.map((category) => (
+            <p>Removed categories</p>
+            {deletedCategories.length === 0 ? <span className="emptyRecoveryText">None</span> : null}
+            {deletedCategories.map((category) => (
+              <button
+                type="button"
+                className="restoreAction"
+                key={category.id}
+                onClick={() => restoreDeletedCategory(category.id)}
+              >
+                Restore {category.name}
+              </button>
+            ))}
+            <p>Removed URLs in {selectedCategoryName()}</p>
+            {deletedTabs.length === 0 ? <span className="emptyRecoveryText">None</span> : null}
+            {deletedTabs.map((tab) => (
                 <button
                   type="button"
                   className="restoreAction"
-                  key={category.id}
-                  onClick={() => restoreDeletedCategory(category.id)}
+                  key={tab.id}
+                  onClick={() => restoreDeletedTab(tab.id)}
                 >
-                  Restore {category.name}
+                  Restore {tab.title}
                 </button>
-              ))
-            )}
+            ))}
           </section>
         )}
 

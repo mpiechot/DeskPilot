@@ -150,6 +150,12 @@ h1 {
   font-weight: 800;
 }
 
+.emptyRecoveryText {
+  color: #6d726c;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
 .selectedCategoryLabel,
 .savedUrlCount {
   color: #5c625d;

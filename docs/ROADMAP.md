@@ -32,6 +32,7 @@ Expected features:
 - categories - create/read/update/soft-delete done, default set includes Entertainment
 - category recovery - initial pass done
 - saved URLs - manual save/open/soft-delete done
+- URL recovery - initial pass done
 - create/edit/delete categories - initial pass done with soft-delete
 - open category URLs in browser - initial pass done
 

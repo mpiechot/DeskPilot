@@ -11,6 +11,8 @@ export type DeskPilotApi = {
   listTabs: (categoryId: string) => Promise<SessionTab[]>;
   addTab: (input: SessionTabInput) => Promise<SessionMutationResult>;
   deleteTab: (id: string) => Promise<SessionMutationResult>;
+  listDeletedTabs: (categoryId: string) => Promise<SessionTab[]>;
+  restoreTab: (id: string) => Promise<SessionMutationResult>;
   openCategory: (categoryId: string) => Promise<SessionTab[]>;
 };
 

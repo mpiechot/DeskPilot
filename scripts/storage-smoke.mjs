@@ -8,9 +8,11 @@ import {
   deleteTab,
   initializeStorage,
   listDeletedCategories,
+  listDeletedTabs,
   listCategories,
   listTabs,
   restoreCategory,
+  restoreTab,
   updateCategory
 } from "../dist-electron/main/storage.js";
 import { loadWindowBounds, saveWindowBounds } from "../dist-electron/main/windowSettings.js";
@@ -68,6 +70,9 @@ const tab = result.tabs[0];
 result = deleteTab(tab.id);
 assert(result.tabs.length === 0, "Expected soft-deleted tab to be hidden");
 assert(listTabs(recreatedWriting.id).length === 0, "Expected no active tabs after soft delete");
+assert(listDeletedTabs(recreatedWriting.id).length === 1, "Expected soft-deleted tab to be recoverable");
+result = restoreTab(tab.id);
+assert(result.tabs.length === 1, "Expected restored tab to return to active list");
 
 const databasePath = path.join(dir, "storage", "deskpilot.sqlite");
 const backupPath = path.join(dir, "storage", "deskpilot.sqlite.bak");

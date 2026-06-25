@@ -14,6 +14,7 @@ Working today:
 - restore removed categories
 - save http/https URLs into a selected category
 - open saved URLs from the selected category
+- restore removed URLs from the selected category
 - remember the desktop window size and position between app runs
 - close the window to the system tray and quit explicitly from the tray menu
 - wide, low touch-display layout
@@ -87,7 +88,7 @@ If a default category is added in a later build, DeskPilot seeds the missing cat
 
 Removing a category currently performs a soft delete. The category is hidden from the active list, but the row remains in the local database for recovery-oriented future work.
 Removed categories can be restored from the Recovery mode in the control panel.
-Removing a saved URL also performs a soft delete.
+Removing a saved URL also performs a soft delete. Removed URLs for the selected category can be restored from Recovery mode.
 
 Future storage work must preserve these rules:
 - all session data stays local

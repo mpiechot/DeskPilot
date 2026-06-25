@@ -173,3 +173,18 @@ Current status:
 
 Next recommended step:
 - Add URL recovery or start the browser-extension bridge for capturing live browser windows.
+
+### URL recovery session
+
+Completed:
+- Added storage support for listing soft-deleted URLs per category.
+- Added storage support for restoring soft-deleted URLs.
+- Added IPC/preload bindings for URL recovery.
+- Extended Recovery mode to show removed URLs for the selected category.
+- Extended storage smoke coverage to prove removed URLs can be restored.
+
+Current status:
+- Removed categories and removed URLs are both recoverable.
+
+Next recommended step:
+- Begin the browser-extension bridge for capturing live browser windows.

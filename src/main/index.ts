@@ -8,9 +8,11 @@ import {
   deleteTab,
   initializeStorage,
   listDeletedCategories,
+  listDeletedTabs,
   listCategories,
   listTabs,
   restoreCategory,
+  restoreTab,
   updateCategory
 } from "./storage.js";
 import { loadWindowBounds, saveWindowBounds } from "./windowSettings.js";
@@ -101,6 +103,8 @@ app.whenReady().then(async () => {
   ipcMain.handle("tabs:list", (_event, categoryId) => listTabs(categoryId));
   ipcMain.handle("tabs:add", (_event, input) => addTab(input));
   ipcMain.handle("tabs:delete", (_event, id) => deleteTab(id));
+  ipcMain.handle("tabs:deleted", (_event, categoryId) => listDeletedTabs(categoryId));
+  ipcMain.handle("tabs:restore", (_event, id) => restoreTab(id));
   ipcMain.handle("categories:open", async (_event, categoryId) => {
     const tabs = listTabs(categoryId);
 

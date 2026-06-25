@@ -140,13 +140,21 @@ export function restoreCategory(id: string): CategoryRecoveryResult {
 }
 
 export function listTabs(categoryId: string): SessionTab[] {
+  return listTabsByDeletedState(categoryId, false);
+}
+
+export function listDeletedTabs(categoryId: string): SessionTab[] {
+  return listTabsByDeletedState(categoryId, true);
+}
+
+function listTabsByDeletedState(categoryId: string, deleted: boolean): SessionTab[] {
   const db = getDatabase();
   const safeCategoryId = normalizeCategoryId(categoryId);
   const result = db.exec(
     `
       SELECT id, category_id, url, title, saved_at
       FROM session_tabs
-      WHERE category_id = $categoryId AND deleted_at IS NULL
+      WHERE category_id = $categoryId AND deleted_at IS ${deleted ? "NOT NULL" : "NULL"}
       ORDER BY position ASC, saved_at ASC
     `,
     {
@@ -202,6 +210,29 @@ export function deleteTab(id: string): SessionMutationResult {
       UPDATE session_tabs
       SET deleted_at = CURRENT_TIMESTAMP
       WHERE id = $id AND deleted_at IS NULL
+    `,
+    {
+      $id: safeId
+    }
+  );
+
+  saveDatabase();
+  return {
+    categories: listCategories(),
+    tabs: categoryId ? listTabs(categoryId) : []
+  };
+}
+
+export function restoreTab(id: string): SessionMutationResult {
+  const db = getDatabase();
+  const safeId = normalizeRequiredString(id, "Tab id is required.");
+  const categoryId = getTabCategoryId(db, safeId);
+
+  db.run(
+    `
+      UPDATE session_tabs
+      SET deleted_at = NULL
+      WHERE id = $id AND deleted_at IS NOT NULL
     `,
     {
       $id: safeId
