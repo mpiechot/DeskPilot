@@ -1,0 +1,39 @@
+{
+  "name": "deskpilot",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local desktop control panel for browser session management and workflow switching.",
+  "main": "dist-electron/main/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "dev:electron": "npm run build:electron && concurrently -k \"npm:dev\" \"wait-on tcp:127.0.0.1:5173 && cross-env VITE_DEV_SERVER_URL=http://127.0.0.1:5173 electron .\"",
+    "build": "tsc -p tsconfig.json && npm run build:electron && vite build",
+    "build:electron": "tsc -p tsconfig.electron.json",
+    "lint": "eslint .",
+    "preview": "vite preview --host 127.0.0.1"
+  },
+  "dependencies": {
+    "lucide-react": "0.468.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.4",
+    "@types/node": "20.16.0",
+    "@types/react": "18.3.18",
+    "@types/react-dom": "18.3.5",
+    "@vitejs/plugin-react": "4.7.0",
+    "concurrently": "9.2.3",
+    "cross-env": "7.0.3",
+    "electron": "41.7.1",
+    "eslint": "9.39.4",
+    "eslint-plugin-react-hooks": "5.1.0",
+    "eslint-plugin-react-refresh": "0.4.16",
+    "globals": "15.14.0",
+    "typescript": "5.7.3",
+    "typescript-eslint": "8.20.0",
+    "vite": "6.4.3",
+    "wait-on": "8.0.1"
+  }
+}
