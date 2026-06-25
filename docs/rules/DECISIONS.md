@@ -39,3 +39,11 @@ Pin the initial npm toolchain versions instead of using `latest`.
 
 Reason:
 The local Node version is 20.16. Recent package `latest` releases already require newer Node versions, so fixed compatible versions keep the bootstrap reproducible.
+
+## 2026-06-25 - Primary Layout Shape
+
+Decision:
+Design the DeskPilot control panel for a wide, low touch display before optimizing for portrait layouts.
+
+Reason:
+The intended physical placement is below the main monitors, so horizontal scanning and short vertical height matter more than a tall sidebar-style app.

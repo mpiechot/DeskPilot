@@ -35,3 +35,20 @@ Current status:
 
 Next recommended step:
 - Implement local SQLite-backed category/session storage before adding browser-extension writes.
+
+### Documentation and touch layout session
+
+Completed:
+- Read the updated agent instructions and Definition of Done.
+- Verified the repository-local Git identity is `portfolio-pirat <mattzeal@gmail.com>`.
+- Created GitHub issue #3 for usage documentation and wide touch-panel layout work.
+- Moved rule-oriented project documents into `docs/rules/`.
+- Added `docs/USAGE.md` with install, start, verification and touch-display notes.
+- Updated the initial Electron window size for a wide, low control panel.
+- Reworked the renderer layout into a horizontal control rail plus category tile grid.
+
+Current status:
+- The app is still placeholder-only, but it is now shaped for the intended under-monitor touch display.
+
+Next recommended step:
+- Continue with issue #2: implement SQLite-backed local category and session storage.

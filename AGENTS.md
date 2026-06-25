@@ -1,5 +1,44 @@
 # Agent Instructions
 
+## GitHub Identity
+
+Codex must use the GitHub user `portfolio-pirat` for all Git and GitHub operations in this project.
+
+It is explicitly forbidden to use the GitHub user `mpiechot` for:
+
+- commits
+- pushes
+- issues
+- labels
+- milestones
+- releases
+- any GitHub API operation
+- any `gh` CLI operation
+
+Before committing or pushing, Codex must verify the active Git identity.
+
+Expected local Git identity for this repository:
+
+```bash
+git config user.name
+# portfolio-pirat
+
+git config user.email
+# mattzeal@gmail.com
+```
+
+If the active identity is not `portfolio-pirat`, Codex must stop and fix the repository-local Git configuration before continuing.
+
+Preferred setup:
+
+```bash
+git config user.name "portfolio-pirat"
+git config user.email "mattzeal@gmail.com"
+```
+
+Codex must not change the global Git identity.
+Use repository-local Git configuration only.
+
 ## Project Mode
 
 This is an autonomous Codex project.

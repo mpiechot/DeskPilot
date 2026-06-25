@@ -9,10 +9,10 @@ let tray: Tray | null = null;
 
 function createMainWindow(): void {
   mainWindow = new BrowserWindow({
-    width: 420,
-    height: 720,
-    minWidth: 360,
-    minHeight: 560,
+    width: 1180,
+    height: 390,
+    minWidth: 860,
+    minHeight: 320,
     title: "DeskPilot",
     backgroundColor: nativeTheme.shouldUseDarkColors ? "#181a1f" : "#f7f5ef",
     autoHideMenuBar: true,

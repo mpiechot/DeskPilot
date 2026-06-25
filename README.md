@@ -27,7 +27,9 @@ Commands:
 - `npm run lint` checks TypeScript and React source files.
 - `npm run build` builds the Electron main/preload code and renderer.
 
+More detailed run and verification notes live in `docs/USAGE.md`.
+
 Current state:
 - v0.1 skeleton exists.
-- Browser-session categories are displayed with placeholder local data.
+- Browser-session categories are displayed with placeholder local data in a wide touch-panel layout.
 - Real session storage and browser integration are not implemented yet.

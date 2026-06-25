@@ -6,14 +6,16 @@ Goal:
 Create a Windows desktop control-panel application.
 
 Status:
-In progress. The initial Electron + React + TypeScript shell and category UI exist.
+In progress. The initial Electron + React + TypeScript shell and wide touch-panel category UI exist.
 
 Expected features:
 - Electron + React + TypeScript application - done
 - small control-panel window
+- wide low control-panel window - initial pass done
 - large touch-friendly buttons - initial pass done
 - tray icon - basic placeholder behavior exists, icon asset still needed
 - hidden from normal taskbar when appropriate
+- usage/start documentation - done
 - persistent window position
 - basic categories displayed - done
 

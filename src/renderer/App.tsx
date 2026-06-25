@@ -17,24 +17,31 @@ function statusLabel(status: SessionCategory["status"]): string {
 function App() {
   return (
     <main className="shell">
-      <header className="appHeader">
-        <div>
-          <p className="eyebrow">DeskPilot</p>
-          <h1>Browser Sessions</h1>
-        </div>
-        <div className="version">v{window.deskPilot?.version ?? "0.1.0"}</div>
-      </header>
+      <aside className="controlRail" aria-label="DeskPilot controls">
+        <header className="appHeader">
+          <div>
+            <p className="eyebrow">DeskPilot</p>
+            <h1>Browser Sessions</h1>
+          </div>
+          <div className="version">v{window.deskPilot?.version ?? "0.1.0"}</div>
+        </header>
 
-      <section className="quickActions" aria-label="Session actions">
-        <button type="button" className="primaryAction">
-          <PanelTopOpen aria-hidden="true" />
-          Open Current
-        </button>
-        <button type="button" className="secondaryAction">
-          <Save aria-hidden="true" />
-          Save Window
-        </button>
-      </section>
+        <section className="quickActions" aria-label="Session actions">
+          <button type="button" className="primaryAction">
+            <PanelTopOpen aria-hidden="true" />
+            Open Current
+          </button>
+          <button type="button" className="secondaryAction">
+            <Save aria-hidden="true" />
+            Save Window
+          </button>
+        </section>
+
+        <footer className="safetyNote">
+          <ShieldCheck aria-hidden="true" />
+          <span>Local, recoverable storage comes before browser writes.</span>
+        </footer>
+      </aside>
 
       <section className="categoryList" aria-label="Session categories">
         {defaultCategories.map((category) => (
@@ -56,11 +63,6 @@ function App() {
           </article>
         ))}
       </section>
-
-      <footer className="safetyNote">
-        <ShieldCheck aria-hidden="true" />
-        <span>Session storage will be local-first and recoverable before browser writes are enabled.</span>
-      </footer>
     </main>
   );
 }
