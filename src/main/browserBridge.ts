@@ -86,7 +86,7 @@ async function handleCapture(request: http.IncomingMessage, response: http.Serve
 
 function isAllowedOrigin(origin: string | undefined): boolean {
   if (!origin) {
-    return true;
+    return false;
   }
 
   return allowedOriginPrefixes.some((prefix) => origin.startsWith(prefix));

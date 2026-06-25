@@ -216,3 +216,15 @@ Current status:
 
 Next recommended step:
 - Harden bridge security and improve extension install/error UX.
+
+### Bridge hardening session
+
+Completed:
+- Tightened the local browser bridge origin check.
+- Bridge requests now require a Chrome/Edge extension origin.
+
+Current status:
+- The bridge is still a prototype, but it no longer accepts origin-less browser requests.
+
+Next recommended step:
+- Add better extension error handling and a visible bridge status in the app.

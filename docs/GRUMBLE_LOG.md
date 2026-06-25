@@ -24,3 +24,6 @@ The first skeleton was too portrait-oriented for the intended hardware. Future U
 
 SQLite note:
 Native SQLite packages are awkward in Electron because they need rebuild handling. The first storage pass uses `sql.js` to get a real local SQLite database file without native module friction. This may be revisited before packaging.
+
+Bridge note:
+The local browser bridge is convenient, but every localhost bridge deserves suspicion. Keep the origin checks tight and revisit authentication before treating the extension path as production-ready.
