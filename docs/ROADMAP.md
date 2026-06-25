@@ -16,7 +16,7 @@ Expected features:
 - tray icon - basic placeholder behavior exists, icon asset still needed
 - hidden from normal taskbar when appropriate
 - usage/start documentation - done
-- persistent window position
+- persistent window position - done
 - basic categories displayed - done
 
 ## v0.2 - Local Session Storage

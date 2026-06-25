@@ -11,6 +11,7 @@ import {
   listTabs,
   updateCategory
 } from "../dist-electron/main/storage.js";
+import { loadWindowBounds, saveWindowBounds } from "../dist-electron/main/windowSettings.js";
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "deskpilot-storage-"));
 
@@ -70,12 +71,24 @@ const backupPath = path.join(dir, "storage", "deskpilot.sqlite.bak");
 assert(fs.existsSync(databasePath), "Expected SQLite database file");
 assert(fs.existsSync(backupPath), "Expected SQLite backup file after writes");
 
+const customBounds = { x: 123, y: 456, width: 1180, height: 390 };
+saveWindowBounds(dir, customBounds);
+const loadedBounds = loadWindowBounds(dir);
+assert(
+  loadedBounds.x === customBounds.x &&
+    loadedBounds.y === customBounds.y &&
+    loadedBounds.width === customBounds.width &&
+    loadedBounds.height === customBounds.height,
+  "Expected window bounds to round-trip through settings storage"
+);
+
 console.log(
   JSON.stringify(
     {
       categories: categories.map((category) => category.name),
       databasePath,
-      backupExists: fs.existsSync(backupPath)
+      backupExists: fs.existsSync(backupPath),
+      windowBounds: loadedBounds
     },
     null,
     2

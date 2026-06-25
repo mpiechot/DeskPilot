@@ -13,6 +13,7 @@ Working today:
 - create, rename and remove active categories
 - save http/https URLs into a selected category
 - open saved URLs from the selected category
+- remember the desktop window size and position between app runs
 - wide, low touch-display layout
 - local development, lint and build commands
 

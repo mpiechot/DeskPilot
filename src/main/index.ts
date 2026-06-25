@@ -11,6 +11,7 @@ import {
   listTabs,
   updateCategory
 } from "./storage.js";
+import { loadWindowBounds, saveWindowBounds } from "./windowSettings.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -18,9 +19,13 @@ let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 
 function createMainWindow(): void {
+  const bounds = loadWindowBounds(app.getPath("userData"));
+
   mainWindow = new BrowserWindow({
-    width: 1180,
-    height: 390,
+    x: bounds.x,
+    y: bounds.y,
+    width: bounds.width,
+    height: bounds.height,
     minWidth: 860,
     minHeight: 320,
     title: "DeskPilot",
@@ -30,6 +35,12 @@ function createMainWindow(): void {
       preload: path.join(__dirname, "../preload/index.js"),
       contextIsolation: true,
       nodeIntegration: false
+    }
+  });
+
+  mainWindow.on("close", () => {
+    if (mainWindow) {
+      saveWindowBounds(app.getPath("userData"), mainWindow.getBounds());
     }
   });
 

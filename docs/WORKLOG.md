@@ -118,3 +118,17 @@ Current status:
 
 Next recommended step:
 - Add restore/recovery affordances for soft-deleted categories and URLs, or start the browser-extension bridge.
+
+### Window placement session
+
+Completed:
+- Added local window settings storage.
+- Persisted Electron window bounds on close.
+- Restored the previous window bounds on startup.
+- Added smoke coverage for window bounds round-trip behavior.
+
+Current status:
+- DeskPilot now remembers where its control panel was placed.
+
+Next recommended step:
+- Add a small recovery view for soft-deleted categories/URLs or begin the browser-extension bridge.
