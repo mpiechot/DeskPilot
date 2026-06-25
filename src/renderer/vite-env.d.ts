@@ -1,7 +1,11 @@
 /// <reference types="vite/client" />
 
-interface Window {
-  deskPilot: {
-    version: string;
-  };
+import type { DeskPilotApi } from "../shared/deskPilotApi";
+
+declare global {
+  interface Window {
+    deskPilot?: DeskPilotApi;
+  }
 }
+
+export {};

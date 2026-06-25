@@ -9,13 +9,12 @@ DeskPilot is currently an early desktop skeleton.
 Working today:
 - Electron desktop shell
 - React control-panel UI
-- default browser-session categories
+- default browser-session categories loaded from local SQLite storage
 - wide, low touch-display layout
 - local development, lint and build commands
 
 Not implemented yet:
 - real browser session storage
-- SQLite persistence
 - browser extension integration
 - category editing
 - opening or saving browser windows
@@ -76,7 +75,9 @@ The expected display shape is wide and not very tall. The UI should therefore pr
 
 ## Data Safety
 
-Until SQLite storage is implemented, DeskPilot only displays placeholder category data.
+DeskPilot creates its first local SQLite database in Electron's user-data folder.
+
+At this stage, SQLite stores default categories only. Browser tabs are not saved yet.
 
 Future storage work must preserve these rules:
 - all session data stays local

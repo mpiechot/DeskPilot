@@ -47,3 +47,11 @@ Design the DeskPilot control panel for a wide, low touch display before optimizi
 
 Reason:
 The intended physical placement is below the main monitors, so horizontal scanning and short vertical height matter more than a tall sidebar-style app.
+
+## 2026-06-25 - Initial SQLite Runtime
+
+Decision:
+Use `sql.js` for the first local SQLite storage pass.
+
+Reason:
+It provides a real SQLite database file without native Electron rebuild friction, which keeps the MVP moving while data model and safety behavior are still taking shape.

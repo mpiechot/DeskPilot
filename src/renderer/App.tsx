@@ -1,4 +1,5 @@
 import { FolderOpen, PanelTopOpen, Save, ShieldCheck } from "lucide-react";
+import { useEffect, useState } from "react";
 import { defaultCategories, type SessionCategory } from "../shared/sessions";
 import "./styles.css";
 
@@ -15,6 +16,51 @@ function statusLabel(status: SessionCategory["status"]): string {
 }
 
 function App() {
+  const [categories, setCategories] = useState<SessionCategory[]>(defaultCategories);
+  const [storageStatus, setStorageStatus] = useState<"loading" | "ready" | "fallback" | "error">("loading");
+
+  useEffect(() => {
+    let isMounted = true;
+
+    if (!window.deskPilot) {
+      setStorageStatus("fallback");
+      return () => {
+        isMounted = false;
+      };
+    }
+
+    window.deskPilot
+      .listCategories()
+      .then((storedCategories: SessionCategory[]) => {
+        if (!isMounted) {
+          return;
+        }
+
+        setCategories(storedCategories);
+        setStorageStatus("ready");
+      })
+      .catch(() => {
+        if (!isMounted) {
+          return;
+        }
+
+        setStorageStatus("error");
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const storageMessage =
+    storageStatus === "ready"
+      ? "Local SQLite storage is active."
+      : storageStatus === "fallback"
+        ? "Browser preview is using fallback categories."
+      : storageStatus === "error"
+        ? "Storage unavailable; showing fallback categories."
+        : "Loading local storage.";
+
   return (
     <main className="shell">
       <aside className="controlRail" aria-label="DeskPilot controls">
@@ -39,12 +85,12 @@ function App() {
 
         <footer className="safetyNote">
           <ShieldCheck aria-hidden="true" />
-          <span>Local, recoverable storage comes before browser writes.</span>
+          <span>{storageMessage}</span>
         </footer>
       </aside>
 
       <section className="categoryList" aria-label="Session categories">
-        {defaultCategories.map((category) => (
+        {categories.map((category) => (
           <article className="categoryCard" key={category.id}>
             <div className="categoryIcon">
               <FolderOpen aria-hidden="true" />

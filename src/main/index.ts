@@ -1,6 +1,7 @@
-import { app, BrowserWindow, nativeTheme, Tray, Menu } from "electron";
+import { app, BrowserWindow, ipcMain, nativeTheme, Tray, Menu } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { initializeStorage, listCategories } from "./storage.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -42,7 +43,10 @@ function createTray(): void {
   );
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  await initializeStorage(app.getPath("userData"));
+  ipcMain.handle("categories:list", () => listCategories());
+
   createMainWindow();
 
   try {

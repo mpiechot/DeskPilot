@@ -52,3 +52,20 @@ Current status:
 
 Next recommended step:
 - Continue with issue #2: implement SQLite-backed local category and session storage.
+
+### Local storage session
+
+Completed:
+- Relaxed push identity rules so normal Git pushes can use the machine credential while local commits remain `portfolio-pirat`.
+- Pushed the previously completed usage-documentation and touch-layout work.
+- Added an initial SQLite-backed storage layer in the Electron main process.
+- Seeded default categories into the local database on first run.
+- Exposed category reads to the renderer through a preload IPC API.
+- Updated the UI to load categories from local storage with a fallback message if storage is unavailable.
+
+Current status:
+- Categories are now local-storage backed.
+- Browser tabs are still not saved or restored.
+
+Next recommended step:
+- Add category create/rename/delete operations with soft-delete behavior and then add session-tab persistence.

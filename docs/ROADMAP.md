@@ -25,11 +25,11 @@ Goal:
 Store browser-session data locally.
 
 Status:
-Next recommended implementation target.
+In progress. Default categories now load from local SQLite storage.
 
 Expected features:
-- SQLite storage
-- categories
+- SQLite storage - initial pass done
+- categories - read/seed done
 - saved URLs
 - create/edit/delete categories
 - open category URLs in browser
