@@ -203,3 +203,16 @@ Current status:
 
 Next recommended step:
 - Harden the bridge/extension UX, then add optional close-window-after-save behavior.
+
+### Extension close-after-save session
+
+Completed:
+- Added an opt-in `Close saved tabs` checkbox to the extension popup.
+- The extension removes current-window tabs only after a successful save response.
+- Documented the opt-in behavior.
+
+Current status:
+- The extension prototype can save the current window and optionally close those tabs afterwards.
+
+Next recommended step:
+- Harden bridge security and improve extension install/error UX.

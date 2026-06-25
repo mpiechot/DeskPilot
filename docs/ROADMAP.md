@@ -49,7 +49,7 @@ Expected features:
 - read tabs from current browser window - prototype done
 - send tab list to DeskPilot - prototype done
 - save current window into selected category - prototype done
-- optionally close saved browser window
+- optionally close saved browser window - prototype done with popup checkbox
 
 ## v0.4 - Safe Restore And Backup
 

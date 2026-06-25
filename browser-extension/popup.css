@@ -25,6 +25,20 @@ button {
   font: inherit;
 }
 
+.checkboxRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #3f4843;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.checkboxRow input {
+  width: 16px;
+  height: 16px;
+}
+
 button {
   background: #26352f;
   color: #fffaf0;

@@ -88,6 +88,7 @@ To try it during development:
 - enable developer mode
 - load `browser-extension/` as an unpacked extension
 - use the extension popup to save the current browser window to a DeskPilot category
+- enable `Close saved tabs` in the popup only when the current tabs should be closed after a successful save
 
 ## Data Safety
 

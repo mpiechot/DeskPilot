@@ -1,5 +1,6 @@
 const bridgeUrl = "http://127.0.0.1:17383";
 const categorySelect = document.querySelector("#categorySelect");
+const closeAfterSave = document.querySelector("#closeAfterSave");
 const saveButton = document.querySelector("#saveButton");
 const statusText = document.querySelector("#statusText");
 
@@ -40,5 +41,12 @@ async function saveCurrentWindow() {
     })
   });
   const payload = await response.json();
-  statusText.textContent = `Saved ${payload.savedCount} tabs.`;
+
+  if (response.ok && closeAfterSave.checked) {
+    await chrome.tabs.remove(tabs.map((tab) => tab.id).filter(Boolean));
+  }
+
+  statusText.textContent = closeAfterSave.checked
+    ? `Saved and closed ${payload.savedCount} tabs.`
+    : `Saved ${payload.savedCount} tabs.`;
 }
