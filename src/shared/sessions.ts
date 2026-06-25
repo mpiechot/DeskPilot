@@ -25,6 +25,14 @@ export const defaultCategories: SessionCategory[] = [
     status: "empty"
   },
   {
+    id: "entertainment",
+    name: "Entertainment",
+    description: "Media, streams and relaxing browser contexts.",
+    tabCount: 0,
+    lastSavedLabel: "Not saved yet",
+    status: "empty"
+  },
+  {
     id: "projects",
     name: "Projects",
     description: "Project-specific browser contexts.",

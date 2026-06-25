@@ -69,3 +69,16 @@ Current status:
 
 Next recommended step:
 - Add category create/rename/delete operations with soft-delete behavior and then add session-tab persistence.
+
+### Default category correction
+
+Completed:
+- Added the missing `Entertainment` category to the implemented default category seed list.
+- Confirmed the product vision and Definition of Done already expected this category.
+- Documented that future missing default categories are seeded without deleting existing local data.
+
+Current status:
+- New and existing local databases will receive `Entertainment` on startup if it is missing.
+
+Next recommended step:
+- Continue with category create/rename/delete operations and soft-delete behavior.

@@ -29,7 +29,7 @@ In progress. Default categories now load from local SQLite storage.
 
 Expected features:
 - SQLite storage - initial pass done
-- categories - read/seed done
+- categories - read/seed done, default set now includes Entertainment
 - saved URLs
 - create/edit/delete categories
 - open category URLs in browser

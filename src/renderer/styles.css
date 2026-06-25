@@ -26,7 +26,7 @@ button {
 
 .shell {
   display: grid;
-  grid-template-columns: minmax(260px, 340px) 1fr;
+  grid-template-columns: minmax(250px, 300px) 1fr;
   min-height: 100vh;
   gap: 14px;
   padding: 16px;
@@ -114,7 +114,7 @@ h1 {
 
 .categoryList {
   display: grid;
-  grid-auto-columns: minmax(170px, 1fr);
+  grid-auto-columns: minmax(150px, 1fr);
   grid-auto-flow: column;
   gap: 10px;
   min-width: 0;
@@ -130,7 +130,7 @@ h1 {
   border: 1px solid #d8d1c3;
   border-radius: 8px;
   background: rgba(255, 250, 240, 0.78);
-  padding: 14px;
+  padding: 14px 12px;
   min-height: 100%;
 }
 
