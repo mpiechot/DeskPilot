@@ -35,3 +35,5 @@ Current state:
 - Categories and saved URLs use soft-delete recovery flows.
 - A Chrome/Edge unpacked extension prototype can capture the current browser window through the local bridge.
 - The local browser bridge is origin-restricted to browser-extension origins and visible in the app status area.
+
+
