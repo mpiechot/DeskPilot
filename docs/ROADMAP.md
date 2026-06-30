@@ -52,6 +52,7 @@ Expected features:
 - optionally close saved browser window - prototype done with popup checkbox
 - visible bridge status in the app - initial pass done
 - extension error handling - initial pass done
+- guided extension install/status view - initial pass done
 
 ## v0.4 - Safe Restore And Backup
 

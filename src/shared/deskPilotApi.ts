@@ -3,6 +3,7 @@ import type { SessionCategory } from "./sessions.js";
 export type DeskPilotApi = {
   version: string;
   bridgeStatus: () => Promise<BridgeStatus>;
+  extensionInstallInfo: () => Promise<ExtensionInstallInfo>;
   listCategories: () => Promise<SessionCategory[]>;
   createCategory: (input: CategoryInput) => Promise<SessionCategory[]>;
   updateCategory: (id: string, input: CategoryInput) => Promise<SessionCategory[]>;
@@ -27,6 +28,13 @@ export type BridgeStatus = {
   host: string;
   port: number;
   allowedOrigins: string[];
+};
+
+export type ExtensionInstallInfo = {
+  extensionPath: string;
+  manifestPath: string;
+  manifestPresent: boolean;
+  supportedBrowsers: string[];
 };
 
 export type CategoryRow = {

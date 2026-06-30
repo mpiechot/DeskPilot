@@ -32,6 +32,17 @@ Codex works directly on `main`.
 Reason:
 This project is intentionally autonomous. The user will not review pull requests.
 
+Status:
+Superseded on 2026-06-30 by the single working-pull-request quality-gate workflow.
+
+## 2026-06-30 - Working Pull Request Quality Gate
+
+Decision:
+Use one open working pull request as the continuous quality-gate workspace for CI, SonarQube and ReviewDog feedback.
+
+Reason:
+SonarQube and ReviewDog need pull request context, but the user still does not want to review many separate pull requests. A single ongoing working PR preserves autonomous development while giving automated review tools a stable place to comment.
+
 ## 2026-06-25 - Toolchain Pinning
 
 Decision:

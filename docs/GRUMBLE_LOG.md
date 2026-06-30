@@ -30,3 +30,6 @@ The local browser bridge is convenient, but every localhost bridge deserves susp
 
 Extension UX note:
 Unpacked extensions fail in ways that look like "nothing happened" unless the popup is blunt about connection, origin and tab filtering problems. Keep error text boring and explicit until the install flow is packaged.
+
+PR workflow note:
+The local GitHub CLI is currently configured as `mpiechot`, which project rules forbid for `gh` and GitHub API work. The new PR quality workflow needs either a `portfolio-pirat` GitHub CLI login or connector-based PR creation that does not use the forbidden identity.

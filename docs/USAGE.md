@@ -19,6 +19,7 @@ Working today:
 - close the window to the system tray and quit explicitly from the tray menu
 - wide, low touch-display layout
 - visible browser-bridge status in the control panel
+- guided Extension mode with bridge, manifest and load-unpacked status
 - unpacked browser-extension prototype for saving the current browser window
 - local development, lint and build commands
 
@@ -99,6 +100,8 @@ The control panel shows whether the local browser bridge is running. The prototy
 ```
 
 The bridge currently accepts requests only from Chrome/Edge extension origins. Browser tabs without `http` or `https` URLs are ignored by the popup and are not closed by the optional close-after-save action.
+
+The control panel's Extension mode shows the current load-unpacked folder and whether the extension manifest is present.
 
 ## Data Safety
 

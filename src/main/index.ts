@@ -16,9 +16,11 @@ import {
   updateCategory
 } from "./storage.js";
 import { getBrowserBridgeStatus, startBrowserBridge } from "./browserBridge.js";
+import { getExtensionInstallInfo } from "./extensionInstall.js";
 import { loadWindowBounds, saveWindowBounds } from "./windowSettings.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const projectRoot = path.resolve(__dirname, "../..");
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
@@ -98,6 +100,7 @@ app.whenReady().then(async () => {
   await initializeStorage(app.getPath("userData"));
   bridgeServer = startBrowserBridge();
   ipcMain.handle("bridge:status", () => getBrowserBridgeStatus(bridgeServer));
+  ipcMain.handle("extension:install-info", () => getExtensionInstallInfo(projectRoot));
   ipcMain.handle("categories:list", () => listCategories());
   ipcMain.handle("categories:create", (_event, input) => createCategory(input));
   ipcMain.handle("categories:update", (_event, id, input) => updateCategory(id, input));

@@ -17,6 +17,7 @@ import {
 } from "../dist-electron/main/storage.js";
 import { loadWindowBounds, saveWindowBounds } from "../dist-electron/main/windowSettings.js";
 import { getBrowserBridgeStatus, startBrowserBridge } from "../dist-electron/main/browserBridge.js";
+import { getExtensionInstallInfo } from "../dist-electron/main/extensionInstall.js";
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "deskpilot-storage-"));
 
@@ -127,12 +128,17 @@ try {
   await new Promise((resolve) => bridgeServer.close(resolve));
 }
 
+const extensionInfo = getExtensionInstallInfo(process.cwd());
+assert(extensionInfo.manifestPresent, "Expected browser extension manifest to be present");
+assert(extensionInfo.extensionPath.endsWith("browser-extension"), "Expected extension path to point at browser-extension");
+
 console.log(
   JSON.stringify(
     {
       categories: categories.map((category) => category.name),
       databasePath,
       backupExists: fs.existsSync(backupPath),
+      extensionPath: extensionInfo.extensionPath,
       windowBounds: loadedBounds
     },
     null,

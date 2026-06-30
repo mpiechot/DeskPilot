@@ -1,9 +1,10 @@
-import { FolderOpen, PanelTopOpen, Pencil, Plus, Save, ShieldCheck, Trash2, X } from "lucide-react";
+import { AlertTriangle, CheckCircle2, FolderOpen, PanelTopOpen, Pencil, Plus, Puzzle, Save, ShieldCheck, Trash2, X } from "lucide-react";
 import { type FormEvent, useEffect, useState } from "react";
 import type {
   BridgeStatus,
   CategoryInput,
   CategoryRecoveryResult,
+  ExtensionInstallInfo,
   SessionMutationResult,
   SessionTab,
   SessionTabInput
@@ -34,9 +35,10 @@ function App() {
   const [deletedTabs, setDeletedTabs] = useState<SessionTab[]>([]);
   const [tabs, setTabs] = useState<SessionTab[]>([]);
   const [tabDraft, setTabDraft] = useState<SessionTabInput>({ categoryId: selectedCategoryId, url: "", title: "" });
-  const [controlMode, setControlMode] = useState<"session" | "categories" | "recovery">("session");
+  const [controlMode, setControlMode] = useState<"session" | "categories" | "recovery" | "extension">("session");
   const [operationMessage, setOperationMessage] = useState("");
   const [bridgeStatus, setBridgeStatus] = useState<BridgeStatus | null>(null);
+  const [extensionInfo, setExtensionInfo] = useState<ExtensionInstallInfo | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -53,6 +55,15 @@ function App() {
       .then((status: BridgeStatus) => {
         if (isMounted) {
           setBridgeStatus(status);
+        }
+      })
+      .catch(() => undefined);
+
+    window.deskPilot
+      .extensionInstallInfo()
+      .then((info: ExtensionInstallInfo) => {
+        if (isMounted) {
+          setExtensionInfo(info);
         }
       })
       .catch(() => undefined);
@@ -125,6 +136,9 @@ function App() {
     : bridgeStatus?.running
       ? `Bridge: ${bridgeStatus.host}:${bridgeStatus.port}`
       : "Bridge: unavailable";
+  const bridgeEndpointText = bridgeStatus?.running ? `http://${bridgeStatus.host}:${bridgeStatus.port}` : "Start the Electron app";
+  const extensionPathText = extensionInfo?.extensionPath ?? "browser-extension";
+  const supportedBrowsers = extensionInfo?.supportedBrowsers ?? ["Chrome", "Edge"];
 
   function updateCategories(nextCategories: SessionCategory[]): void {
     setCategories(nextCategories);
@@ -399,6 +413,13 @@ function App() {
           >
             Recovery
           </button>
+          <button
+            type="button"
+            className={controlMode === "extension" ? "modeButton modeButton-active" : "modeButton"}
+            onClick={() => setControlMode("extension")}
+          >
+            Extension
+          </button>
         </div>
 
         {controlMode === "session" ? (
@@ -444,7 +465,7 @@ function App() {
               Add Category
             </button>
           </form>
-        ) : (
+        ) : controlMode === "recovery" ? (
           <section className="recoveryList" aria-label="Recover categories">
             <p>Removed categories</p>
             {deletedCategories.length === 0 ? <span className="emptyRecoveryText">None</span> : null}
@@ -470,6 +491,35 @@ function App() {
                   Restore {tab.title}
                 </button>
             ))}
+          </section>
+        ) : (
+          <section className="extensionPanel" aria-label="Browser extension">
+            <div className={bridgeStatus?.running ? "extensionState extensionState-ready" : "extensionState extensionState-warning"}>
+              {bridgeStatus?.running ? <CheckCircle2 aria-hidden="true" /> : <AlertTriangle aria-hidden="true" />}
+              <div>
+                <strong>{bridgeStatus?.running ? "Bridge ready" : "Bridge offline"}</strong>
+                <span>{bridgeEndpointText}</span>
+              </div>
+            </div>
+            <div className={extensionInfo?.manifestPresent ? "extensionState extensionState-ready" : "extensionState extensionState-warning"}>
+              {extensionInfo?.manifestPresent ? <CheckCircle2 aria-hidden="true" /> : <AlertTriangle aria-hidden="true" />}
+              <div>
+                <strong>{extensionInfo?.manifestPresent ? "Manifest found" : "Manifest missing"}</strong>
+                <span>{extensionInfo?.manifestPath ?? "browser-extension/manifest.json"}</span>
+              </div>
+            </div>
+            <div className="extensionPathBox">
+              <Puzzle aria-hidden="true" />
+              <div>
+                <span>Load unpacked</span>
+                <code>{extensionPathText}</code>
+              </div>
+            </div>
+            <div className="extensionBrowserList" aria-label="Supported browsers">
+              {supportedBrowsers.map((browser) => (
+                <span key={browser}>{browser}</span>
+              ))}
+            </div>
           </section>
         )}
 

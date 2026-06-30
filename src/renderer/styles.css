@@ -171,7 +171,7 @@ h1 {
 
 .modeSwitch {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 6px;
 }
 
@@ -206,6 +206,76 @@ h1 {
   color: #243d32;
   cursor: pointer;
   font-weight: 800;
+}
+
+.extensionPanel {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  min-width: 0;
+}
+
+.extensionState,
+.extensionPathBox {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  border: 1px solid #d7d0c2;
+  border-radius: 8px;
+  background: rgba(255, 250, 240, 0.76);
+  padding: 8px;
+  min-width: 0;
+}
+
+.extensionState svg,
+.extensionPathBox svg {
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+}
+
+.extensionState strong,
+.extensionPathBox span {
+  display: block;
+  color: #27312d;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.extensionState span,
+.extensionPathBox code {
+  display: block;
+  margin-top: 3px;
+  color: #5c625d;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.extensionState-ready svg {
+  color: #2e493d;
+}
+
+.extensionState-warning svg {
+  color: #7c5620;
+}
+
+.extensionBrowserList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.extensionBrowserList span {
+  border: 1px solid #b9c9b8;
+  border-radius: 999px;
+  background: #e7efe5;
+  color: #243d32;
+  padding: 5px 8px;
+  font-size: 0.72rem;
+  font-weight: 900;
 }
 
 .categoryList {

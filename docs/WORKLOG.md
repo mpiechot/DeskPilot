@@ -243,3 +243,24 @@ Current status:
 
 Next recommended step:
 - Add a guided extension install/checklist view or start export/import backup work before deeper browser workflow polish.
+
+## 2026-06-30
+
+### PR quality workflow and extension install view session
+
+Completed:
+- Adopted the single working-pull-request quality-gate workflow in `AGENTS.md`.
+- Confirmed the repository-local Git identity is `portfolio-pirat <mattzeal@gmail.com>`.
+- Created the `codex/deskpilot-working-pr` branch for ongoing quality-gate work.
+- Added a main-process extension install-info API that exposes the local unpacked extension path and manifest status.
+- Added an Extension mode to the control panel with bridge readiness, manifest status, load-unpacked path and supported browser chips.
+- Extended the smoke test to verify the browser-extension manifest is discoverable.
+- Updated roadmap, usage notes and technical decisions for the new PR workflow and Extension mode.
+- Verified `npm run lint`, `npm run build`, `npm run test:storage` and `npm audit`.
+
+Current status:
+- DeskPilot now has an in-app place to diagnose the extension prototype setup before using the popup.
+- The local `gh` CLI is still authenticated as `mpiechot`, so PR creation must use an allowed connector path or a future `portfolio-pirat` GitHub CLI login.
+
+Next recommended step:
+- Push this branch and open the working PR if an allowed GitHub identity is available.
