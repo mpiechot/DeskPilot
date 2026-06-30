@@ -257,10 +257,12 @@ Completed:
 - Extended the smoke test to verify the browser-extension manifest is discoverable.
 - Updated roadmap, usage notes and technical decisions for the new PR workflow and Extension mode.
 - Verified `npm run lint`, `npm run build`, `npm run test:storage` and `npm audit`.
+- Committed and pushed `codex/deskpilot-working-pr` to `origin`.
 
 Current status:
 - DeskPilot now has an in-app place to diagnose the extension prototype setup before using the popup.
+- The working branch exists on GitHub and is ready for a pull request.
 - The local `gh` CLI is still authenticated as `mpiechot`, so PR creation must use an allowed connector path or a future `portfolio-pirat` GitHub CLI login.
 
 Next recommended step:
-- Push this branch and open the working PR if an allowed GitHub identity is available.
+- Open the working pull request for `codex/deskpilot-working-pr` once an allowed GitHub identity is available, then inspect SonarQube and ReviewDog feedback.
