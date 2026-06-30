@@ -40,16 +40,17 @@ git config user.email "mattzeal@gmail.com"
 Codex must not change the global Git identity.
 Use repository-local Git configuration only.
 
-GitHub issue, milestone, label, release, API and `gh` CLI operations remain forbidden unless the user explicitly allows them again.
+Except for the working pull request quality workflow documented below, GitHub issue, milestone, label, release, API and `gh` CLI operations remain forbidden unless the user explicitly allows them again.
 
 ## Project Mode
 
 This is an autonomous Codex project.
 
-The user will not review pull requests.
-Do not create pull requests unless explicitly requested.
+The user will not review pull requests as a normal development gate.
 
-Work directly on `main`.
+Use one open working pull request as the continuous quality-gate workspace for CI, SonarQube and ReviewDog feedback.
+
+Do not create multiple parallel working pull requests. If more than one suitable open working pull request exists, stop and ask the user which one to continue.
 
 ## Prime Directive
 
@@ -71,16 +72,24 @@ When the user says something like "continue", "mach weiter" or "work on DeskPilo
 2. Read `AGENTS.md`.
 3. Read `README.md`.
 4. Read all files in `docs/`.
-5. Inspect local planning documents. Do not inspect GitHub issues or milestones unless GitHub operations have been explicitly allowed again.
-6. Determine the most important next step.
-7. If no suitable local plan exists, document one in `docs/WORKLOG.md` or `docs/ROADMAP.md`.
-8. Work on one focused improvement.
-9. Run relevant build, test and lint commands.
-10. Commit directly to `main`.
-11. Update the related local planning document.
-12. Update `docs/WORKLOG.md`.
-13. Update `docs/ROADMAP.md` if project planning changed.
-14. Add concerns, risks or annoyances to `docs/GRUMBLE_LOG.md` when useful.
+5. Inspect local planning documents.
+6. Check for the single open DeskPilot working pull request targeting `main`.
+7. If one open working pull request exists, switch to that PR branch and continue work there.
+8. If no open working pull request exists, update `main`, create a new branch from `main`, and use it for the work session.
+9. If more than one suitable open working pull request exists, stop and ask the user which one to continue.
+10. Before normal implementation work, inspect unresolved PR review comments, ReviewDog comments, SonarQube findings and failing checks.
+11. Address actionable feedback and change requests first.
+12. Determine the most important next project step.
+13. If no suitable local plan exists, document one in `docs/WORKLOG.md` or `docs/ROADMAP.md`.
+14. Work on one focused improvement.
+15. Run relevant build, test and lint commands.
+16. Commit completed work to the working branch.
+17. If this session created a new branch, push it and open a pull request against `main`.
+18. If this session continued an existing working pull request, push the branch updates to that pull request.
+19. Update the related local planning document.
+20. Update `docs/WORKLOG.md`.
+21. Update `docs/ROADMAP.md` if project planning changed.
+22. Add concerns, risks or annoyances to `docs/GRUMBLE_LOG.md` when useful.
 
 ## First Implementation Session
 
@@ -88,24 +97,42 @@ If the repository contains only documentation and no implementation:
 
 1. Create the initial Electron + React + TypeScript project structure.
 2. Set up the basic development commands.
-3. Create the first GitHub milestone.
-4. Create initial GitHub issues only if useful.
+3. Document the first local milestone in `docs/ROADMAP.md`.
+4. Create initial GitHub issues or milestones only if GitHub planning operations have been separately allowed.
 5. Begin implementation immediately.
 
 Do not stop after only creating issues or planning documents.
 
 ## Pull Requests
 
-Do not create pull requests by default.
+Codex may use one open working pull request to trigger CI, SonarQube and ReviewDog feedback.
 
-Use direct commits to `main`.
+Pull requests created by Codex are quality-gate workspaces, not user-review requests.
+
+When continuing work, Codex must first look for the existing open working pull request and continue on that branch instead of creating a new pull request.
+
+If no open working pull request exists, Codex may create a new branch from `main`, implement one focused improvement, push the branch and open a pull request against `main`.
+
+If exactly one open working pull request exists, Codex must inspect unresolved PR review comments, ReviewDog comments, SonarQube findings and failing checks before starting new implementation work. Actionable feedback and change requests must be addressed first.
+
+If more than one suitable open working pull request exists, Codex must stop and ask the user which one to continue.
+
+Allowed GitHub operations for this workflow are limited to:
+
+- listing open pull requests targeting `main`
+- creating a working pull request when none exists
+- reading PR comments, reviews, checks, ReviewDog feedback and SonarQube feedback
+- checking out or switching to the working pull request branch
+- pushing commits to the working pull request branch
+- merging or closing the working pull request when the work is complete
+
+Codex must not create GitHub issues, labels, milestones or releases unless separately allowed.
+
+The GitHub user `mpiechot` remains forbidden for all GitHub API and `gh` CLI operations unless the user explicitly allows it again.
 
 ## Planning Rights
 
 Codex may:
-- create GitHub issues
-- create milestones
-- create labels
 - split work into smaller issues
 - prioritize issues
 - close outdated issues
@@ -115,11 +142,13 @@ Codex may:
 - document technical decisions
 - complain constructively in `docs/GRUMBLE_LOG.md`
 
+GitHub issue, milestone and label operations require separate user permission.
+
 ## Progress Reporting
 
 Codex should maintain project visibility for the user.
 
-Use GitHub issues, milestones and documentation to show:
+Use documentation, and GitHub issues or milestones only when separately allowed, to show:
 
 - what is currently being worked on
 - what was completed
