@@ -32,5 +32,15 @@ export default tseslint.config(
       ecmaVersion: 2022,
       globals: globals.node
     }
+  },
+  {
+    files: ["scripts/**/*.cjs"],
+    languageOptions: {
+      ecmaVersion: 2022,
+      globals: globals.node
+    },
+    rules: {
+      "@typescript-eslint/no-require-imports": "off"
+    }
   }
 );

@@ -375,3 +375,21 @@ Current status:
 
 Next recommended step:
 - Regenerate the prototype package and retest `dist-prototype/DeskPilot/start-deskpilot.vbs`.
+
+### Prototype preload bridge fix
+
+Completed:
+- Reproduced the reported `Saving URLs requires the Electron app.` message in the packaged renderer.
+- Added an Electron renderer smoke test that loads the packaged prototype, verifies `window.deskPilot`, enters a URL and clicks `Save URL`.
+- Identified that the preload script was emitted as ESM and did not expose the Electron API in the packaged renderer.
+- Changed the preload source to `.cts` so TypeScript emits `dist-electron/preload/index.cjs`.
+- Updated the main process and renderer smoke test to load the CommonJS preload file.
+- Extended ESLint config for CommonJS Electron smoke-test scripts.
+- Verified `npm run test:prototype`, `npm run test:storage` and `npm run lint`.
+
+Current status:
+- The packaged prototype now exposes the Electron preload API to the renderer.
+- `Save URL` should persist URLs instead of reporting that the Electron app is required.
+
+Next recommended step:
+- Relaunch the regenerated prototype and run a real manual save/open URL trial.

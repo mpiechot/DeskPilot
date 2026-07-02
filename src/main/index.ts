@@ -58,7 +58,7 @@ function createMainWindow(): void {
     backgroundColor: nativeTheme.shouldUseDarkColors ? "#181a1f" : "#f7f5ef",
     autoHideMenuBar: true,
     webPreferences: {
-      preload: path.join(__dirname, "../preload/index.js"),
+      preload: path.join(__dirname, "../preload/index.cjs"),
       contextIsolation: true,
       nodeIntegration: false
     }
