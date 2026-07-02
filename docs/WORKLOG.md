@@ -288,4 +288,6 @@ Current status:
 - UI screenshot verification was not available in this session because no in-app browser backend was exposed; local build, lint, storage smoke and audit checks passed.
 
 Next recommended step:
-- Inspect PR #4 automated feedback once checks appear, then add a cautious restore/import workflow that always creates a pre-restore backup before replacing data.
+- Start the next session by planning the next DeskPilot tasks as small, independently implementable steps.
+- If GitHub is reachable, create GitHub issues for those planned tasks before implementing them. The user explicitly allowed GitHub issue creation for this next-session planning pass.
+- Then inspect PR #4 automated feedback once checks appear and continue with the highest-priority issue, likely a cautious restore/import workflow that always creates a pre-restore backup before replacing data.
