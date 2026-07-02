@@ -45,8 +45,11 @@ fs.writeFileSync(
   [
     "@echo off",
     "setlocal",
-    "cd /d \"%~dp0\"",
-    `"${electronCommand}" "%~dp0"`,
+    "pushd \"%~dp0\" || exit /b 1",
+    `"${electronCommand}" .`,
+    "set EXIT_CODE=%ERRORLEVEL%",
+    "popd",
+    "exit /b %EXIT_CODE%",
     ""
   ].join("\r\n")
 );

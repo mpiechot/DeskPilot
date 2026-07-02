@@ -332,3 +332,17 @@ Current status:
 
 Next recommended step:
 - Run final verification, commit and push. After that, use the local prototype for a real browser-session trial and log usability problems before adding larger v1 features such as sleep lists or monitor selection.
+
+### Prototype launcher fix
+
+Completed:
+- Reproduced the reported launcher problem from `dist-prototype/DeskPilot/start-deskpilot.cmd`.
+- Identified the generated `"%~dp0"` argument as the cause of the malformed trailing quote path passed through `electron.cmd`.
+- Changed the generated launcher to `pushd` into the prototype folder and run Electron with `.` as the app path.
+- Regenerated the local prototype folder and verified Electron starts as `electron.exe .` from the prototype directory.
+
+Current status:
+- The local prototype launcher no longer passes the prototype path with a trailing backslash quote hazard.
+
+Next recommended step:
+- Retest the double-click launcher manually, then continue with real-session usability feedback.
