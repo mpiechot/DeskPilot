@@ -1,0 +1,5 @@
+{
+  "name": "deskpilot-prototype-renderer-smoke",
+  "private": true,
+  "main": "main.cjs"
+}

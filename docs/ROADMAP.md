@@ -31,10 +31,11 @@ Expected features:
 - SQLite storage - initial pass done
 - categories - create/read/update/soft-delete done, default set includes Entertainment
 - category recovery - initial pass done
-- saved URLs - manual save/open/soft-delete done
+- saved URLs - manual save/open/list/soft-delete done
 - URL recovery - initial pass done
 - create/edit/delete categories - initial pass done with soft-delete
 - open category URLs in browser - initial pass done
+- open saved category as a new browser window instead of reusing an existing browser window
 
 ## v0.3 - Browser Extension
 
@@ -42,26 +43,32 @@ Goal:
 Read the current browser window and save it into DeskPilot.
 
 Status:
-Started. A local bridge and unpacked extension prototype exist.
+Started. A local bridge and unpacked extension prototype exist, including current-tab saving, append/replace window capture behavior and duplicate-safe save flows.
 
 Expected features:
 - Chrome/Edge-compatible extension - prototype done
 - read tabs from current browser window - prototype done
 - send tab list to DeskPilot - prototype done
 - save current window into selected category - prototype done
+- one-click save current tab into the currently selected DeskPilot category - done
 - optionally close saved browser window - prototype done with popup checkbox
+- choose append or replace when capturing - initial pass done with replace using soft-delete
 - visible bridge status in the app - initial pass done
 - extension error handling - initial pass done
+- guided extension install/status view - initial pass done
 
 ## v0.4 - Safe Restore And Backup
 
 Goal:
 Make session restore reliable.
 
+Status:
+Started. The app can create, restore, export and import SQLite backup snapshots from Safety mode.
+
 Expected features:
-- backups
-- export/import
-- restore history
+- backups - initial manual snapshot and pre-restore/pre-import safety backup pass done
+- export/import - initial local file-dialog pass done
+- restore history - manual snapshot list started
 - no silent data loss
 - recovery after app crash
 
@@ -88,3 +95,17 @@ Expected features:
 - monitor selection
 - launch on selected display
 - kiosk-like mode if useful
+
+## v0.7 - Prototype Packaging
+
+Goal:
+Make DeskPilot easy to launch for local trial use.
+
+Status:
+Started. `npm run package:prototype` creates a local prototype folder with a double-click launcher.
+
+Expected features:
+- local prototype folder - initial pass done
+- double-click launcher - initial pass done
+- signed installer
+- standalone runtime bundle

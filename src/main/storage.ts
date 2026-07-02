@@ -3,19 +3,48 @@ import path from "node:path";
 import initSqlJs, { type Database, type SqlJsStatic } from "sql.js";
 import { defaultCategories, type SessionCategory } from "../shared/sessions.js";
 import type {
+  CaptureMode,
+  CaptureResult,
   CategoryInput,
   CategoryRow,
   CategoryRecoveryResult,
+  CrossCategoryDuplicatePolicy,
+  SaveStatus,
   SessionMutationResult,
   SessionTab,
   SessionTabInput,
-  SessionTabRow
+  SessionTabRow,
+  StorageExportResult,
+  StorageBackupInfo,
+  StorageBackupSnapshot,
+  StorageRestoreResult
 } from "../shared/deskPilotApi.js";
 
 type StoragePaths = {
   databasePath: string;
   backupPath: string;
+  manualBackupDirectory: string;
   temporaryPath: string;
+};
+
+type SaveTabOptions = {
+  crossCategoryDuplicatePolicy: CrossCategoryDuplicatePolicy;
+};
+
+type CaptureSaveOptions = {
+  crossCategoryDuplicatePolicy?: CrossCategoryDuplicatePolicy;
+  skippedUnsupportedCount?: number;
+};
+
+type SaveTabOutcome = {
+  status: SaveStatus;
+  savedCount: number;
+  restoredCount: number;
+  skippedSameCategoryDuplicateCount: number;
+  skippedCrossCategoryDuplicateCount: number;
+  confirmationRequired: boolean;
+  duplicateCategoryNames: string[];
+  savedUrls: string[];
 };
 
 let sqlite: SqlJsStatic | null = null;
@@ -41,8 +70,78 @@ export async function initializeStorage(userDataPath: string): Promise<void> {
   saveDatabase();
 }
 
+export function getStorageInfo(): StorageBackupInfo {
+  const storagePaths = getPaths();
+
+  return {
+    databasePath: storagePaths.databasePath,
+    rollingBackupPath: storagePaths.backupPath,
+    manualBackupDirectory: storagePaths.manualBackupDirectory,
+    manualBackups: listManualBackups(storagePaths.manualBackupDirectory)
+  };
+}
+
+export function createManualBackup(): StorageBackupInfo {
+  const storagePaths = getPaths();
+
+  fs.mkdirSync(storagePaths.manualBackupDirectory, { recursive: true });
+  saveDatabase();
+  fs.copyFileSync(storagePaths.databasePath, createManualBackupPath(storagePaths.manualBackupDirectory, new Date(), "deskpilot"));
+
+  return getStorageInfo();
+}
+
+export function restoreManualBackup(fileName: string): StorageRestoreResult {
+  const backupPath = resolveManualBackupPath(fileName);
+
+  validateDeskPilotDatabaseFile(backupPath);
+  const safetyBackupPath = createSafetyBackup("pre-restore");
+  replaceActiveDatabase(backupPath);
+
+  return createStorageRestoreResult(backupPath, safetyBackupPath);
+}
+
+export function exportStorageBackup(fileName: string | null, targetPath: string): StorageExportResult {
+  const sourcePath = fileName ? resolveManualBackupPath(fileName) : getPaths().databasePath;
+  const safeTargetPath = normalizeRequiredString(targetPath, "Export target path is required.");
+
+  validateDeskPilotDatabaseFile(sourcePath);
+  fs.mkdirSync(path.dirname(safeTargetPath), { recursive: true });
+  fs.copyFileSync(sourcePath, safeTargetPath);
+
+  return {
+    filePath: safeTargetPath,
+    storageInfo: getStorageInfo()
+  };
+}
+
+export function importStorageBackup(sourcePath: string): StorageRestoreResult {
+  const safeSourcePath = normalizeRequiredString(sourcePath, "Import source path is required.");
+
+  validateDeskPilotDatabaseFile(safeSourcePath);
+  const safetyBackupPath = createSafetyBackup("pre-import");
+  replaceActiveDatabase(safeSourcePath);
+
+  return createStorageRestoreResult(safeSourcePath, safetyBackupPath);
+}
+
 export function listCategories(): SessionCategory[] {
   return listCategoryRows("c.deleted_at IS NULL");
+}
+
+export function getActiveCategoryId(): string {
+  return resolveActiveCategoryId(getDatabase());
+}
+
+export function setActiveCategoryId(id: string): string {
+  const db = getDatabase();
+  const safeId = normalizeCategoryId(id);
+
+  assertActiveCategoryExists(db, safeId);
+  setAppStateValue(db, "activeCategoryId", safeId);
+  saveDatabase();
+
+  return safeId;
 }
 
 export function createCategory(input: CategoryInput): SessionCategory[] {
@@ -64,6 +163,7 @@ export function createCategory(input: CategoryInput): SessionCategory[] {
     }
   );
 
+  resolveActiveCategoryId(db);
   saveDatabase();
   return listCategories();
 }
@@ -88,6 +188,7 @@ export function updateCategory(id: string, input: CategoryInput): SessionCategor
     }
   );
 
+  resolveActiveCategoryId(db);
   saveDatabase();
   return listCategories();
 }
@@ -108,6 +209,7 @@ export function deleteCategory(id: string): SessionCategory[] {
     }
   );
 
+  resolveActiveCategoryId(db);
   saveDatabase();
   return listCategories();
 }
@@ -132,6 +234,7 @@ export function restoreCategory(id: string): CategoryRecoveryResult {
     }
   );
 
+  resolveActiveCategoryId(db);
   saveDatabase();
   return {
     categories: listCategories(),
@@ -176,28 +279,80 @@ function listTabsByDeletedState(categoryId: string, deleted: boolean): SessionTa
 export function addTab(input: SessionTabInput): SessionMutationResult {
   const db = getDatabase();
   const normalized = normalizeTabInput(input);
-  const position = getNextTabPosition(db, normalized.categoryId);
-  const id = createTabId(normalized.url);
-
-  db.run(
-    `
-      INSERT INTO session_tabs (id, category_id, url, title, position)
-      VALUES ($id, $categoryId, $url, $title, $position)
-    `,
-    {
-      $id: id,
-      $categoryId: normalized.categoryId,
-      $url: normalized.url,
-      $title: normalized.title,
-      $position: position
-    }
-  );
+  const outcome = saveTab(db, normalized, { crossCategoryDuplicatePolicy: "ignore" });
 
   saveDatabase();
   return {
     categories: listCategories(),
-    tabs: listTabs(normalized.categoryId)
+    tabs: listTabs(normalized.categoryId),
+    saveStatus: outcome.status
   };
+}
+
+export function saveCapturedTab(categoryId: string, tab: SessionTabInput, options: CaptureSaveOptions = {}): CaptureResult {
+  return saveCapturedTabs(categoryId, [tab], "append", options);
+}
+
+export function saveCapturedTabs(
+  categoryId: string,
+  tabs: SessionTabInput[],
+  mode: CaptureMode,
+  options: CaptureSaveOptions = {}
+): CaptureResult {
+  const db = getDatabase();
+  const safeCategoryId = normalizeCategoryId(categoryId);
+  const safeMode = normalizeCaptureMode(mode);
+  const crossCategoryDuplicatePolicy = options.crossCategoryDuplicatePolicy ?? "ask";
+
+  assertActiveCategoryExists(db, safeCategoryId);
+  const normalizedTabs = tabs.map((tab) => normalizeTabInput({ ...tab, categoryId: safeCategoryId }));
+
+  if (normalizedTabs.length === 0) {
+    return createCaptureResult(safeCategoryId, safeMode, createEmptySaveOutcome(), options.skippedUnsupportedCount ?? 0);
+  }
+
+  if (safeMode === "append" && crossCategoryDuplicatePolicy === "ask") {
+    const duplicateCategoryNames = getCrossCategoryDuplicateNamesForTabs(db, safeCategoryId, normalizedTabs);
+
+    if (duplicateCategoryNames.length > 0) {
+      return createCaptureResult(safeCategoryId, safeMode, {
+        status: "skipped-cross-category-duplicate",
+        savedCount: 0,
+        restoredCount: 0,
+        skippedSameCategoryDuplicateCount: 0,
+        skippedCrossCategoryDuplicateCount: 0,
+        confirmationRequired: true,
+        duplicateCategoryNames,
+        savedUrls: []
+      }, options.skippedUnsupportedCount ?? 0);
+    }
+  }
+
+  if (safeMode === "replace") {
+    db.run(
+      `
+        UPDATE session_tabs
+        SET deleted_at = CURRENT_TIMESTAMP
+        WHERE category_id = $categoryId AND deleted_at IS NULL
+      `,
+      {
+        $categoryId: safeCategoryId
+      }
+    );
+  }
+
+  const total = createEmptySaveOutcome();
+
+  for (const tab of normalizedTabs) {
+    const outcome = saveTab(db, tab, {
+      crossCategoryDuplicatePolicy: safeMode === "replace" ? "ignore" : crossCategoryDuplicatePolicy
+    });
+
+    mergeSaveOutcome(total, outcome);
+  }
+
+  saveDatabase();
+  return createCaptureResult(safeCategoryId, safeMode, total, options.skippedUnsupportedCount ?? 0);
 }
 
 export function deleteTab(id: string): SessionMutationResult {
@@ -252,7 +407,144 @@ function getStoragePaths(userDataPath: string): StoragePaths {
   return {
     databasePath: path.join(storageDirectory, "deskpilot.sqlite"),
     backupPath: path.join(storageDirectory, "deskpilot.sqlite.bak"),
+    manualBackupDirectory: path.join(storageDirectory, "manual-backups"),
     temporaryPath: path.join(storageDirectory, "deskpilot.sqlite.tmp")
+  };
+}
+
+function listManualBackups(manualBackupDirectory: string): StorageBackupSnapshot[] {
+  if (!fs.existsSync(manualBackupDirectory)) {
+    return [];
+  }
+
+  return fs
+    .readdirSync(manualBackupDirectory, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name.endsWith(".sqlite"))
+    .map((entry) => {
+      const backupPath = path.join(manualBackupDirectory, entry.name);
+      const stats = fs.statSync(backupPath);
+
+      return {
+        fileName: entry.name,
+        path: backupPath,
+        createdAt: stats.mtime.toISOString(),
+        sizeBytes: stats.size
+      };
+    })
+    .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+}
+
+function createManualBackupPath(manualBackupDirectory: string, date: Date, prefix: string): string {
+  const timestamp = date.toISOString().replace(/[:.]/g, "-");
+  const baseName = `${prefix}-${timestamp}`;
+  let suffix = 1;
+  let candidate = path.join(manualBackupDirectory, `${baseName}.sqlite`);
+
+  while (fs.existsSync(candidate)) {
+    suffix += 1;
+    candidate = path.join(manualBackupDirectory, `${baseName}-${suffix}.sqlite`);
+  }
+
+  return candidate;
+}
+
+function resolveManualBackupPath(fileName: string): string {
+  const storagePaths = getPaths();
+  const safeFileName = normalizeRequiredString(fileName, "Backup file name is required.");
+
+  if (safeFileName !== path.basename(safeFileName) || !safeFileName.endsWith(".sqlite")) {
+    throw new Error("Backup file name is not valid.");
+  }
+
+  const backupPath = path.resolve(storagePaths.manualBackupDirectory, safeFileName);
+  const backupDirectory = path.resolve(storagePaths.manualBackupDirectory);
+
+  if (!backupPath.startsWith(`${backupDirectory}${path.sep}`)) {
+    throw new Error("Backup path is outside the manual backup directory.");
+  }
+
+  if (!fs.existsSync(backupPath)) {
+    throw new Error("Backup file does not exist.");
+  }
+
+  return backupPath;
+}
+
+function validateDeskPilotDatabaseFile(filePath: string): void {
+  const SQL = getSqlite();
+  const candidate = new SQL.Database(fs.readFileSync(filePath));
+
+  try {
+    assertDeskPilotTables(candidate);
+  } finally {
+    candidate.close();
+  }
+}
+
+function assertDeskPilotTables(candidate: Database): void {
+  const result = candidate.exec(`
+    SELECT name
+    FROM sqlite_master
+    WHERE type = 'table' AND name IN ('categories', 'session_tabs')
+  `);
+
+  if (result.length === 0 || result[0].values.length !== 2) {
+    throw new Error("Selected file is not a DeskPilot backup.");
+  }
+}
+
+function createSafetyBackup(prefix: "pre-import" | "pre-restore"): string {
+  const storagePaths = getPaths();
+
+  fs.mkdirSync(storagePaths.manualBackupDirectory, { recursive: true });
+  saveDatabase();
+
+  const backupPath = createManualBackupPath(storagePaths.manualBackupDirectory, new Date(), `deskpilot-${prefix}`);
+  fs.copyFileSync(storagePaths.databasePath, backupPath);
+
+  return backupPath;
+}
+
+function replaceActiveDatabase(sourcePath: string): void {
+  const SQL = getSqlite();
+  const nextDatabase = new SQL.Database(fs.readFileSync(sourcePath));
+
+  try {
+    assertDeskPilotTables(nextDatabase);
+    migrate(nextDatabase);
+    seedDefaultCategories(nextDatabase);
+  } catch (error) {
+    nextDatabase.close();
+    throw error;
+  }
+
+  const previousDatabase = database;
+  database = nextDatabase;
+
+  try {
+    saveDatabase();
+  } catch (error) {
+    database = previousDatabase;
+    nextDatabase.close();
+    throw error;
+  }
+
+  previousDatabase?.close();
+}
+
+function createStorageRestoreResult(sourcePath: string, safetyBackupPath: string): StorageRestoreResult {
+  const categories = listCategories();
+  const selectedCategoryId = getActiveCategoryId();
+
+  return {
+    storageInfo: getStorageInfo(),
+    categories,
+    deletedCategories: listDeletedCategories(),
+    selectedCategoryId,
+    tabs: selectedCategoryId ? listTabs(selectedCategoryId) : [],
+    deletedTabs: selectedCategoryId ? listDeletedTabs(selectedCategoryId) : [],
+    restoredFrom: sourcePath,
+    safetyBackupFileName: path.basename(safetyBackupPath)
   };
 }
 
@@ -313,6 +605,14 @@ function migrate(db: Database): void {
       FOREIGN KEY (category_id) REFERENCES categories(id)
     );
   `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS app_state (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
 }
 
 function seedDefaultCategories(db: Database): void {
@@ -333,6 +633,77 @@ function seedDefaultCategories(db: Database): void {
     });
   } finally {
     statement.free();
+  }
+}
+
+function resolveActiveCategoryId(db: Database): string {
+  const storedCategoryId = getAppStateValue(db, "activeCategoryId");
+
+  if (storedCategoryId && isActiveCategoryId(db, storedCategoryId)) {
+    return storedCategoryId;
+  }
+
+  const fallbackCategoryId = getFirstActiveCategoryId(db);
+  setAppStateValue(db, "activeCategoryId", fallbackCategoryId);
+
+  return fallbackCategoryId;
+}
+
+function getAppStateValue(db: Database, key: string): string {
+  const result = db.exec("SELECT value FROM app_state WHERE key = $key", {
+    $key: key
+  });
+
+  if (result.length === 0 || result[0].values.length === 0) {
+    return "";
+  }
+
+  return String(result[0].values[0][0]);
+}
+
+function setAppStateValue(db: Database, key: string, value: string): void {
+  db.run(
+    `
+      INSERT INTO app_state (key, value, updated_at)
+      VALUES ($key, $value, CURRENT_TIMESTAMP)
+      ON CONFLICT(key) DO UPDATE SET
+        value = excluded.value,
+        updated_at = CURRENT_TIMESTAMP
+    `,
+    {
+      $key: key,
+      $value: value
+    }
+  );
+}
+
+function getFirstActiveCategoryId(db: Database): string {
+  const result = db.exec(`
+    SELECT id
+    FROM categories
+    WHERE deleted_at IS NULL
+    ORDER BY position ASC, name ASC
+    LIMIT 1
+  `);
+
+  if (result.length === 0 || result[0].values.length === 0) {
+    return "";
+  }
+
+  return String(result[0].values[0][0]);
+}
+
+function isActiveCategoryId(db: Database, id: string): boolean {
+  const result = db.exec("SELECT 1 FROM categories WHERE id = $id AND deleted_at IS NULL LIMIT 1", {
+    $id: id
+  });
+
+  return result.length > 0 && result[0].values.length > 0;
+}
+
+function assertActiveCategoryExists(db: Database, id: string): void {
+  if (!isActiveCategoryId(db, id)) {
+    throw new Error("DeskPilot category not found.");
   }
 }
 
@@ -483,6 +854,249 @@ function getNextTabPosition(db: Database, categoryId: string): number {
   return Number(result[0].values[0][0]);
 }
 
+function saveTab(db: Database, input: SessionTabInput, options: SaveTabOptions): SaveTabOutcome {
+  assertActiveCategoryExists(db, input.categoryId);
+
+  const activeSameCategoryTab = findTabByUrl(db, input.categoryId, input.url, false);
+
+  if (activeSameCategoryTab) {
+    return {
+      status: "already-saved",
+      savedCount: 0,
+      restoredCount: 0,
+      skippedSameCategoryDuplicateCount: 1,
+      skippedCrossCategoryDuplicateCount: 0,
+      confirmationRequired: false,
+      duplicateCategoryNames: [],
+      savedUrls: []
+    };
+  }
+
+  const deletedSameCategoryTab = findTabByUrl(db, input.categoryId, input.url, true);
+
+  if (deletedSameCategoryTab) {
+    restoreTabRow(db, deletedSameCategoryTab.id, input);
+
+    return {
+      status: "restored",
+      savedCount: 1,
+      restoredCount: 1,
+      skippedSameCategoryDuplicateCount: 0,
+      skippedCrossCategoryDuplicateCount: 0,
+      confirmationRequired: false,
+      duplicateCategoryNames: [],
+      savedUrls: [input.url]
+    };
+  }
+
+  const duplicateCategoryNames = findCrossCategoryDuplicateNames(db, input.categoryId, input.url);
+
+  if (duplicateCategoryNames.length > 0) {
+    if (options.crossCategoryDuplicatePolicy === "ask") {
+      return {
+        status: "skipped-cross-category-duplicate",
+        savedCount: 0,
+        restoredCount: 0,
+        skippedSameCategoryDuplicateCount: 0,
+        skippedCrossCategoryDuplicateCount: 0,
+        confirmationRequired: true,
+        duplicateCategoryNames,
+        savedUrls: []
+      };
+    }
+
+    if (options.crossCategoryDuplicatePolicy === "skip") {
+      return {
+        status: "skipped-cross-category-duplicate",
+        savedCount: 0,
+        restoredCount: 0,
+        skippedSameCategoryDuplicateCount: 0,
+        skippedCrossCategoryDuplicateCount: 1,
+        confirmationRequired: false,
+        duplicateCategoryNames,
+        savedUrls: []
+      };
+    }
+  }
+
+  insertTab(db, input);
+
+  return {
+    status: "saved",
+    savedCount: 1,
+    restoredCount: 0,
+    skippedSameCategoryDuplicateCount: 0,
+    skippedCrossCategoryDuplicateCount: 0,
+    confirmationRequired: false,
+    duplicateCategoryNames: [],
+    savedUrls: [input.url]
+  };
+}
+
+function findTabByUrl(db: Database, categoryId: string, url: string, deleted: boolean): SessionTab | null {
+  const result = db.exec(
+    `
+      SELECT id, category_id, url, title, saved_at
+      FROM session_tabs
+      WHERE category_id = $categoryId AND url = $url AND deleted_at IS ${deleted ? "NOT NULL" : "NULL"}
+      ORDER BY saved_at DESC, position DESC
+      LIMIT 1
+    `,
+    {
+      $categoryId: categoryId,
+      $url: url
+    }
+  );
+
+  if (result.length === 0 || result[0].values.length === 0) {
+    return null;
+  }
+
+  const columns = result[0].columns;
+  const row = Object.fromEntries(columns.map((column, index) => [column, result[0].values[0][index]])) as SessionTabRow;
+  return mapSessionTabRow(row);
+}
+
+function restoreTabRow(db: Database, tabId: string, input: SessionTabInput): void {
+  db.run(
+    `
+      UPDATE session_tabs
+      SET title = $title,
+          position = $position,
+          saved_at = CURRENT_TIMESTAMP,
+          deleted_at = NULL
+      WHERE id = $id
+    `,
+    {
+      $id: tabId,
+      $title: input.title,
+      $position: getNextTabPosition(db, input.categoryId)
+    }
+  );
+}
+
+function findCrossCategoryDuplicateNames(db: Database, categoryId: string, url: string): string[] {
+  const result = db.exec(
+    `
+      SELECT DISTINCT c.name
+      FROM session_tabs t
+      INNER JOIN categories c ON c.id = t.category_id
+      WHERE t.url = $url
+        AND t.category_id != $categoryId
+        AND t.deleted_at IS NULL
+        AND c.deleted_at IS NULL
+      ORDER BY c.position ASC, c.name ASC
+    `,
+    {
+      $categoryId: categoryId,
+      $url: url
+    }
+  );
+
+  if (result.length === 0) {
+    return [];
+  }
+
+  return result[0].values.map((value) => String(value[0]));
+}
+
+function getCrossCategoryDuplicateNamesForTabs(db: Database, categoryId: string, tabs: SessionTabInput[]): string[] {
+  const names = new Set<string>();
+
+  for (const tab of tabs) {
+    if (findTabByUrl(db, categoryId, tab.url, false)) {
+      continue;
+    }
+
+    for (const name of findCrossCategoryDuplicateNames(db, categoryId, tab.url)) {
+      names.add(name);
+    }
+  }
+
+  return [...names];
+}
+
+function createEmptySaveOutcome(): SaveTabOutcome {
+  return {
+    status: "saved",
+    savedCount: 0,
+    restoredCount: 0,
+    skippedSameCategoryDuplicateCount: 0,
+    skippedCrossCategoryDuplicateCount: 0,
+    confirmationRequired: false,
+    duplicateCategoryNames: [],
+    savedUrls: []
+  };
+}
+
+function mergeSaveOutcome(target: SaveTabOutcome, source: SaveTabOutcome): void {
+  target.savedCount += source.savedCount;
+  target.restoredCount += source.restoredCount;
+  target.skippedSameCategoryDuplicateCount += source.skippedSameCategoryDuplicateCount;
+  target.skippedCrossCategoryDuplicateCount += source.skippedCrossCategoryDuplicateCount;
+  target.confirmationRequired = target.confirmationRequired || source.confirmationRequired;
+  target.savedUrls.push(...source.savedUrls);
+
+  for (const name of source.duplicateCategoryNames) {
+    if (!target.duplicateCategoryNames.includes(name)) {
+      target.duplicateCategoryNames.push(name);
+    }
+  }
+
+  if (source.status !== "saved") {
+    target.status = source.status;
+  }
+}
+
+function createCaptureResult(
+  categoryId: string,
+  mode: CaptureMode,
+  outcome: SaveTabOutcome,
+  skippedUnsupportedCount: number
+): CaptureResult {
+  return {
+    categories: listCategories(),
+    tabs: listTabs(categoryId),
+    saveStatus: outcome.status,
+    savedCount: outcome.savedCount,
+    restoredCount: outcome.restoredCount,
+    skippedSameCategoryDuplicateCount: outcome.skippedSameCategoryDuplicateCount,
+    skippedCrossCategoryDuplicateCount: outcome.skippedCrossCategoryDuplicateCount,
+    skippedUnsupportedCount,
+    confirmationRequired: outcome.confirmationRequired,
+    duplicateCategoryNames: outcome.duplicateCategoryNames,
+    savedUrls: outcome.savedUrls,
+    mode
+  };
+}
+
+function insertTab(db: Database, input: SessionTabInput): void {
+  const position = getNextTabPosition(db, input.categoryId);
+  const id = createTabId(input.url);
+
+  db.run(
+    `
+      INSERT INTO session_tabs (id, category_id, url, title, position)
+      VALUES ($id, $categoryId, $url, $title, $position)
+    `,
+    {
+      $id: id,
+      $categoryId: input.categoryId,
+      $url: input.url,
+      $title: input.title,
+      $position: position
+    }
+  );
+}
+
+function normalizeCaptureMode(mode: CaptureMode): CaptureMode {
+  if (mode === "append" || mode === "replace") {
+    return mode;
+  }
+
+  throw new Error("Capture mode is not supported.");
+}
+
 function getTabCategoryId(db: Database, id: string): string | null {
   const result = db.exec("SELECT category_id FROM session_tabs WHERE id = $id", {
     $id: id
@@ -537,6 +1151,14 @@ function getDatabase(): Database {
   }
 
   return database;
+}
+
+function getSqlite(): SqlJsStatic {
+  if (!sqlite) {
+    throw new Error("DeskPilot SQLite runtime has not been initialized.");
+  }
+
+  return sqlite;
 }
 
 function getPaths(): StoragePaths {

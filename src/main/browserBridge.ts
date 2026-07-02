@@ -1,46 +1,86 @@
 import http from "node:http";
 import type { AddressInfo } from "node:net";
-import type { BridgeStatus } from "../shared/deskPilotApi.js";
-import { addTab, listCategories } from "./storage.js";
+import type {
+  BridgeStatus,
+  CaptureMode,
+  CaptureResult,
+  CrossCategoryDuplicatePolicy,
+  SessionTabInput
+} from "../shared/deskPilotApi.js";
+import { getActiveCategoryId, listCategories, saveCapturedTab, saveCapturedTabs } from "./storage.js";
 
 type CapturedTab = {
   url?: unknown;
   title?: unknown;
 };
 
-type CapturePayload = {
+type CurrentTabSavePayload = {
   categoryId?: unknown;
+  tab?: unknown;
+  allowCrossCategoryDuplicate?: unknown;
+};
+
+type WindowSavePayload = {
+  categoryId?: unknown;
+  allowCrossCategoryDuplicates?: unknown;
   tabs?: unknown;
+  mode?: unknown;
+};
+
+type BridgeOptions = {
+  port?: number;
+  showApp?: () => void;
 };
 
 export const bridgeHost = "127.0.0.1";
 export const bridgePort = 17383;
 export const allowedOriginPrefixes = ["chrome-extension://", "edge-extension://"];
 
-export function startBrowserBridge(): http.Server {
+export function startBrowserBridge(options: BridgeOptions = {}): http.Server {
   const server = http.createServer((request, response) => {
-    void handleRequest(request, response);
+    void handleRequest(request, response, options);
   });
 
-  server.listen(bridgePort, bridgeHost);
+  server.listen(options.port ?? bridgePort, bridgeHost);
   server.on("listening", () => {
     const address = server.address() as AddressInfo;
-    console.log(`DeskPilot browser bridge listening on ${address.address}:${address.port}`);
+    console.log(`DeskPilot extension bridge listening on ${address.address}:${address.port} (not the app UI)`);
   });
 
   return server;
 }
 
 export function getBrowserBridgeStatus(server: http.Server | null): BridgeStatus {
+  const address = server?.address();
+  const actualPort = typeof address === "object" && address ? address.port : bridgePort;
+
   return {
     running: Boolean(server?.listening),
     host: bridgeHost,
-    port: bridgePort,
+    port: actualPort,
     allowedOrigins: allowedOriginPrefixes
   };
 }
 
-async function handleRequest(request: http.IncomingMessage, response: http.ServerResponse): Promise<void> {
+async function handleRequest(
+  request: http.IncomingMessage,
+  response: http.ServerResponse,
+  options: BridgeOptions
+): Promise<void> {
+  if (request.method === "GET" && isBridgeInfoPath(request.url)) {
+    writeText(
+      response,
+      200,
+      [
+        "DeskPilot local extension bridge is running.",
+        "",
+        "This URL is not the DeskPilot app UI.",
+        "Start DeskPilot with the desktop launcher and use the Chrome/Edge extension to save browser windows."
+      ].join("\n")
+    );
+    return;
+  }
+
   if (!isAllowedOrigin(request.headers.origin)) {
     writeJson(response, 403, { error: "Origin not allowed" });
     return;
@@ -55,44 +95,145 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
   }
 
   if (request.method === "GET" && request.url === "/categories") {
-    writeJson(response, 200, { categories: listCategories() });
+    writeJson(response, 200, { categories: listCategories(), activeCategoryId: getActiveCategoryId() });
     return;
   }
 
-  if (request.method === "POST" && request.url === "/capture") {
-    await handleCapture(request, response);
+  if (request.method === "POST" && request.url === "/tabs/current/save") {
+    await handleCurrentTabSave(request, response);
+    return;
+  }
+
+  if (request.method === "POST" && request.url === "/windows/current/save") {
+    await handleCurrentWindowSave(request, response);
+    return;
+  }
+
+  if (request.method === "POST" && request.url === "/app/show") {
+    options.showApp?.();
+    writeJson(response, 200, { shown: true });
     return;
   }
 
   writeJson(response, 404, { error: "Not found" });
 }
 
-async function handleCapture(request: http.IncomingMessage, response: http.ServerResponse): Promise<void> {
+async function handleCurrentTabSave(request: http.IncomingMessage, response: http.ServerResponse): Promise<void> {
   try {
-    const payload = (await readJsonBody(request)) as CapturePayload;
+    const payload = (await readJsonBody(request)) as CurrentTabSavePayload;
     const categoryId = typeof payload.categoryId === "string" ? payload.categoryId : "";
-    const tabs = Array.isArray(payload.tabs) ? payload.tabs : [];
-    let savedCount = 0;
+    const tab = normalizeCurrentTabPayload(payload.tab, categoryId);
+    const result = saveCapturedTab(categoryId, tab, {
+      crossCategoryDuplicatePolicy: payload.allowCrossCategoryDuplicate === true ? "allow" : "ask"
+    });
 
-    for (const tab of tabs) {
-      const capturedTab = tab as CapturedTab;
+    writeCaptureResult(response, result);
+  } catch (error) {
+    writeJson(response, 400, { error: error instanceof Error ? error.message : "Current tab save failed" });
+  }
+}
 
-      if (typeof capturedTab.url !== "string") {
-        continue;
-      }
+async function handleCurrentWindowSave(request: http.IncomingMessage, response: http.ServerResponse): Promise<void> {
+  try {
+    const payload = (await readJsonBody(request)) as WindowSavePayload;
+    const categoryId = typeof payload.categoryId === "string" ? payload.categoryId : "";
+    const mode = normalizeCaptureMode(payload.mode);
+    const { saveableTabs, skippedUnsupportedCount } = normalizeWindowTabsPayload(payload.tabs, categoryId);
 
-      addTab({
-        categoryId,
-        url: capturedTab.url,
-        title: typeof capturedTab.title === "string" ? capturedTab.title : ""
-      });
-      savedCount += 1;
+    if (saveableTabs.length === 0) {
+      writeCaptureResult(response, saveCapturedTabs(categoryId, [], mode, { skippedUnsupportedCount }));
+      return;
     }
 
-    writeJson(response, 200, { savedCount, categories: listCategories() });
+    const result = saveCapturedTabs(categoryId, saveableTabs, mode, {
+      crossCategoryDuplicatePolicy: normalizeCrossCategoryDuplicatePolicy(payload.allowCrossCategoryDuplicates),
+      skippedUnsupportedCount
+    });
+
+    writeCaptureResult(response, result);
   } catch (error) {
-    writeJson(response, 400, { error: error instanceof Error ? error.message : "Capture failed" });
+    writeJson(response, 400, { error: error instanceof Error ? error.message : "Current window save failed" });
   }
+}
+
+function normalizeCaptureMode(value: unknown): CaptureMode {
+  if (value === undefined || value === null || value === "append") {
+    return "append";
+  }
+
+  if (value === "replace") {
+    return "replace";
+  }
+
+  throw new Error("Capture mode is not supported.");
+}
+
+function normalizeCrossCategoryDuplicatePolicy(value: unknown): CrossCategoryDuplicatePolicy {
+  if (value === true) {
+    return "allow";
+  }
+
+  if (value === false) {
+    return "skip";
+  }
+
+  return "ask";
+}
+
+function normalizeCurrentTabPayload(value: unknown, categoryId: string): SessionTabInput {
+  const tab = value as CapturedTab;
+
+  if (!tab || typeof tab.url !== "string" || !isHttpUrl(tab.url)) {
+    throw new Error("This browser page cannot be saved.");
+  }
+
+  return {
+    categoryId,
+    url: tab.url,
+    title: typeof tab.title === "string" ? tab.title : ""
+  };
+}
+
+function normalizeWindowTabsPayload(value: unknown, categoryId: string): {
+  saveableTabs: SessionTabInput[];
+  skippedUnsupportedCount: number;
+} {
+  const tabs = Array.isArray(value) ? value : [];
+  const saveableTabs: SessionTabInput[] = [];
+  let skippedUnsupportedCount = 0;
+
+  for (const item of tabs) {
+    const tab = item as CapturedTab;
+
+    if (typeof tab.url !== "string" || !isHttpUrl(tab.url)) {
+      skippedUnsupportedCount += 1;
+      continue;
+    }
+
+    saveableTabs.push({
+      categoryId,
+      url: tab.url,
+      title: typeof tab.title === "string" ? tab.title : ""
+    });
+  }
+
+  return { saveableTabs, skippedUnsupportedCount };
+}
+
+function isHttpUrl(value: string): boolean {
+  return /^https?:\/\//i.test(value);
+}
+
+function writeCaptureResult(response: http.ServerResponse, result: CaptureResult): void {
+  if (result.confirmationRequired) {
+    writeJson(response, 409, {
+      ...result,
+      error: "URL already saved in another category."
+    });
+    return;
+  }
+
+  writeJson(response, 200, result);
 }
 
 function isAllowedOrigin(origin: string | undefined): boolean {
@@ -101,6 +242,10 @@ function isAllowedOrigin(origin: string | undefined): boolean {
   }
 
   return allowedOriginPrefixes.some((prefix) => origin.startsWith(prefix));
+}
+
+function isBridgeInfoPath(url: string | undefined): boolean {
+  return url === "/" || url === "/health";
 }
 
 function applyCorsHeaders(request: http.IncomingMessage, response: http.ServerResponse): void {
@@ -142,4 +287,9 @@ function readJsonBody(request: http.IncomingMessage): Promise<unknown> {
 function writeJson(response: http.ServerResponse, statusCode: number, value: unknown): void {
   response.writeHead(statusCode, { "content-type": "application/json" });
   response.end(JSON.stringify(value));
+}
+
+function writeText(response: http.ServerResponse, statusCode: number, value: string): void {
+  response.writeHead(statusCode, { "content-type": "text/plain; charset=utf-8" });
+  response.end(value);
 }

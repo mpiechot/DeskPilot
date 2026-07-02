@@ -32,6 +32,17 @@ Codex works directly on `main`.
 Reason:
 This project is intentionally autonomous. The user will not review pull requests.
 
+Status:
+Superseded on 2026-06-30 by the single working-pull-request quality-gate workflow.
+
+## 2026-06-30 - Working Pull Request Quality Gate
+
+Decision:
+Use one open working pull request as the continuous quality-gate workspace for CI, SonarQube and ReviewDog feedback.
+
+Reason:
+SonarQube and ReviewDog need pull request context, but the user still does not want to review many separate pull requests. A single ongoing working PR preserves autonomous development while giving automated review tools a stable place to comment.
+
 ## 2026-06-25 - Toolchain Pinning
 
 Decision:
@@ -55,3 +66,19 @@ Use `sql.js` for the first local SQLite storage pass.
 
 Reason:
 It provides a real SQLite database file without native Electron rebuild friction, which keeps the MVP moving while data model and safety behavior are still taking shape.
+
+## 2026-07-02 - Manual Backup Snapshots
+
+Decision:
+Add user-triggered SQLite snapshot backups before implementing import or restore flows.
+
+Reason:
+Backup creation is low-risk and directly supports the no-silent-data-loss rule. Import and restore can overwrite user data if designed poorly, so they should be implemented only after backup files and storage locations are visible in the app.
+
+## 2026-07-02 - Prototype Packaging
+
+Decision:
+Use a local prototype folder with a Windows command launcher before adding a signed installer or standalone runtime bundle.
+
+Reason:
+The immediate need is daily local trial use, not distribution. A prototype folder can be generated without adding packaging dependencies, preserves local-first behavior and keeps the future installer decision separate.

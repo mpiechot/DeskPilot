@@ -1,29 +1,64 @@
-import { app, BrowserWindow, ipcMain, nativeImage, nativeTheme, shell, Tray, Menu } from "electron";
+import {
+  app,
+  BrowserWindow,
+  dialog,
+  ipcMain,
+  nativeImage,
+  nativeTheme,
+  shell,
+  Tray,
+  Menu,
+  type OpenDialogOptions,
+  type SaveDialogOptions
+} from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   addTab,
+  createManualBackup,
   createCategory,
   deleteCategory,
   deleteTab,
+  exportStorageBackup,
+  getActiveCategoryId,
+  getStorageInfo,
+  importStorageBackup,
   initializeStorage,
   listDeletedCategories,
   listDeletedTabs,
   listCategories,
   listTabs,
   restoreCategory,
+  restoreManualBackup,
   restoreTab,
+  setActiveCategoryId,
   updateCategory
 } from "./storage.js";
 import { getBrowserBridgeStatus, startBrowserBridge } from "./browserBridge.js";
+import { getExtensionInstallInfo } from "./extensionInstall.js";
 import { loadWindowBounds, saveWindowBounds } from "./windowSettings.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const projectRoot = path.resolve(__dirname, "../..");
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let isQuitting = false;
 let bridgeServer: ReturnType<typeof startBrowserBridge> | null = null;
+
+function showMainWindow(): void {
+  if (!mainWindow) {
+    createMainWindow();
+    return;
+  }
+
+  if (mainWindow.isMinimized()) {
+    mainWindow.restore();
+  }
+
+  mainWindow.show();
+  mainWindow.focus();
+}
 
 function createMainWindow(): void {
   const bounds = loadWindowBounds(app.getPath("userData"));
@@ -39,7 +74,7 @@ function createMainWindow(): void {
     backgroundColor: nativeTheme.shouldUseDarkColors ? "#181a1f" : "#f7f5ef",
     autoHideMenuBar: true,
     webPreferences: {
-      preload: path.join(__dirname, "../preload/index.js"),
+      preload: path.join(__dirname, "../preload/index.cjs"),
       contextIsolation: true,
       nodeIntegration: false
     }
@@ -68,7 +103,7 @@ function createTray(): void {
   tray.setToolTip("DeskPilot");
   tray.setContextMenu(
     Menu.buildFromTemplate([
-      { label: "Show DeskPilot", click: () => mainWindow?.show() },
+      { label: "Show DeskPilot", click: showMainWindow },
       { type: "separator" },
       {
         label: "Quit",
@@ -94,11 +129,53 @@ function createTrayIcon() {
   return nativeImage.createFromDataURL(dataUrl);
 }
 
+function showSaveDialog(options: SaveDialogOptions) {
+  return mainWindow ? dialog.showSaveDialog(mainWindow, options) : dialog.showSaveDialog(options);
+}
+
+function showOpenDialog(options: OpenDialogOptions) {
+  return mainWindow ? dialog.showOpenDialog(mainWindow, options) : dialog.showOpenDialog(options);
+}
+
 app.whenReady().then(async () => {
   await initializeStorage(app.getPath("userData"));
-  bridgeServer = startBrowserBridge();
+  bridgeServer = startBrowserBridge({ showApp: showMainWindow });
   ipcMain.handle("bridge:status", () => getBrowserBridgeStatus(bridgeServer));
+  ipcMain.handle("extension:install-info", () => getExtensionInstallInfo(projectRoot));
+  ipcMain.handle("storage:info", () => getStorageInfo());
+  ipcMain.handle("storage:create-backup", () => createManualBackup());
+  ipcMain.handle("storage:restore-backup", (_event, fileName) => restoreManualBackup(fileName));
+  ipcMain.handle("storage:export-backup", async (_event, fileName?: string) => {
+    const defaultFileName = fileName || `deskpilot-current-${new Date().toISOString().slice(0, 10)}.sqlite`;
+    const result = await showSaveDialog({
+      title: "Export DeskPilot backup",
+      defaultPath: path.join(app.getPath("downloads"), defaultFileName),
+      filters: [{ name: "SQLite database", extensions: ["sqlite"] }]
+    });
+
+    if (result.canceled || !result.filePath) {
+      return null;
+    }
+
+    const sourceFileName = typeof fileName === "string" && fileName.trim() ? fileName : null;
+    return exportStorageBackup(sourceFileName, result.filePath);
+  });
+  ipcMain.handle("storage:import-backup", async () => {
+    const result = await showOpenDialog({
+      title: "Import DeskPilot backup",
+      properties: ["openFile"],
+      filters: [{ name: "SQLite database", extensions: ["sqlite"] }]
+    });
+
+    if (result.canceled || result.filePaths.length === 0) {
+      return null;
+    }
+
+    return importStorageBackup(result.filePaths[0]);
+  });
   ipcMain.handle("categories:list", () => listCategories());
+  ipcMain.handle("categories:active", () => getActiveCategoryId());
+  ipcMain.handle("categories:set-active", (_event, id) => setActiveCategoryId(id));
   ipcMain.handle("categories:create", (_event, input) => createCategory(input));
   ipcMain.handle("categories:update", (_event, id, input) => updateCategory(id, input));
   ipcMain.handle("categories:delete", (_event, id) => deleteCategory(id));

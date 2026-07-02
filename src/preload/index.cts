@@ -1,10 +1,18 @@
 import { contextBridge, ipcRenderer } from "electron";
-import type { DeskPilotApi } from "../shared/deskPilotApi.js";
+import type { DeskPilotApi } from "../shared/deskPilotApi.js" with { "resolution-mode": "import" };
 
 const deskPilot: DeskPilotApi = {
   version: "0.1.0",
   bridgeStatus: () => ipcRenderer.invoke("bridge:status"),
+  extensionInstallInfo: () => ipcRenderer.invoke("extension:install-info"),
+  storageInfo: () => ipcRenderer.invoke("storage:info"),
+  createStorageBackup: () => ipcRenderer.invoke("storage:create-backup"),
+  restoreStorageBackup: (fileName) => ipcRenderer.invoke("storage:restore-backup", fileName),
+  exportStorageBackup: (fileName) => ipcRenderer.invoke("storage:export-backup", fileName),
+  importStorageBackup: () => ipcRenderer.invoke("storage:import-backup"),
   listCategories: () => ipcRenderer.invoke("categories:list"),
+  getActiveCategory: () => ipcRenderer.invoke("categories:active"),
+  setActiveCategory: (id) => ipcRenderer.invoke("categories:set-active", id),
   createCategory: (input) => ipcRenderer.invoke("categories:create", input),
   updateCategory: (id, input) => ipcRenderer.invoke("categories:update", id, input),
   deleteCategory: (id) => ipcRenderer.invoke("categories:delete", id),
