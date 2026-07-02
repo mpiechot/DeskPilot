@@ -1,6 +1,7 @@
 const bridgeUrl = "http://127.0.0.1:17383";
 const categorySelect = document.querySelector("#categorySelect");
 const closeAfterSave = document.querySelector("#closeAfterSave");
+const captureModeInputs = document.querySelectorAll("input[name='captureMode']");
 const saveButton = document.querySelector("#saveButton");
 const statusText = document.querySelector("#statusText");
 
@@ -56,6 +57,7 @@ async function saveCurrentWindow() {
       },
       body: JSON.stringify({
         categoryId: categorySelect.value,
+        mode: selectedCaptureMode(),
         tabs: saveableTabs.map((tab) => ({
           title: tab.title || tab.url,
           url: tab.url
@@ -74,11 +76,20 @@ async function saveCurrentWindow() {
     }
 
     statusText.textContent = closeAfterSave.checked
-      ? `Saved and closed ${payload.savedCount} tabs.`
-      : `Saved ${payload.savedCount} tabs.`;
+      ? `${modeLabel(payload.mode)} ${payload.savedCount} tabs and closed them.`
+      : `${modeLabel(payload.mode)} ${payload.savedCount} tabs.`;
   } catch (error) {
     statusText.textContent = error instanceof Error ? error.message : "Could not save this browser window.";
   } finally {
     saveButton.disabled = categorySelect.options.length === 0;
   }
+}
+
+function selectedCaptureMode() {
+  const checkedInput = Array.from(captureModeInputs).find((input) => input.checked);
+  return checkedInput?.value === "replace" ? "replace" : "append";
+}
+
+function modeLabel(mode) {
+  return mode === "replace" ? "Replaced category with" : "Saved";
 }

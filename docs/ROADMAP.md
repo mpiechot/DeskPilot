@@ -42,7 +42,7 @@ Goal:
 Read the current browser window and save it into DeskPilot.
 
 Status:
-Started. A local bridge and unpacked extension prototype exist.
+Started. A local bridge and unpacked extension prototype exist, including append/replace capture behavior.
 
 Expected features:
 - Chrome/Edge-compatible extension - prototype done
@@ -50,6 +50,7 @@ Expected features:
 - send tab list to DeskPilot - prototype done
 - save current window into selected category - prototype done
 - optionally close saved browser window - prototype done with popup checkbox
+- choose append or replace when capturing - initial pass done with replace using soft-delete
 - visible bridge status in the app - initial pass done
 - extension error handling - initial pass done
 - guided extension install/status view - initial pass done
@@ -60,12 +61,12 @@ Goal:
 Make session restore reliable.
 
 Status:
-Started. The app can create manual SQLite backup snapshots from Safety mode.
+Started. The app can create, restore, export and import SQLite backup snapshots from Safety mode.
 
 Expected features:
-- backups - initial manual snapshot pass done
-- export/import
-- restore history
+- backups - initial manual snapshot and pre-restore/pre-import safety backup pass done
+- export/import - initial local file-dialog pass done
+- restore history - manual snapshot list started
 - no silent data loss
 - recovery after app crash
 
@@ -92,3 +93,17 @@ Expected features:
 - monitor selection
 - launch on selected display
 - kiosk-like mode if useful
+
+## v0.7 - Prototype Packaging
+
+Goal:
+Make DeskPilot easy to launch for local trial use.
+
+Status:
+Started. `npm run package:prototype` creates a local prototype folder with a double-click launcher.
+
+Expected features:
+- local prototype folder - initial pass done
+- double-click launcher - initial pass done
+- signed installer
+- standalone runtime bundle

@@ -6,6 +6,9 @@ export type DeskPilotApi = {
   extensionInstallInfo: () => Promise<ExtensionInstallInfo>;
   storageInfo: () => Promise<StorageBackupInfo>;
   createStorageBackup: () => Promise<StorageBackupInfo>;
+  restoreStorageBackup: (fileName: string) => Promise<StorageRestoreResult>;
+  exportStorageBackup: (fileName?: string) => Promise<StorageExportResult | null>;
+  importStorageBackup: () => Promise<StorageRestoreResult | null>;
   listCategories: () => Promise<SessionCategory[]>;
   createCategory: (input: CategoryInput) => Promise<SessionCategory[]>;
   updateCategory: (id: string, input: CategoryInput) => Promise<SessionCategory[]>;
@@ -53,6 +56,24 @@ export type StorageBackupSnapshot = {
   sizeBytes: number;
 };
 
+export type StorageRestoreResult = {
+  storageInfo: StorageBackupInfo;
+  categories: SessionCategory[];
+  deletedCategories: SessionCategory[];
+  selectedCategoryId: string;
+  tabs: SessionTab[];
+  deletedTabs: SessionTab[];
+  restoredFrom: string;
+  safetyBackupFileName: string;
+};
+
+export type StorageExportResult = {
+  filePath: string;
+  storageInfo: StorageBackupInfo;
+};
+
+export type CaptureMode = "append" | "replace";
+
 export type CategoryRow = {
   id: string;
   name: string;
@@ -80,6 +101,11 @@ export type SessionTabInput = {
 export type SessionMutationResult = {
   categories: SessionCategory[];
   tabs: SessionTab[];
+};
+
+export type CaptureResult = SessionMutationResult & {
+  savedCount: number;
+  mode: CaptureMode;
 };
 
 export type CategoryRecoveryResult = {

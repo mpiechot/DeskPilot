@@ -1,7 +1,7 @@
 import http from "node:http";
 import type { AddressInfo } from "node:net";
-import type { BridgeStatus } from "../shared/deskPilotApi.js";
-import { addTab, listCategories } from "./storage.js";
+import type { BridgeStatus, CaptureMode, SessionTabInput } from "../shared/deskPilotApi.js";
+import { listCategories, saveCapturedTabs } from "./storage.js";
 
 type CapturedTab = {
   url?: unknown;
@@ -10,6 +10,7 @@ type CapturedTab = {
 
 type CapturePayload = {
   categoryId?: unknown;
+  mode?: unknown;
   tabs?: unknown;
 };
 
@@ -71,8 +72,9 @@ async function handleCapture(request: http.IncomingMessage, response: http.Serve
   try {
     const payload = (await readJsonBody(request)) as CapturePayload;
     const categoryId = typeof payload.categoryId === "string" ? payload.categoryId : "";
+    const mode = normalizeCaptureMode(payload.mode);
     const tabs = Array.isArray(payload.tabs) ? payload.tabs : [];
-    let savedCount = 0;
+    const saveableTabs: SessionTabInput[] = [];
 
     for (const tab of tabs) {
       const capturedTab = tab as CapturedTab;
@@ -81,18 +83,31 @@ async function handleCapture(request: http.IncomingMessage, response: http.Serve
         continue;
       }
 
-      addTab({
+      saveableTabs.push({
         categoryId,
         url: capturedTab.url,
         title: typeof capturedTab.title === "string" ? capturedTab.title : ""
       });
-      savedCount += 1;
     }
 
-    writeJson(response, 200, { savedCount, categories: listCategories() });
+    const result = saveCapturedTabs(categoryId, saveableTabs, mode);
+
+    writeJson(response, 200, { savedCount: result.savedCount, mode: result.mode, categories: listCategories() });
   } catch (error) {
     writeJson(response, 400, { error: error instanceof Error ? error.message : "Capture failed" });
   }
+}
+
+function normalizeCaptureMode(value: unknown): CaptureMode {
+  if (value === undefined || value === null || value === "append") {
+    return "append";
+  }
+
+  if (value === "replace") {
+    return "replace";
+  }
+
+  throw new Error("Capture mode is not supported.");
 }
 
 function isAllowedOrigin(origin: string | undefined): boolean {

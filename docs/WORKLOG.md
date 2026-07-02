@@ -313,3 +313,22 @@ Current status:
 
 Next recommended step:
 - Run final verification, commit and push the URL-list work, then continue with #5 or #7 depending on whether safety or browser capture polish is more important for the next session.
+
+### Prototype completion push
+
+Completed:
+- Confirmed the repository-local Git identity is `portfolio-pirat <mattzeal@gmail.com>`.
+- Checked PR #4 comments, review threads and commit status; none were reported.
+- Implemented #5 safe backup restore from manual snapshots with pre-restore safety backup creation.
+- Implemented #6 backup export/import through native Electron file dialogs with invalid import rejection and pre-import safety backups.
+- Implemented #7 append/replace browser-window capture mode in the local bridge and extension popup. Replace soft-deletes active URLs before saving captured tabs.
+- Implemented #9 local prototype packaging through `npm run package:prototype`, producing `dist-prototype/DeskPilot/start-deskpilot.cmd`.
+- Extended storage smoke coverage for restore, invalid import rejection, import round-trip, append capture and replace capture.
+- Updated README, usage notes, roadmap, technical decisions and grumble log.
+
+Current status:
+- DeskPilot now has the practical pieces needed for a first local trial prototype: capture, save, open, manage, recover, back up, restore/import/export and package locally.
+- The prototype package is not a signed installer and still uses the repository's installed Electron runtime.
+
+Next recommended step:
+- Run final verification, commit and push. After that, use the local prototype for a real browser-session trial and log usability problems before adding larger v1 features such as sleep lists or monitor selection.

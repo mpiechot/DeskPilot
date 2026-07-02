@@ -19,15 +19,18 @@ Working today:
 - remember the desktop window size and position between app runs
 - close the window to the system tray and quit explicitly from the tray menu
 - create manual local SQLite backup snapshots from Safety mode
+- restore, export and import local SQLite backup snapshots from Safety mode
 - wide, low touch-display layout
 - visible browser-bridge status in the control panel
 - guided Extension mode with bridge, manifest and load-unpacked status
 - unpacked browser-extension prototype for saving the current browser window
+- append or replace mode when capturing a browser window
+- local prototype package command for a double-click launcher
 - local development, lint and build commands
 
 Not implemented yet:
 - packaged extension installation flow
-- browser-window capture polish
+- signed installer or portable standalone executable
 
 ## Requirements
 
@@ -70,8 +73,31 @@ Before ending a work session, run:
 ```bash
 npm run lint
 npm run build
+npm run test:storage
 npm audit
 ```
+
+## Package A Local Prototype
+
+To create a local prototype folder:
+
+```bash
+npm run package:prototype
+```
+
+The output lives at:
+
+```text
+dist-prototype/DeskPilot/
+```
+
+Start it with:
+
+```text
+dist-prototype/DeskPilot/start-deskpilot.cmd
+```
+
+This is not a signed installer. It is a local development prototype that uses the repository's installed Electron runtime and keeps user data in Electron's normal DeskPilot user-data folder.
 
 ## Touch Display Assumption
 
@@ -93,6 +119,8 @@ To try it during development:
 - enable developer mode
 - load `browser-extension/` as an unpacked extension
 - use the extension popup to save the current browser window to a DeskPilot category
+- choose `Append` to add captured tabs to the selected category
+- choose `Replace` to soft-delete existing active URLs in the selected category before saving the captured tabs
 - enable `Close saved tabs` in the popup only when the current tabs should be closed after a successful save
 
 The control panel shows whether the local browser bridge is running. The prototype bridge listens on:
@@ -103,7 +131,7 @@ The control panel shows whether the local browser bridge is running. The prototy
 
 The bridge currently accepts requests only from Chrome/Edge extension origins. Browser tabs without `http` or `https` URLs are ignored by the popup and are not closed by the optional close-after-save action.
 
-The control panel's Extension mode shows the current load-unpacked folder and whether the extension manifest is present.
+The control panel's Extension mode shows the current load-unpacked folder and whether the extension manifest is present. For packaged prototype trials, load the `browser-extension/` folder from `dist-prototype/DeskPilot/`.
 
 ## Data Safety
 
@@ -113,6 +141,8 @@ At this stage, SQLite stores categories and manually saved URLs.
 If a default category is added in a later build, DeskPilot seeds the missing category on the next start without deleting existing data.
 
 The Safety mode can create manual SQLite snapshots in the app storage folder under `storage/manual-backups/`. DeskPilot also keeps a rolling `deskpilot.sqlite.bak` file beside the active database after writes.
+
+Restoring or importing a backup creates a new safety backup before replacing the active database. Invalid imports are rejected before the active database is touched.
 
 Removing a category currently performs a soft delete. The category is hidden from the active list, but the row remains in the local database for recovery-oriented future work.
 Removed categories can be restored from the Recovery mode in the control panel.

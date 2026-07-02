@@ -36,3 +36,6 @@ The local GitHub CLI is currently configured as `mpiechot`, which project rules 
 
 Manual backup note:
 Creating backup snapshots is straightforward, but import/restore is where data-loss bugs usually hide. Do not add a one-click restore until DeskPilot has an explicit pre-restore backup, clear conflict behavior and a visible result path.
+
+Prototype packaging note:
+The current prototype package is intentionally not a real installer. It launches from a generated folder but still relies on the repository's installed Electron runtime, which is acceptable for local trial use and not acceptable for sharing with non-developers.

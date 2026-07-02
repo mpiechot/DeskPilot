@@ -3,6 +3,8 @@ import path from "node:path";
 import initSqlJs, { type Database, type SqlJsStatic } from "sql.js";
 import { defaultCategories, type SessionCategory } from "../shared/sessions.js";
 import type {
+  CaptureMode,
+  CaptureResult,
   CategoryInput,
   CategoryRow,
   CategoryRecoveryResult,
@@ -10,8 +12,10 @@ import type {
   SessionTab,
   SessionTabInput,
   SessionTabRow,
+  StorageExportResult,
   StorageBackupInfo,
-  StorageBackupSnapshot
+  StorageBackupSnapshot,
+  StorageRestoreResult
 } from "../shared/deskPilotApi.js";
 
 type StoragePaths = {
@@ -60,9 +64,43 @@ export function createManualBackup(): StorageBackupInfo {
 
   fs.mkdirSync(storagePaths.manualBackupDirectory, { recursive: true });
   saveDatabase();
-  fs.copyFileSync(storagePaths.databasePath, createManualBackupPath(storagePaths.manualBackupDirectory, new Date()));
+  fs.copyFileSync(storagePaths.databasePath, createManualBackupPath(storagePaths.manualBackupDirectory, new Date(), "deskpilot"));
 
   return getStorageInfo();
+}
+
+export function restoreManualBackup(fileName: string): StorageRestoreResult {
+  const backupPath = resolveManualBackupPath(fileName);
+
+  validateDeskPilotDatabaseFile(backupPath);
+  const safetyBackupPath = createSafetyBackup("pre-restore");
+  replaceActiveDatabase(backupPath);
+
+  return createStorageRestoreResult(backupPath, safetyBackupPath);
+}
+
+export function exportStorageBackup(fileName: string | null, targetPath: string): StorageExportResult {
+  const sourcePath = fileName ? resolveManualBackupPath(fileName) : getPaths().databasePath;
+  const safeTargetPath = normalizeRequiredString(targetPath, "Export target path is required.");
+
+  validateDeskPilotDatabaseFile(sourcePath);
+  fs.mkdirSync(path.dirname(safeTargetPath), { recursive: true });
+  fs.copyFileSync(sourcePath, safeTargetPath);
+
+  return {
+    filePath: safeTargetPath,
+    storageInfo: getStorageInfo()
+  };
+}
+
+export function importStorageBackup(sourcePath: string): StorageRestoreResult {
+  const safeSourcePath = normalizeRequiredString(sourcePath, "Import source path is required.");
+
+  validateDeskPilotDatabaseFile(safeSourcePath);
+  const safetyBackupPath = createSafetyBackup("pre-import");
+  replaceActiveDatabase(safeSourcePath);
+
+  return createStorageRestoreResult(safeSourcePath, safetyBackupPath);
 }
 
 export function listCategories(): SessionCategory[] {
@@ -200,27 +238,45 @@ function listTabsByDeletedState(categoryId: string, deleted: boolean): SessionTa
 export function addTab(input: SessionTabInput): SessionMutationResult {
   const db = getDatabase();
   const normalized = normalizeTabInput(input);
-  const position = getNextTabPosition(db, normalized.categoryId);
-  const id = createTabId(normalized.url);
 
-  db.run(
-    `
-      INSERT INTO session_tabs (id, category_id, url, title, position)
-      VALUES ($id, $categoryId, $url, $title, $position)
-    `,
-    {
-      $id: id,
-      $categoryId: normalized.categoryId,
-      $url: normalized.url,
-      $title: normalized.title,
-      $position: position
-    }
-  );
+  insertTab(db, normalized);
 
   saveDatabase();
   return {
     categories: listCategories(),
     tabs: listTabs(normalized.categoryId)
+  };
+}
+
+export function saveCapturedTabs(categoryId: string, tabs: SessionTabInput[], mode: CaptureMode): CaptureResult {
+  const db = getDatabase();
+  const safeCategoryId = normalizeCategoryId(categoryId);
+  const safeMode = normalizeCaptureMode(mode);
+  const normalizedTabs = tabs.map((tab) => normalizeTabInput({ ...tab, categoryId: safeCategoryId }));
+
+  if (safeMode === "replace") {
+    db.run(
+      `
+        UPDATE session_tabs
+        SET deleted_at = CURRENT_TIMESTAMP
+        WHERE category_id = $categoryId AND deleted_at IS NULL
+      `,
+      {
+        $categoryId: safeCategoryId
+      }
+    );
+  }
+
+  for (const tab of normalizedTabs) {
+    insertTab(db, tab);
+  }
+
+  saveDatabase();
+  return {
+    categories: listCategories(),
+    tabs: listTabs(safeCategoryId),
+    savedCount: normalizedTabs.length,
+    mode: safeMode
   };
 }
 
@@ -303,9 +359,9 @@ function listManualBackups(manualBackupDirectory: string): StorageBackupSnapshot
     .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
 }
 
-function createManualBackupPath(manualBackupDirectory: string, date: Date): string {
+function createManualBackupPath(manualBackupDirectory: string, date: Date, prefix: string): string {
   const timestamp = date.toISOString().replace(/[:.]/g, "-");
-  const baseName = `deskpilot-${timestamp}`;
+  const baseName = `${prefix}-${timestamp}`;
   let suffix = 1;
   let candidate = path.join(manualBackupDirectory, `${baseName}.sqlite`);
 
@@ -315,6 +371,106 @@ function createManualBackupPath(manualBackupDirectory: string, date: Date): stri
   }
 
   return candidate;
+}
+
+function resolveManualBackupPath(fileName: string): string {
+  const storagePaths = getPaths();
+  const safeFileName = normalizeRequiredString(fileName, "Backup file name is required.");
+
+  if (safeFileName !== path.basename(safeFileName) || !safeFileName.endsWith(".sqlite")) {
+    throw new Error("Backup file name is not valid.");
+  }
+
+  const backupPath = path.resolve(storagePaths.manualBackupDirectory, safeFileName);
+  const backupDirectory = path.resolve(storagePaths.manualBackupDirectory);
+
+  if (!backupPath.startsWith(`${backupDirectory}${path.sep}`)) {
+    throw new Error("Backup path is outside the manual backup directory.");
+  }
+
+  if (!fs.existsSync(backupPath)) {
+    throw new Error("Backup file does not exist.");
+  }
+
+  return backupPath;
+}
+
+function validateDeskPilotDatabaseFile(filePath: string): void {
+  const SQL = getSqlite();
+  const candidate = new SQL.Database(fs.readFileSync(filePath));
+
+  try {
+    assertDeskPilotTables(candidate);
+  } finally {
+    candidate.close();
+  }
+}
+
+function assertDeskPilotTables(candidate: Database): void {
+  const result = candidate.exec(`
+    SELECT name
+    FROM sqlite_master
+    WHERE type = 'table' AND name IN ('categories', 'session_tabs')
+  `);
+
+  if (result.length === 0 || result[0].values.length !== 2) {
+    throw new Error("Selected file is not a DeskPilot backup.");
+  }
+}
+
+function createSafetyBackup(prefix: "pre-import" | "pre-restore"): string {
+  const storagePaths = getPaths();
+
+  fs.mkdirSync(storagePaths.manualBackupDirectory, { recursive: true });
+  saveDatabase();
+
+  const backupPath = createManualBackupPath(storagePaths.manualBackupDirectory, new Date(), `deskpilot-${prefix}`);
+  fs.copyFileSync(storagePaths.databasePath, backupPath);
+
+  return backupPath;
+}
+
+function replaceActiveDatabase(sourcePath: string): void {
+  const SQL = getSqlite();
+  const nextDatabase = new SQL.Database(fs.readFileSync(sourcePath));
+
+  try {
+    assertDeskPilotTables(nextDatabase);
+    migrate(nextDatabase);
+    seedDefaultCategories(nextDatabase);
+  } catch (error) {
+    nextDatabase.close();
+    throw error;
+  }
+
+  const previousDatabase = database;
+  database = nextDatabase;
+
+  try {
+    saveDatabase();
+  } catch (error) {
+    database = previousDatabase;
+    nextDatabase.close();
+    throw error;
+  }
+
+  previousDatabase?.close();
+}
+
+function createStorageRestoreResult(sourcePath: string, safetyBackupPath: string): StorageRestoreResult {
+  const categories = listCategories();
+  const selectedCategoryId = categories[0]?.id ?? "";
+
+  return {
+    storageInfo: getStorageInfo(),
+    categories,
+    deletedCategories: listDeletedCategories(),
+    selectedCategoryId,
+    tabs: selectedCategoryId ? listTabs(selectedCategoryId) : [],
+    deletedTabs: selectedCategoryId ? listDeletedTabs(selectedCategoryId) : [],
+    restoredFrom: sourcePath,
+    safetyBackupFileName: path.basename(safetyBackupPath)
+  };
 }
 
 function listCategoryRows(whereClause: string): SessionCategory[] {
@@ -544,6 +700,33 @@ function getNextTabPosition(db: Database, categoryId: string): number {
   return Number(result[0].values[0][0]);
 }
 
+function insertTab(db: Database, input: SessionTabInput): void {
+  const position = getNextTabPosition(db, input.categoryId);
+  const id = createTabId(input.url);
+
+  db.run(
+    `
+      INSERT INTO session_tabs (id, category_id, url, title, position)
+      VALUES ($id, $categoryId, $url, $title, $position)
+    `,
+    {
+      $id: id,
+      $categoryId: input.categoryId,
+      $url: input.url,
+      $title: input.title,
+      $position: position
+    }
+  );
+}
+
+function normalizeCaptureMode(mode: CaptureMode): CaptureMode {
+  if (mode === "append" || mode === "replace") {
+    return mode;
+  }
+
+  throw new Error("Capture mode is not supported.");
+}
+
 function getTabCategoryId(db: Database, id: string): string | null {
   const result = db.exec("SELECT category_id FROM session_tabs WHERE id = $id", {
     $id: id
@@ -598,6 +781,14 @@ function getDatabase(): Database {
   }
 
   return database;
+}
+
+function getSqlite(): SqlJsStatic {
+  if (!sqlite) {
+    throw new Error("DeskPilot SQLite runtime has not been initialized.");
+  }
+
+  return sqlite;
 }
 
 function getPaths(): StoragePaths {

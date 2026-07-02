@@ -34,9 +34,40 @@ button {
   font-weight: 700;
 }
 
+.modeGroup {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 0;
+  border: 1px solid #c9c0b2;
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.modeGroup legend {
+  padding: 0 4px;
+  color: #5c625d;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.modeGroup label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #3f4843;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
 .checkboxRow input {
   width: 16px;
   height: 16px;
+}
+
+.modeGroup input {
+  width: 15px;
+  height: 15px;
 }
 
 button {

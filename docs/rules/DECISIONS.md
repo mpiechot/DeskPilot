@@ -74,3 +74,11 @@ Add user-triggered SQLite snapshot backups before implementing import or restore
 
 Reason:
 Backup creation is low-risk and directly supports the no-silent-data-loss rule. Import and restore can overwrite user data if designed poorly, so they should be implemented only after backup files and storage locations are visible in the app.
+
+## 2026-07-02 - Prototype Packaging
+
+Decision:
+Use a local prototype folder with a Windows command launcher before adding a signed installer or standalone runtime bundle.
+
+Reason:
+The immediate need is daily local trial use, not distribution. A prototype folder can be generated without adding packaging dependencies, preserves local-first behavior and keeps the future installer decision separate.

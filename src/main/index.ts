@@ -1,4 +1,16 @@
-import { app, BrowserWindow, ipcMain, nativeImage, nativeTheme, shell, Tray, Menu } from "electron";
+import {
+  app,
+  BrowserWindow,
+  dialog,
+  ipcMain,
+  nativeImage,
+  nativeTheme,
+  shell,
+  Tray,
+  Menu,
+  type OpenDialogOptions,
+  type SaveDialogOptions
+} from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -7,13 +19,16 @@ import {
   createCategory,
   deleteCategory,
   deleteTab,
+  exportStorageBackup,
   getStorageInfo,
+  importStorageBackup,
   initializeStorage,
   listDeletedCategories,
   listDeletedTabs,
   listCategories,
   listTabs,
   restoreCategory,
+  restoreManualBackup,
   restoreTab,
   updateCategory
 } from "./storage.js";
@@ -98,6 +113,14 @@ function createTrayIcon() {
   return nativeImage.createFromDataURL(dataUrl);
 }
 
+function showSaveDialog(options: SaveDialogOptions) {
+  return mainWindow ? dialog.showSaveDialog(mainWindow, options) : dialog.showSaveDialog(options);
+}
+
+function showOpenDialog(options: OpenDialogOptions) {
+  return mainWindow ? dialog.showOpenDialog(mainWindow, options) : dialog.showOpenDialog(options);
+}
+
 app.whenReady().then(async () => {
   await initializeStorage(app.getPath("userData"));
   bridgeServer = startBrowserBridge();
@@ -105,6 +128,35 @@ app.whenReady().then(async () => {
   ipcMain.handle("extension:install-info", () => getExtensionInstallInfo(projectRoot));
   ipcMain.handle("storage:info", () => getStorageInfo());
   ipcMain.handle("storage:create-backup", () => createManualBackup());
+  ipcMain.handle("storage:restore-backup", (_event, fileName) => restoreManualBackup(fileName));
+  ipcMain.handle("storage:export-backup", async (_event, fileName?: string) => {
+    const defaultFileName = fileName || `deskpilot-current-${new Date().toISOString().slice(0, 10)}.sqlite`;
+    const result = await showSaveDialog({
+      title: "Export DeskPilot backup",
+      defaultPath: path.join(app.getPath("downloads"), defaultFileName),
+      filters: [{ name: "SQLite database", extensions: ["sqlite"] }]
+    });
+
+    if (result.canceled || !result.filePath) {
+      return null;
+    }
+
+    const sourceFileName = typeof fileName === "string" && fileName.trim() ? fileName : null;
+    return exportStorageBackup(sourceFileName, result.filePath);
+  });
+  ipcMain.handle("storage:import-backup", async () => {
+    const result = await showOpenDialog({
+      title: "Import DeskPilot backup",
+      properties: ["openFile"],
+      filters: [{ name: "SQLite database", extensions: ["sqlite"] }]
+    });
+
+    if (result.canceled || result.filePaths.length === 0) {
+      return null;
+    }
+
+    return importStorageBackup(result.filePaths[0]);
+  });
   ipcMain.handle("categories:list", () => listCategories());
   ipcMain.handle("categories:create", (_event, input) => createCategory(input));
   ipcMain.handle("categories:update", (_event, id, input) => updateCategory(id, input));

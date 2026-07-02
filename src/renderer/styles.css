@@ -208,6 +208,17 @@ h1 {
   color: #fffaf0;
 }
 
+.backupActionGrid {
+  display: grid;
+  gap: 6px;
+}
+
+.secondaryBackupAction {
+  border-color: #c9c0b2;
+  background: #fffaf0;
+  color: #27312d;
+}
+
 .restoreAction {
   min-height: 38px;
   border: 1px solid #b9c9b8;
@@ -275,16 +286,36 @@ h1 {
 .backupList {
   display: grid;
   gap: 6px;
+  max-height: clamp(110px, 28vh, 240px);
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 2px;
+  scrollbar-width: thin;
 }
 
-.backupList p {
+.backupListHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.backupListHeader p {
   color: #5c625d;
   font-size: 0.84rem;
   font-weight: 800;
 }
 
+.backupListHeader span {
+  color: #5c625d;
+  font-size: 0.74rem;
+  font-weight: 900;
+}
+
 .backupListItem {
   display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
   gap: 4px;
   border: 1px solid #d7d0c2;
   border-radius: 8px;
@@ -292,7 +323,11 @@ h1 {
   padding: 8px;
 }
 
-.backupListItem span {
+.backupListItemText {
+  min-width: 0;
+}
+
+.backupListItemText span {
   overflow: hidden;
   color: #27312d;
   font-size: 0.76rem;
@@ -301,10 +336,36 @@ h1 {
   white-space: nowrap;
 }
 
-.backupListItem small {
+.backupListItemText small {
+  display: block;
+  overflow: hidden;
   color: #5c625d;
   font-size: 0.72rem;
   font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.backupListActions {
+  display: flex;
+  gap: 5px;
+}
+
+.backupListActions button {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 1px solid #c9c0b2;
+  border-radius: 6px;
+  background: #fffaf0;
+  color: #27312d;
+  cursor: pointer;
+}
+
+.backupListActions svg {
+  width: 14px;
+  height: 14px;
 }
 
 .extensionState-ready svg {

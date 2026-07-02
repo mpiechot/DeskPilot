@@ -26,6 +26,7 @@ Commands:
 - `npm run dev:electron` starts the Electron shell with the renderer.
 - `npm run lint` checks TypeScript and React source files.
 - `npm run build` builds the Electron main/preload code and renderer.
+- `npm run package:prototype` creates a local Windows prototype folder under `dist-prototype/DeskPilot`.
 
 More detailed run and verification notes live in `docs/USAGE.md`.
 
@@ -34,6 +35,7 @@ Current state:
 - Categories and saved URLs are stored locally in a SQLite database.
 - Categories and saved URLs use soft-delete recovery flows.
 - Saved URLs can be viewed and removed from the selected category.
-- Manual SQLite backup snapshots can be created from the Safety mode.
-- A Chrome/Edge unpacked extension prototype can capture the current browser window through the local bridge.
+- Manual SQLite backup snapshots can be created, restored, exported and imported from the Safety mode.
+- A Chrome/Edge unpacked extension prototype can capture the current browser window through the local bridge in append or replace mode.
 - The local browser bridge is origin-restricted to browser-extension origins and visible in the app status area.
+- A local prototype package can be generated for double-click launch during development.

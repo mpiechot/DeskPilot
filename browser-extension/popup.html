@@ -10,6 +10,17 @@
     <main>
       <h1>DeskPilot</h1>
       <select id="categorySelect" aria-label="Target category"></select>
+      <fieldset class="modeGroup">
+        <legend>Save mode</legend>
+        <label>
+          <input name="captureMode" type="radio" value="append" checked />
+          Append
+        </label>
+        <label>
+          <input name="captureMode" type="radio" value="replace" />
+          Replace
+        </label>
+      </fieldset>
       <label class="checkboxRow">
         <input id="closeAfterSave" type="checkbox" />
         Close saved tabs

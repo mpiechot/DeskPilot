@@ -7,14 +7,18 @@ import {
   addTab,
   deleteCategory,
   deleteTab,
+  exportStorageBackup,
   getStorageInfo,
+  importStorageBackup,
   initializeStorage,
   listDeletedCategories,
   listDeletedTabs,
   listCategories,
   listTabs,
   restoreCategory,
+  restoreManualBackup,
   restoreTab,
+  saveCapturedTabs,
   updateCategory
 } from "../dist-electron/main/storage.js";
 import { loadWindowBounds, saveWindowBounds } from "../dist-electron/main/windowSettings.js";
@@ -92,6 +96,37 @@ assert(backupInfo.manualBackups.length === 1, "Expected one manual backup after 
 assert(fs.existsSync(backupInfo.manualBackups[0].path), "Expected manual backup file to exist");
 assert(backupInfo.manualBackups[0].sizeBytes > 0, "Expected manual backup file to contain data");
 
+createCategory({ name: "After Backup", description: "Should disappear after restore." });
+assert(
+  listCategories().some((category) => category.name === "After Backup"),
+  "Expected mutation after manual backup"
+);
+const restoreResult = restoreManualBackup(backupInfo.manualBackups[0].fileName);
+assert(!listCategories().some((category) => category.name === "After Backup"), "Expected restore to replace active data");
+assert(restoreResult.safetyBackupFileName.includes("pre-restore"), "Expected restore to create a pre-restore safety backup");
+assert(
+  fs.existsSync(path.join(dir, "storage", "manual-backups", restoreResult.safetyBackupFileName)),
+  "Expected pre-restore safety backup file"
+);
+
+const exportPath = path.join(dir, "exported-deskpilot.sqlite");
+const exportResult = exportStorageBackup(backupInfo.manualBackups[0].fileName, exportPath);
+assert(exportResult.filePath === exportPath, "Expected export to report target path");
+assert(fs.existsSync(exportPath), "Expected exported backup file to exist");
+
+const invalidImportPath = path.join(dir, "invalid.sqlite");
+fs.writeFileSync(invalidImportPath, "not a sqlite database");
+assertThrows(() => importStorageBackup(invalidImportPath), "Expected invalid import file to be rejected");
+
+createCategory({ name: "Before Import", description: "Should disappear after import." });
+assert(
+  listCategories().some((category) => category.name === "Before Import"),
+  "Expected mutation before import"
+);
+const importResult = importStorageBackup(exportPath);
+assert(!listCategories().some((category) => category.name === "Before Import"), "Expected import to replace active data");
+assert(importResult.safetyBackupFileName.includes("pre-import"), "Expected import to create a pre-import safety backup");
+
 const customBounds = { x: 123, y: 456, width: 1180, height: 390 };
 saveWindowBounds(dir, customBounds);
 const loadedBounds = loadWindowBounds(dir);
@@ -120,6 +155,11 @@ try {
   });
   const categoriesPayload = await categoriesResponse.json();
   const categoryId = categoriesPayload.categories[0].id;
+  addTab({
+    categoryId,
+    url: "https://example.com/old-capture",
+    title: "Old Capture"
+  });
   const captureResponse = await fetch("http://127.0.0.1:17383/capture", {
     method: "POST",
     headers: {
@@ -128,6 +168,7 @@ try {
     },
     body: JSON.stringify({
       categoryId,
+      mode: "append",
       tabs: [{ url: "https://example.com/bridge", title: "Bridge Test" }]
     })
   });
@@ -135,6 +176,38 @@ try {
 
   assert(capturePayload.savedCount === 1, "Expected bridge capture to save one tab");
   assert(listTabs(categoryId).some((item) => item.title === "Bridge Test"), "Expected captured bridge tab in storage");
+
+  const replaceResponse = await fetch("http://127.0.0.1:17383/capture", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      origin: "chrome-extension://deskpilot-test"
+    },
+    body: JSON.stringify({
+      categoryId,
+      mode: "replace",
+      tabs: [{ url: "https://example.com/replacement", title: "Replacement Capture" }]
+    })
+  });
+  const replacePayload = await replaceResponse.json();
+  const replacedTabs = listTabs(categoryId);
+
+  assert(replacePayload.mode === "replace", "Expected bridge capture to report replace mode");
+  assert(replacePayload.savedCount === 1, "Expected replace capture to save one tab");
+  assert(replacedTabs.length === 1, `Expected replace capture to leave one active tab, got ${replacedTabs.length}`);
+  assert(replacedTabs[0].title === "Replacement Capture", "Expected replacement tab to be active");
+  assert(
+    listDeletedTabs(categoryId).some((item) => item.title === "Old Capture" || item.title === "Bridge Test"),
+    "Expected replace capture to soft-delete previous active tabs"
+  );
+
+  const directCapture = saveCapturedTabs(
+    categoryId,
+    [{ categoryId, url: "https://example.com/direct-replace", title: "Direct Replace" }],
+    "replace"
+  );
+  assert(directCapture.savedCount === 1, "Expected direct replace capture to save one tab");
+  assert(directCapture.tabs.length === 1, "Expected direct replace capture to leave one active tab");
 } finally {
   await new Promise((resolve) => bridgeServer.close(resolve));
 }
@@ -149,7 +222,7 @@ console.log(
       categories: categories.map((category) => category.name),
       databasePath,
       backupExists: fs.existsSync(backupPath),
-      manualBackups: backupInfo.manualBackups.length,
+      manualBackups: getStorageInfo().manualBackups.length,
       extensionPath: extensionInfo.extensionPath,
       windowBounds: loadedBounds
     },
@@ -162,4 +235,14 @@ function assert(condition, message) {
   if (!condition) {
     throw new Error(message);
   }
+}
+
+function assertThrows(operation, message) {
+  try {
+    operation();
+  } catch {
+    return;
+  }
+
+  throw new Error(message);
 }

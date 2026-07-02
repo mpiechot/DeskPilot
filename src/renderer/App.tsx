@@ -2,14 +2,17 @@ import {
   AlertTriangle,
   CheckCircle2,
   DatabaseBackup,
+  Download,
   FolderOpen,
   PanelTopOpen,
   Pencil,
   Plus,
   Puzzle,
+  RotateCcw,
   Save,
   ShieldCheck,
   Trash2,
+  Upload,
   X
 } from "lucide-react";
 import { type FormEvent, useEffect, useState } from "react";
@@ -21,7 +24,9 @@ import type {
   SessionMutationResult,
   SessionTab,
   SessionTabInput,
-  StorageBackupInfo
+  StorageExportResult,
+  StorageBackupInfo,
+  StorageRestoreResult
 } from "../shared/deskPilotApi";
 import { defaultCategories, type SessionCategory } from "../shared/sessions";
 import "./styles.css";
@@ -222,6 +227,16 @@ function App() {
     setDeletedCategories(result.deletedCategories);
   }
 
+  function applyStorageRestoreResult(result: StorageRestoreResult): void {
+    setStorageInfo(result.storageInfo);
+    setCategories(result.categories);
+    setDeletedCategories(result.deletedCategories);
+    setSelectedCategoryId(result.selectedCategoryId);
+    setTabs(result.tabs);
+    setDeletedTabs(result.deletedTabs);
+    setStorageStatus("ready");
+  }
+
   function handleStorageError(): void {
     setStorageStatus("error");
     setOperationMessage("Storage write failed. Existing data was left untouched.");
@@ -293,6 +308,69 @@ function App() {
         setOperationMessage("Created local database backup.");
       })
       .catch(handleBackupError);
+  }
+
+  function handleRestoreStorageBackup(fileName: string): void {
+    if (!window.deskPilot) {
+      setOperationMessage("Restoring backups requires the Electron app.");
+      return;
+    }
+
+    if (!window.confirm(`Restore "${fileName}"? DeskPilot will create a safety backup before replacing active data.`)) {
+      return;
+    }
+
+    window.deskPilot
+      .restoreStorageBackup(fileName)
+      .then((result: StorageRestoreResult) => {
+        applyStorageRestoreResult(result);
+        setOperationMessage(`Restored backup. Safety backup: ${result.safetyBackupFileName}.`);
+      })
+      .catch(() => setOperationMessage("Could not restore backup. Existing data was left untouched."));
+  }
+
+  function handleExportStorageBackup(fileName?: string): void {
+    if (!window.deskPilot) {
+      setOperationMessage("Export requires the Electron app.");
+      return;
+    }
+
+    window.deskPilot
+      .exportStorageBackup(fileName)
+      .then((result: StorageExportResult | null) => {
+        if (!result) {
+          setOperationMessage("Export canceled.");
+          return;
+        }
+
+        setStorageInfo(result.storageInfo);
+        setOperationMessage(`Exported backup to ${result.filePath}.`);
+      })
+      .catch(() => setOperationMessage("Could not export backup."));
+  }
+
+  function handleImportStorageBackup(): void {
+    if (!window.deskPilot) {
+      setOperationMessage("Import requires the Electron app.");
+      return;
+    }
+
+    if (!window.confirm("Importing a backup replaces active data after creating a safety backup. Continue?")) {
+      return;
+    }
+
+    window.deskPilot
+      .importStorageBackup()
+      .then((result: StorageRestoreResult | null) => {
+        if (!result) {
+          setOperationMessage("Import canceled.");
+          return;
+        }
+
+        applyStorageRestoreResult(result);
+        setOperationMessage(`Imported backup. Safety backup: ${result.safetyBackupFileName}.`);
+      })
+      .catch(() => setOperationMessage("Could not import backup. Existing data was left untouched."));
   }
 
   function removeTab(id: string): void {
@@ -610,10 +688,20 @@ function App() {
           </section>
         ) : (
           <section className="safetyPanel" aria-label="Storage safety">
-            <button type="button" className="backupAction" onClick={handleCreateStorageBackup}>
-              <DatabaseBackup aria-hidden="true" />
-              Create Backup
-            </button>
+            <div className="backupActionGrid">
+              <button type="button" className="backupAction" onClick={handleCreateStorageBackup}>
+                <DatabaseBackup aria-hidden="true" />
+                Create Backup
+              </button>
+              <button type="button" className="backupAction secondaryBackupAction" onClick={() => handleExportStorageBackup()}>
+                <Download aria-hidden="true" />
+                Export Current
+              </button>
+              <button type="button" className="backupAction secondaryBackupAction" onClick={handleImportStorageBackup}>
+                <Upload aria-hidden="true" />
+                Import Backup
+              </button>
+            </div>
             <div className="backupPathBox">
               <strong>Database</strong>
               <code>{storageInfo?.databasePath ?? "Electron storage path unavailable"}</code>
@@ -623,17 +711,29 @@ function App() {
               <code>{storageInfo?.manualBackupDirectory ?? "No backup directory yet"}</code>
             </div>
             <div className="backupList">
-              <p>Latest backup</p>
-              {latestManualBackup ? (
-                <div className="backupListItem">
-                  <span title={latestManualBackup.path}>{latestManualBackup.fileName}</span>
-                  <small>
-                    {formatBackupSize(latestManualBackup.sizeBytes)} - {formatBackupTime(latestManualBackup.createdAt)}
-                  </small>
+              <div className="backupListHeader">
+                <p>Manual backups</p>
+                <span>{storageInfo?.manualBackups.length ?? 0}</span>
+              </div>
+              {!latestManualBackup ? <span className="emptyRecoveryText">None</span> : null}
+              {storageInfo?.manualBackups.map((backup) => (
+                <div className="backupListItem" key={backup.fileName}>
+                  <div className="backupListItemText">
+                    <span title={backup.path}>{backup.fileName}</span>
+                    <small>
+                      {formatBackupSize(backup.sizeBytes)} - {formatBackupTime(backup.createdAt)}
+                    </small>
+                  </div>
+                  <div className="backupListActions">
+                    <button type="button" onClick={() => handleRestoreStorageBackup(backup.fileName)} title="Restore backup">
+                      <RotateCcw aria-hidden="true" />
+                    </button>
+                    <button type="button" onClick={() => handleExportStorageBackup(backup.fileName)} title="Export backup">
+                      <Download aria-hidden="true" />
+                    </button>
+                  </div>
                 </div>
-              ) : (
-                <span className="emptyRecoveryText">None</span>
-              )}
+              ))}
             </div>
           </section>
         )}
