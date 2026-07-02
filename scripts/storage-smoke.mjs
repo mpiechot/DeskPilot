@@ -3,9 +3,11 @@ import os from "node:os";
 import path from "node:path";
 import {
   createCategory,
+  createManualBackup,
   addTab,
   deleteCategory,
   deleteTab,
+  getStorageInfo,
   initializeStorage,
   listDeletedCategories,
   listDeletedTabs,
@@ -81,6 +83,15 @@ const backupPath = path.join(dir, "storage", "deskpilot.sqlite.bak");
 assert(fs.existsSync(databasePath), "Expected SQLite database file");
 assert(fs.existsSync(backupPath), "Expected SQLite backup file after writes");
 
+const initialStorageInfo = getStorageInfo();
+assert(initialStorageInfo.databasePath === databasePath, "Expected storage info to expose the database path");
+assert(initialStorageInfo.rollingBackupPath === backupPath, "Expected storage info to expose the rolling backup path");
+assert(initialStorageInfo.manualBackups.length === 0, "Expected no manual backups before creating one");
+const backupInfo = createManualBackup();
+assert(backupInfo.manualBackups.length === 1, "Expected one manual backup after creating one");
+assert(fs.existsSync(backupInfo.manualBackups[0].path), "Expected manual backup file to exist");
+assert(backupInfo.manualBackups[0].sizeBytes > 0, "Expected manual backup file to contain data");
+
 const customBounds = { x: 123, y: 456, width: 1180, height: 390 };
 saveWindowBounds(dir, customBounds);
 const loadedBounds = loadWindowBounds(dir);
@@ -138,6 +149,7 @@ console.log(
       categories: categories.map((category) => category.name),
       databasePath,
       backupExists: fs.existsSync(backupPath),
+      manualBackups: backupInfo.manualBackups.length,
       extensionPath: extensionInfo.extensionPath,
       windowBounds: loadedBounds
     },

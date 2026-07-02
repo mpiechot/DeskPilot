@@ -4,6 +4,8 @@ export type DeskPilotApi = {
   version: string;
   bridgeStatus: () => Promise<BridgeStatus>;
   extensionInstallInfo: () => Promise<ExtensionInstallInfo>;
+  storageInfo: () => Promise<StorageBackupInfo>;
+  createStorageBackup: () => Promise<StorageBackupInfo>;
   listCategories: () => Promise<SessionCategory[]>;
   createCategory: (input: CategoryInput) => Promise<SessionCategory[]>;
   updateCategory: (id: string, input: CategoryInput) => Promise<SessionCategory[]>;
@@ -35,6 +37,20 @@ export type ExtensionInstallInfo = {
   manifestPath: string;
   manifestPresent: boolean;
   supportedBrowsers: string[];
+};
+
+export type StorageBackupInfo = {
+  databasePath: string;
+  rollingBackupPath: string;
+  manualBackupDirectory: string;
+  manualBackups: StorageBackupSnapshot[];
+};
+
+export type StorageBackupSnapshot = {
+  fileName: string;
+  path: string;
+  createdAt: string;
+  sizeBytes: number;
 };
 
 export type CategoryRow = {

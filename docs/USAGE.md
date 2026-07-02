@@ -17,6 +17,7 @@ Working today:
 - restore removed URLs from the selected category
 - remember the desktop window size and position between app runs
 - close the window to the system tray and quit explicitly from the tray menu
+- create manual local SQLite backup snapshots from Safety mode
 - wide, low touch-display layout
 - visible browser-bridge status in the control panel
 - guided Extension mode with bridge, manifest and load-unpacked status
@@ -109,6 +110,8 @@ DeskPilot creates its first local SQLite database in Electron's user-data folder
 
 At this stage, SQLite stores categories and manually saved URLs.
 If a default category is added in a later build, DeskPilot seeds the missing category on the next start without deleting existing data.
+
+The Safety mode can create manual SQLite snapshots in the app storage folder under `storage/manual-backups/`. DeskPilot also keeps a rolling `deskpilot.sqlite.bak` file beside the active database after writes.
 
 Removing a category currently performs a soft delete. The category is hidden from the active list, but the row remains in the local database for recovery-oriented future work.
 Removed categories can be restored from the Recovery mode in the control panel.

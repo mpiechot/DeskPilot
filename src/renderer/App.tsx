@@ -1,4 +1,17 @@
-import { AlertTriangle, CheckCircle2, FolderOpen, PanelTopOpen, Pencil, Plus, Puzzle, Save, ShieldCheck, Trash2, X } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  DatabaseBackup,
+  FolderOpen,
+  PanelTopOpen,
+  Pencil,
+  Plus,
+  Puzzle,
+  Save,
+  ShieldCheck,
+  Trash2,
+  X
+} from "lucide-react";
 import { type FormEvent, useEffect, useState } from "react";
 import type {
   BridgeStatus,
@@ -7,7 +20,8 @@ import type {
   ExtensionInstallInfo,
   SessionMutationResult,
   SessionTab,
-  SessionTabInput
+  SessionTabInput,
+  StorageBackupInfo
 } from "../shared/deskPilotApi";
 import { defaultCategories, type SessionCategory } from "../shared/sessions";
 import "./styles.css";
@@ -24,6 +38,21 @@ function statusLabel(status: SessionCategory["status"]): string {
   return "Empty";
 }
 
+function formatBackupSize(sizeBytes: number): string {
+  if (sizeBytes < 1024) {
+    return `${sizeBytes} B`;
+  }
+
+  return `${Math.round(sizeBytes / 1024)} KB`;
+}
+
+function formatBackupTime(value: string): string {
+  return new Date(value).toLocaleString(undefined, {
+    dateStyle: "short",
+    timeStyle: "short"
+  });
+}
+
 function App() {
   const [categories, setCategories] = useState<SessionCategory[]>(defaultCategories);
   const [storageStatus, setStorageStatus] = useState<"loading" | "ready" | "fallback" | "error">("loading");
@@ -35,10 +64,11 @@ function App() {
   const [deletedTabs, setDeletedTabs] = useState<SessionTab[]>([]);
   const [tabs, setTabs] = useState<SessionTab[]>([]);
   const [tabDraft, setTabDraft] = useState<SessionTabInput>({ categoryId: selectedCategoryId, url: "", title: "" });
-  const [controlMode, setControlMode] = useState<"session" | "categories" | "recovery" | "extension">("session");
+  const [controlMode, setControlMode] = useState<"session" | "categories" | "recovery" | "extension" | "safety">("session");
   const [operationMessage, setOperationMessage] = useState("");
   const [bridgeStatus, setBridgeStatus] = useState<BridgeStatus | null>(null);
   const [extensionInfo, setExtensionInfo] = useState<ExtensionInstallInfo | null>(null);
+  const [storageInfo, setStorageInfo] = useState<StorageBackupInfo | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -64,6 +94,15 @@ function App() {
       .then((info: ExtensionInstallInfo) => {
         if (isMounted) {
           setExtensionInfo(info);
+        }
+      })
+      .catch(() => undefined);
+
+    window.deskPilot
+      .storageInfo()
+      .then((info: StorageBackupInfo) => {
+        if (isMounted) {
+          setStorageInfo(info);
         }
       })
       .catch(() => undefined);
@@ -131,6 +170,7 @@ function App() {
           : "Loading local storage.";
 
   const isStorageWritable = storageStatus === "ready" && Boolean(window.deskPilot);
+  const latestManualBackup = storageInfo?.manualBackups[0] ?? null;
   const bridgeStatusText = !window.deskPilot
     ? "Bridge: Electron app required"
     : bridgeStatus?.running
@@ -177,6 +217,10 @@ function App() {
   function handleStorageError(): void {
     setStorageStatus("error");
     setOperationMessage("Storage write failed. Existing data was left untouched.");
+  }
+
+  function handleBackupError(): void {
+    setOperationMessage("Could not create backup. Existing data was left untouched.");
   }
 
   function selectedCategoryName(): string {
@@ -226,6 +270,21 @@ function App() {
         );
       })
       .catch(() => setOperationMessage("Could not open saved URLs."));
+  }
+
+  function handleCreateStorageBackup(): void {
+    if (!window.deskPilot) {
+      setOperationMessage("Backups require the Electron app.");
+      return;
+    }
+
+    window.deskPilot
+      .createStorageBackup()
+      .then((info: StorageBackupInfo) => {
+        setStorageInfo(info);
+        setOperationMessage("Created local database backup.");
+      })
+      .catch(handleBackupError);
   }
 
   function removeTab(id: string): void {
@@ -357,15 +416,6 @@ function App() {
       .catch(handleStorageError);
   }
 
-  const legacyStorageMessage =
-    storageStatus === "ready"
-      ? "Local SQLite storage is active."
-      : storageStatus === "fallback"
-        ? "Browser preview is using fallback categories."
-      : storageStatus === "error"
-        ? "Storage unavailable; showing fallback categories."
-        : "Loading local storage.";
-
   return (
     <main className="shell">
       <aside className="controlRail" aria-label="DeskPilot controls">
@@ -419,6 +469,13 @@ function App() {
             onClick={() => setControlMode("extension")}
           >
             Extension
+          </button>
+          <button
+            type="button"
+            className={controlMode === "safety" ? "modeButton modeButton-active" : "modeButton"}
+            onClick={() => setControlMode("safety")}
+          >
+            Safety
           </button>
         </div>
 
@@ -482,17 +539,17 @@ function App() {
             <p>Removed URLs in {selectedCategoryName()}</p>
             {deletedTabs.length === 0 ? <span className="emptyRecoveryText">None</span> : null}
             {deletedTabs.map((tab) => (
-                <button
-                  type="button"
-                  className="restoreAction"
-                  key={tab.id}
-                  onClick={() => restoreDeletedTab(tab.id)}
-                >
-                  Restore {tab.title}
-                </button>
+              <button
+                type="button"
+                className="restoreAction"
+                key={tab.id}
+                onClick={() => restoreDeletedTab(tab.id)}
+              >
+                Restore {tab.title}
+              </button>
             ))}
           </section>
-        ) : (
+        ) : controlMode === "extension" ? (
           <section className="extensionPanel" aria-label="Browser extension">
             <div className={bridgeStatus?.running ? "extensionState extensionState-ready" : "extensionState extensionState-warning"}>
               {bridgeStatus?.running ? <CheckCircle2 aria-hidden="true" /> : <AlertTriangle aria-hidden="true" />}
@@ -521,11 +578,39 @@ function App() {
               ))}
             </div>
           </section>
+        ) : (
+          <section className="safetyPanel" aria-label="Storage safety">
+            <button type="button" className="backupAction" onClick={handleCreateStorageBackup}>
+              <DatabaseBackup aria-hidden="true" />
+              Create Backup
+            </button>
+            <div className="backupPathBox">
+              <strong>Database</strong>
+              <code>{storageInfo?.databasePath ?? "Electron storage path unavailable"}</code>
+            </div>
+            <div className="backupPathBox">
+              <strong>Manual backups</strong>
+              <code>{storageInfo?.manualBackupDirectory ?? "No backup directory yet"}</code>
+            </div>
+            <div className="backupList">
+              <p>Latest backup</p>
+              {latestManualBackup ? (
+                <div className="backupListItem">
+                  <span title={latestManualBackup.path}>{latestManualBackup.fileName}</span>
+                  <small>
+                    {formatBackupSize(latestManualBackup.sizeBytes)} - {formatBackupTime(latestManualBackup.createdAt)}
+                  </small>
+                </div>
+              ) : (
+                <span className="emptyRecoveryText">None</span>
+              )}
+            </div>
+          </section>
         )}
 
         <footer className="safetyNote">
           <ShieldCheck aria-hidden="true" />
-          <span>{storageMessage || legacyStorageMessage}</span>
+          <span>{storageMessage}</span>
         </footer>
       </aside>
 

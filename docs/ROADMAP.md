@@ -59,8 +59,11 @@ Expected features:
 Goal:
 Make session restore reliable.
 
+Status:
+Started. The app can create manual SQLite backup snapshots from Safety mode.
+
 Expected features:
-- backups
+- backups - initial manual snapshot pass done
 - export/import
 - restore history
 - no silent data loss

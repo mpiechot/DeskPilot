@@ -3,9 +3,11 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   addTab,
+  createManualBackup,
   createCategory,
   deleteCategory,
   deleteTab,
+  getStorageInfo,
   initializeStorage,
   listDeletedCategories,
   listDeletedTabs,
@@ -101,6 +103,8 @@ app.whenReady().then(async () => {
   bridgeServer = startBrowserBridge();
   ipcMain.handle("bridge:status", () => getBrowserBridgeStatus(bridgeServer));
   ipcMain.handle("extension:install-info", () => getExtensionInstallInfo(projectRoot));
+  ipcMain.handle("storage:info", () => getStorageInfo());
+  ipcMain.handle("storage:create-backup", () => createManualBackup());
   ipcMain.handle("categories:list", () => listCategories());
   ipcMain.handle("categories:create", (_event, input) => createCategory(input));
   ipcMain.handle("categories:update", (_event, id, input) => updateCategory(id, input));

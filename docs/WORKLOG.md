@@ -266,3 +266,26 @@ Current status:
 
 Next recommended step:
 - Open the working pull request for `codex/deskpilot-working-pr` once an allowed GitHub identity is available, then inspect SonarQube and ReviewDog feedback.
+
+## 2026-07-02
+
+### Working PR and manual backup session
+
+Completed:
+- Confirmed the repository-local Git identity is `portfolio-pirat <mattzeal@gmail.com>`.
+- Opened draft working pull request #4 from `codex/deskpilot-working-pr` to `main` through the GitHub connector as `portfolio-pirat`.
+- Checked PR #4 comments, review threads and commit statuses; none were reported yet.
+- Added storage APIs for reading database backup status and creating manual SQLite snapshot backups.
+- Added IPC/preload bindings for the backup status and manual backup action.
+- Added a Safety mode to the control panel with database path, manual backup folder, latest backup and `Create Backup`.
+- Extended `npm run test:storage` to verify manual backup creation and file metadata.
+- Updated README, usage notes, roadmap, technical decisions and grumble log for the backup step.
+- Verified `npm run build`, `npm run lint`, `npm run test:storage` and `npm audit`.
+
+Current status:
+- The working PR quality gate exists and the app has a first visible v0.4 safety feature.
+- Manual backup creation is implemented, but import/restore from a selected backup is not implemented yet.
+- UI screenshot verification was not available in this session because no in-app browser backend was exposed; local build, lint, storage smoke and audit checks passed.
+
+Next recommended step:
+- Inspect PR #4 automated feedback once checks appear, then add a cautious restore/import workflow that always creates a pre-restore backup before replacing data.

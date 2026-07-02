@@ -112,7 +112,8 @@ h1 {
 
 .primaryAction,
 .secondaryAction,
-.addCategoryAction {
+.addCategoryAction,
+.backupAction {
   display: inline-flex;
   min-height: 52px;
   align-items: center;
@@ -126,7 +127,8 @@ h1 {
 
 .primaryAction svg,
 .secondaryAction svg,
-.addCategoryAction svg {
+.addCategoryAction svg,
+.backupAction svg {
   width: 20px;
   height: 20px;
 }
@@ -198,6 +200,13 @@ h1 {
   color: #243d32;
 }
 
+.backupAction {
+  min-height: 42px;
+  border-color: #b9c9b8;
+  background: #26352f;
+  color: #fffaf0;
+}
+
 .restoreAction {
   min-height: 38px;
   border: 1px solid #b9c9b8;
@@ -208,7 +217,8 @@ h1 {
   font-weight: 800;
 }
 
-.extensionPanel {
+.extensionPanel,
+.safetyPanel {
   display: grid;
   align-content: start;
   gap: 7px;
@@ -216,7 +226,8 @@ h1 {
 }
 
 .extensionState,
-.extensionPathBox {
+.extensionPathBox,
+.backupPathBox {
   display: grid;
   grid-template-columns: 22px minmax(0, 1fr);
   gap: 8px;
@@ -228,6 +239,10 @@ h1 {
   min-width: 0;
 }
 
+.backupPathBox {
+  grid-template-columns: 1fr;
+}
+
 .extensionState svg,
 .extensionPathBox svg {
   width: 18px;
@@ -236,7 +251,8 @@ h1 {
 }
 
 .extensionState strong,
-.extensionPathBox span {
+.extensionPathBox span,
+.backupPathBox strong {
   display: block;
   color: #27312d;
   font-size: 0.78rem;
@@ -244,7 +260,8 @@ h1 {
 }
 
 .extensionState span,
-.extensionPathBox code {
+.extensionPathBox code,
+.backupPathBox code {
   display: block;
   margin-top: 3px;
   color: #5c625d;
@@ -252,6 +269,41 @@ h1 {
   font-weight: 700;
   line-height: 1.3;
   overflow-wrap: anywhere;
+}
+
+.backupList {
+  display: grid;
+  gap: 6px;
+}
+
+.backupList p {
+  color: #5c625d;
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.backupListItem {
+  display: grid;
+  gap: 4px;
+  border: 1px solid #d7d0c2;
+  border-radius: 8px;
+  background: rgba(255, 250, 240, 0.76);
+  padding: 8px;
+}
+
+.backupListItem span {
+  overflow: hidden;
+  color: #27312d;
+  font-size: 0.76rem;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.backupListItem small {
+  color: #5c625d;
+  font-size: 0.72rem;
+  font-weight: 700;
 }
 
 .extensionState-ready svg {

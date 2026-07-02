@@ -66,3 +66,11 @@ Use `sql.js` for the first local SQLite storage pass.
 
 Reason:
 It provides a real SQLite database file without native Electron rebuild friction, which keeps the MVP moving while data model and safety behavior are still taking shape.
+
+## 2026-07-02 - Manual Backup Snapshots
+
+Decision:
+Add user-triggered SQLite snapshot backups before implementing import or restore flows.
+
+Reason:
+Backup creation is low-risk and directly supports the no-silent-data-loss rule. Import and restore can overwrite user data if designed poorly, so they should be implemented only after backup files and storage locations are visible in the app.

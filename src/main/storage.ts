@@ -9,12 +9,15 @@ import type {
   SessionMutationResult,
   SessionTab,
   SessionTabInput,
-  SessionTabRow
+  SessionTabRow,
+  StorageBackupInfo,
+  StorageBackupSnapshot
 } from "../shared/deskPilotApi.js";
 
 type StoragePaths = {
   databasePath: string;
   backupPath: string;
+  manualBackupDirectory: string;
   temporaryPath: string;
 };
 
@@ -39,6 +42,27 @@ export async function initializeStorage(userDataPath: string): Promise<void> {
   migrate(database);
   seedDefaultCategories(database);
   saveDatabase();
+}
+
+export function getStorageInfo(): StorageBackupInfo {
+  const storagePaths = getPaths();
+
+  return {
+    databasePath: storagePaths.databasePath,
+    rollingBackupPath: storagePaths.backupPath,
+    manualBackupDirectory: storagePaths.manualBackupDirectory,
+    manualBackups: listManualBackups(storagePaths.manualBackupDirectory)
+  };
+}
+
+export function createManualBackup(): StorageBackupInfo {
+  const storagePaths = getPaths();
+
+  fs.mkdirSync(storagePaths.manualBackupDirectory, { recursive: true });
+  saveDatabase();
+  fs.copyFileSync(storagePaths.databasePath, createManualBackupPath(storagePaths.manualBackupDirectory, new Date()));
+
+  return getStorageInfo();
 }
 
 export function listCategories(): SessionCategory[] {
@@ -252,8 +276,45 @@ function getStoragePaths(userDataPath: string): StoragePaths {
   return {
     databasePath: path.join(storageDirectory, "deskpilot.sqlite"),
     backupPath: path.join(storageDirectory, "deskpilot.sqlite.bak"),
+    manualBackupDirectory: path.join(storageDirectory, "manual-backups"),
     temporaryPath: path.join(storageDirectory, "deskpilot.sqlite.tmp")
   };
+}
+
+function listManualBackups(manualBackupDirectory: string): StorageBackupSnapshot[] {
+  if (!fs.existsSync(manualBackupDirectory)) {
+    return [];
+  }
+
+  return fs
+    .readdirSync(manualBackupDirectory, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name.endsWith(".sqlite"))
+    .map((entry) => {
+      const backupPath = path.join(manualBackupDirectory, entry.name);
+      const stats = fs.statSync(backupPath);
+
+      return {
+        fileName: entry.name,
+        path: backupPath,
+        createdAt: stats.mtime.toISOString(),
+        sizeBytes: stats.size
+      };
+    })
+    .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+}
+
+function createManualBackupPath(manualBackupDirectory: string, date: Date): string {
+  const timestamp = date.toISOString().replace(/[:.]/g, "-");
+  const baseName = `deskpilot-${timestamp}`;
+  let suffix = 1;
+  let candidate = path.join(manualBackupDirectory, `${baseName}.sqlite`);
+
+  while (fs.existsSync(candidate)) {
+    suffix += 1;
+    candidate = path.join(manualBackupDirectory, `${baseName}-${suffix}.sqlite`);
+  }
+
+  return candidate;
 }
 
 function listCategoryRows(whereClause: string): SessionCategory[] {

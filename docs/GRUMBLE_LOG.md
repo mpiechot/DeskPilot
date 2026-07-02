@@ -33,3 +33,6 @@ Unpacked extensions fail in ways that look like "nothing happened" unless the po
 
 PR workflow note:
 The local GitHub CLI is currently configured as `mpiechot`, which project rules forbid for `gh` and GitHub API work. The new PR quality workflow needs either a `portfolio-pirat` GitHub CLI login or connector-based PR creation that does not use the forbidden identity.
+
+Manual backup note:
+Creating backup snapshots is straightforward, but import/restore is where data-loss bugs usually hide. Do not add a one-click restore until DeskPilot has an explicit pre-restore backup, clear conflict behavior and a visible result path.

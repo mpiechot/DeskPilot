@@ -33,7 +33,7 @@ Current state:
 - The Electron control panel exists in a wide, low touch-display layout.
 - Categories and saved URLs are stored locally in a SQLite database.
 - Categories and saved URLs use soft-delete recovery flows.
+- Manual SQLite backup snapshots can be created from the Safety mode.
 - A Chrome/Edge unpacked extension prototype can capture the current browser window through the local bridge.
 - The local browser bridge is origin-restricted to browser-extension origins and visible in the app status area.
-
 
