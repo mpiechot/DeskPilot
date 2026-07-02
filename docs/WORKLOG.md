@@ -361,3 +361,17 @@ Current status:
 
 Next recommended step:
 - Regenerate the prototype package and test the no-console launcher by double-clicking `dist-prototype/DeskPilot/start-deskpilot.vbs`.
+
+### Prototype blank-window fix
+
+Completed:
+- Investigated a reported packaged Electron window that showed only the dark window background.
+- Identified absolute Vite asset paths in `dist/index.html` as the likely cause: Electron `loadFile` cannot resolve `/assets/...` relative to the packaged renderer.
+- Changed the Vite base path to emit relative renderer asset URLs.
+- Extended the prototype launcher smoke test to reject absolute renderer asset paths.
+
+Current status:
+- The packaged prototype should load the React control panel instead of an empty window.
+
+Next recommended step:
+- Regenerate the prototype package and retest `dist-prototype/DeskPilot/start-deskpilot.vbs`.
