@@ -31,7 +31,7 @@ Expected features:
 - SQLite storage - initial pass done
 - categories - create/read/update/soft-delete done, default set includes Entertainment
 - category recovery - initial pass done
-- saved URLs - manual save/open/soft-delete done
+- saved URLs - manual save/open/list/soft-delete done
 - URL recovery - initial pass done
 - create/edit/delete categories - initial pass done with soft-delete
 - open category URLs in browser - initial pass done

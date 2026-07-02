@@ -291,3 +291,25 @@ Next recommended step:
 - Start the next session by planning the next DeskPilot tasks as small, independently implementable steps.
 - If GitHub is reachable, create GitHub issues for those planned tasks before implementing them. The user explicitly allowed GitHub issue creation for this next-session planning pass.
 - Then inspect PR #4 automated feedback once checks appear and continue with the highest-priority issue, likely a cautious restore/import workflow that always creates a pre-restore backup before replacing data.
+
+### Issue planning and URL list session
+
+Completed:
+- Confirmed the repository-local Git identity is `portfolio-pirat <mattzeal@gmail.com>`.
+- Confirmed GitHub was reachable through the connector and PR #4 is the single open working pull request against `main`.
+- Checked PR #4 comments, review threads and commit status; none were reported.
+- Created new GitHub planning issues:
+  - #5 Restore data from manual backup safely.
+  - #6 Export and import DeskPilot backup files.
+  - #7 Choose append or replace when capturing browser windows.
+  - #8 Show saved URLs as a manageable list.
+  - #9 Package a first local prototype build.
+- Implemented issue #8 locally by adding a scrollable saved-URL list to Session mode with title, host and soft-delete remove action.
+- Updated README, usage notes and roadmap to reflect the saved URL list.
+
+Current status:
+- DeskPilot now has a more usable daily session view: the selected category's saved URLs are visible and removable, not only previewed on category cards.
+- The next high-value slices are safe backup restore (#5) and append/replace capture behavior (#7).
+
+Next recommended step:
+- Run final verification, commit and push the URL-list work, then continue with #5 or #7 depending on whether safety or browser capture polish is more important for the next session.

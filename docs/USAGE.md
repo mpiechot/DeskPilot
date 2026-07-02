@@ -14,6 +14,7 @@ Working today:
 - restore removed categories
 - save http/https URLs into a selected category
 - open saved URLs from the selected category
+- view and remove saved URLs in the selected category
 - restore removed URLs from the selected category
 - remember the desktop window size and position between app runs
 - close the window to the system tray and quit explicitly from the tray menu

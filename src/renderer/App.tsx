@@ -53,6 +53,14 @@ function formatBackupTime(value: string): string {
   });
 }
 
+function getUrlHost(value: string): string {
+  try {
+    return new URL(value).host;
+  } catch {
+    return value;
+  }
+}
+
 function App() {
   const [categories, setCategories] = useState<SessionCategory[]>(defaultCategories);
   const [storageStatus, setStorageStatus] = useState<"loading" | "ready" | "fallback" | "error">("loading");
@@ -498,6 +506,28 @@ function App() {
               value={tabDraft.title}
             />
             <div className="savedUrlCount">{tabs.length} saved URLs</div>
+            <section className="savedUrlManager" aria-label={`Saved URLs in ${selectedCategoryName()}`}>
+              <div className="savedUrlManagerHeader">
+                <strong>Saved URLs</strong>
+                <span>{selectedCategoryName()}</span>
+              </div>
+              {tabs.length === 0 ? <span className="emptyRecoveryText">None</span> : null}
+              {tabs.length > 0 ? (
+                <div className="savedUrlManagerList">
+                  {tabs.map((tab) => (
+                    <div className="savedUrlManagerItem" key={tab.id}>
+                      <div>
+                        <span>{tab.title}</span>
+                        <small>{getUrlHost(tab.url)}</small>
+                      </div>
+                      <button type="button" className="miniDangerAction" onClick={() => removeTab(tab.id)} title="Remove URL">
+                        <X aria-hidden="true" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </section>
           </section>
         ) : controlMode === "categories" ? (
           <form className="categoryForm" onSubmit={handleCreateCategory}>

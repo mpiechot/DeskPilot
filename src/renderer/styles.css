@@ -57,7 +57,7 @@ textarea {
 .controlRail {
   display: grid;
   min-height: calc(100vh - 24px);
-  grid-template-rows: auto auto auto auto;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
   gap: 8px;
 }
 
@@ -150,6 +150,7 @@ h1 {
   display: grid;
   align-content: start;
   gap: 6px;
+  min-height: 0;
 }
 
 .recoveryList p {
@@ -470,6 +471,77 @@ h2 {
   display: grid;
   gap: 6px;
   margin-top: 10px;
+}
+
+.savedUrlManager {
+  display: grid;
+  min-height: 0;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.savedUrlManagerHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.savedUrlManagerHeader strong {
+  color: #27312d;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.savedUrlManagerHeader span {
+  overflow: hidden;
+  color: #5c625d;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.savedUrlManagerList {
+  display: grid;
+  gap: 6px;
+  max-height: clamp(90px, 28vh, 220px);
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 2px;
+  scrollbar-width: thin;
+}
+
+.savedUrlManagerItem {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 26px;
+  gap: 8px;
+  align-items: center;
+  border: 1px solid #d7d0c2;
+  border-radius: 8px;
+  background: rgba(255, 250, 240, 0.76);
+  padding: 7px 6px 7px 8px;
+}
+
+.savedUrlManagerItem span,
+.savedUrlManagerItem small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.savedUrlManagerItem span {
+  color: #27312d;
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.savedUrlManagerItem small {
+  margin-top: 2px;
+  color: #5c625d;
+  font-size: 0.7rem;
+  font-weight: 700;
 }
 
 .savedUrlItem {
