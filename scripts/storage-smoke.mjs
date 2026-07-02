@@ -147,6 +147,11 @@ try {
   assert(bridgeStatus.host === "127.0.0.1", "Expected bridge to bind to localhost");
   assert(bridgeStatus.port === 17383, "Expected bridge status to report the browser bridge port");
 
+  const bridgeInfoResponse = await fetch("http://127.0.0.1:17383/");
+  const bridgeInfoText = await bridgeInfoResponse.text();
+  assert(bridgeInfoResponse.status === 200, "Expected bridge root to be reachable for human diagnostics");
+  assert(bridgeInfoText.includes("not the DeskPilot app UI"), "Expected bridge root to explain it is not the app UI");
+
   const forbiddenResponse = await fetch("http://127.0.0.1:17383/categories");
   assert(forbiddenResponse.status === 403, "Expected origin-less bridge request to be forbidden");
 

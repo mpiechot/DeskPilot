@@ -3,12 +3,18 @@ import path from "node:path";
 
 const projectRoot = process.cwd();
 const prototypeRoot = path.join(projectRoot, "dist-prototype", "DeskPilot");
-const electronCommand = path.join(projectRoot, "node_modules", ".bin", "electron.cmd");
+const electronExecutable = path.join(projectRoot, "node_modules", "electron", "dist", "electron.exe");
 const packageJson = JSON.parse(fs.readFileSync(path.join(projectRoot, "package.json"), "utf-8"));
 
 assertInsideProject(prototypeRoot);
 
-for (const requiredPath of ["dist", "dist-electron", "browser-extension", path.join("node_modules", "sql.js")]) {
+for (const requiredPath of [
+  "dist",
+  "dist-electron",
+  "browser-extension",
+  path.join("node_modules", "sql.js"),
+  path.join("node_modules", "electron", "dist", "electron.exe")
+]) {
   const absolutePath = path.join(projectRoot, requiredPath);
 
   if (!fs.existsSync(absolutePath)) {
@@ -45,11 +51,60 @@ fs.writeFileSync(
   [
     "@echo off",
     "setlocal",
-    "pushd \"%~dp0\" || exit /b 1",
-    `"${electronCommand}" .`,
+    "set \"APP_DIR=%~dp0\"",
+    `set "ELECTRON_EXE=${electronExecutable}"`,
+    "if not exist \"%ELECTRON_EXE%\" (",
+    "  echo DeskPilot could not find the Electron runtime.",
+    "  echo Expected: %ELECTRON_EXE%",
+    "  echo Run npm install in the DeskPilot repository, then package the prototype again.",
+    "  pause",
+    "  exit /b 1",
+    ")",
+    "pushd \"%APP_DIR%\" || exit /b 1",
+    "start \"DeskPilot\" \"%ELECTRON_EXE%\" .",
     "set EXIT_CODE=%ERRORLEVEL%",
     "popd",
     "exit /b %EXIT_CODE%",
+    ""
+  ].join("\r\n")
+);
+
+fs.writeFileSync(
+  path.join(prototypeRoot, "start-deskpilot-debug.cmd"),
+  [
+    "@echo off",
+    "setlocal",
+    "set \"APP_DIR=%~dp0\"",
+    `set "ELECTRON_EXE=${electronExecutable}"`,
+    "if not exist \"%ELECTRON_EXE%\" (",
+    "  echo DeskPilot could not find the Electron runtime.",
+    "  echo Expected: %ELECTRON_EXE%",
+    "  echo Run npm install in the DeskPilot repository, then package the prototype again.",
+    "  pause",
+    "  exit /b 1",
+    ")",
+    "pushd \"%APP_DIR%\" || exit /b 1",
+    "\"%ELECTRON_EXE%\" .",
+    "set EXIT_CODE=%ERRORLEVEL%",
+    "popd",
+    "exit /b %EXIT_CODE%",
+    ""
+  ].join("\r\n")
+);
+
+fs.writeFileSync(
+  path.join(prototypeRoot, "start-deskpilot.vbs"),
+  [
+    "Set shell = CreateObject(\"WScript.Shell\")",
+    "Set fso = CreateObject(\"Scripting.FileSystemObject\")",
+    "appDir = fso.GetParentFolderName(WScript.ScriptFullName)",
+    `electronExe = "${electronExecutable}"`,
+    "If Not fso.FileExists(electronExe) Then",
+    "  MsgBox \"DeskPilot could not find the Electron runtime. Run npm install in the DeskPilot repository, then package the prototype again.\", 16, \"DeskPilot\"",
+    "  WScript.Quit 1",
+    "End If",
+    "shell.CurrentDirectory = appDir",
+    "shell.Run Chr(34) & electronExe & Chr(34) & \" .\", 1, False",
     ""
   ].join("\r\n")
 );
@@ -60,10 +115,13 @@ fs.writeFileSync(
     "DeskPilot local prototype",
     "",
     "Start:",
-    "- Double-click start-deskpilot.cmd",
+    "- Double-click start-deskpilot.vbs for the desktop app without a console window.",
+    "- If that fails, run start-deskpilot-debug.cmd to keep a diagnostic console open.",
+    "- start-deskpilot.cmd is a compatibility launcher that starts Electron and exits immediately.",
     "",
     "Browser extension prototype:",
     "- Load the browser-extension folder from this prototype directory as an unpacked Chrome or Edge extension.",
+    "- The local bridge URL is for the extension only; it is not the DeskPilot app UI.",
     "",
     "Limitations:",
     "- This is a local development prototype, not a signed installer.",

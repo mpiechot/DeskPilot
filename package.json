@@ -13,7 +13,8 @@
     "lint": "eslint .",
     "package:prototype": "npm run build && node scripts/package-prototype.mjs",
     "preview": "vite preview --host 127.0.0.1",
-    "test:storage": "npm run build:electron && node scripts/storage-smoke.mjs"
+    "test:storage": "npm run build:electron && node scripts/storage-smoke.mjs",
+    "test:prototype": "npm run package:prototype && node scripts/prototype-launcher-smoke.mjs"
   },
   "dependencies": {
     "lucide-react": "0.468.0",

@@ -346,3 +346,18 @@ Current status:
 
 Next recommended step:
 - Retest the double-click launcher manually, then continue with real-session usability feedback.
+
+### Prototype desktop launcher follow-up
+
+Completed:
+- Reworked the generated prototype launchers so the normal path starts Electron detached from the console instead of running the npm `electron.cmd` shim in the foreground.
+- Added `start-deskpilot.vbs` for launching the desktop app without a visible console window and `start-deskpilot-debug.cmd` for explicit diagnostics.
+- Added a prototype launcher smoke test that rejects Vite/browser-dev-server launcher regressions.
+- Changed the local bridge root URL to show a clear diagnostic message instead of `{"error":"Origin not allowed"}` while keeping protected endpoints origin-restricted.
+
+Current status:
+- The prototype package now has separate normal, no-console and debug launch paths.
+- The bridge URL is explicitly labeled as an extension bridge, not the DeskPilot UI.
+
+Next recommended step:
+- Regenerate the prototype package and test the no-console launcher by double-clicking `dist-prototype/DeskPilot/start-deskpilot.vbs`.

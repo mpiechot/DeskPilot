@@ -27,6 +27,7 @@ Commands:
 - `npm run lint` checks TypeScript and React source files.
 - `npm run build` builds the Electron main/preload code and renderer.
 - `npm run package:prototype` creates a local Windows prototype folder under `dist-prototype/DeskPilot`.
+- `npm run test:prototype` regenerates the local prototype and verifies the desktop launchers do not fall back to the browser dev server.
 
 More detailed run and verification notes live in `docs/USAGE.md`.
 

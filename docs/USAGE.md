@@ -94,8 +94,10 @@ dist-prototype/DeskPilot/
 Start it with:
 
 ```text
-dist-prototype/DeskPilot/start-deskpilot.cmd
+dist-prototype/DeskPilot/start-deskpilot.vbs
 ```
+
+`start-deskpilot.vbs` opens the Electron desktop app without a visible console window. `start-deskpilot.cmd` is kept as a compatibility launcher and starts Electron detached so the console closes immediately. If startup fails, run `start-deskpilot-debug.cmd` to keep a diagnostic console open.
 
 This is not a signed installer. It is a local development prototype that uses the repository's installed Electron runtime and keeps user data in Electron's normal DeskPilot user-data folder.
 
@@ -129,7 +131,7 @@ The control panel shows whether the local browser bridge is running. The prototy
 127.0.0.1:17383
 ```
 
-The bridge currently accepts requests only from Chrome/Edge extension origins. Browser tabs without `http` or `https` URLs are ignored by the popup and are not closed by the optional close-after-save action.
+That bridge URL is not the DeskPilot app UI. Opening it in a normal browser tab only shows a diagnostic message, while protected bridge endpoints still accept requests only from Chrome/Edge extension origins. Browser tabs without `http` or `https` URLs are ignored by the popup and are not closed by the optional close-after-save action.
 
 The control panel's Extension mode shows the current load-unpacked folder and whether the extension manifest is present. For packaged prototype trials, load the `browser-extension/` folder from `dist-prototype/DeskPilot/`.
 

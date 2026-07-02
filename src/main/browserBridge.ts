@@ -26,7 +26,7 @@ export function startBrowserBridge(): http.Server {
   server.listen(bridgePort, bridgeHost);
   server.on("listening", () => {
     const address = server.address() as AddressInfo;
-    console.log(`DeskPilot browser bridge listening on ${address.address}:${address.port}`);
+    console.log(`DeskPilot extension bridge listening on ${address.address}:${address.port} (not the app UI)`);
   });
 
   return server;
@@ -42,6 +42,20 @@ export function getBrowserBridgeStatus(server: http.Server | null): BridgeStatus
 }
 
 async function handleRequest(request: http.IncomingMessage, response: http.ServerResponse): Promise<void> {
+  if (request.method === "GET" && isBridgeInfoPath(request.url)) {
+    writeText(
+      response,
+      200,
+      [
+        "DeskPilot local extension bridge is running.",
+        "",
+        "This URL is not the DeskPilot app UI.",
+        "Start DeskPilot with the desktop launcher and use the Chrome/Edge extension to save browser windows."
+      ].join("\n")
+    );
+    return;
+  }
+
   if (!isAllowedOrigin(request.headers.origin)) {
     writeJson(response, 403, { error: "Origin not allowed" });
     return;
@@ -118,6 +132,10 @@ function isAllowedOrigin(origin: string | undefined): boolean {
   return allowedOriginPrefixes.some((prefix) => origin.startsWith(prefix));
 }
 
+function isBridgeInfoPath(url: string | undefined): boolean {
+  return url === "/" || url === "/health";
+}
+
 function applyCorsHeaders(request: http.IncomingMessage, response: http.ServerResponse): void {
   const origin = request.headers.origin;
 
@@ -157,4 +175,9 @@ function readJsonBody(request: http.IncomingMessage): Promise<unknown> {
 function writeJson(response: http.ServerResponse, statusCode: number, value: unknown): void {
   response.writeHead(statusCode, { "content-type": "application/json" });
   response.end(JSON.stringify(value));
+}
+
+function writeText(response: http.ServerResponse, statusCode: number, value: string): void {
+  response.writeHead(statusCode, { "content-type": "text/plain; charset=utf-8" });
+  response.end(value);
 }
