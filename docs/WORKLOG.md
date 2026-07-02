@@ -393,3 +393,19 @@ Current status:
 
 Next recommended step:
 - Relaunch the regenerated prototype and run a real manual save/open URL trial.
+
+### Low-height session form fix
+
+Completed:
+- Reproduced the reported flow in the packaged Electron renderer: save a Work URL with a title, remove it, switch to Projects and enter a replacement URL/title.
+- Found that the low-height control-panel layout could push the optional title input below the visible viewport after the save/delete/switch flow.
+- Made the quick actions and mode switch more compact in the control rail.
+- Allowed the session form area to scroll when the available rail height is tight.
+- Extended the Electron renderer smoke test to cover the Work-delete-then-Projects-save flow and assert that the Projects title input is clickable and accepts text.
+- Verified `npm run test:prototype`, `npm run test:storage` and `npm run lint`.
+
+Current status:
+- The optional URL title field should remain reachable in the low touch-display layout after moving a saved URL between categories.
+
+Next recommended step:
+- Relaunch the regenerated prototype and manually repeat the Work-to-Projects URL move flow.

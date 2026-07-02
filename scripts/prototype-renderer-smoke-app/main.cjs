@@ -17,8 +17,26 @@ async function runElectronSmoke() {
   await app.whenReady();
   console.log("Prototype renderer smoke: Electron ready");
 
-  const smokeTabs = [];
+  const tabsByCategory = new Map();
   const categories = defaultCategories.map((category) => ({ ...category }));
+
+  function getActiveTabs(categoryId) {
+    return tabsByCategory.get(categoryId) ?? [];
+  }
+
+  function setActiveTabs(categoryId, tabs) {
+    tabsByCategory.set(categoryId, tabs);
+    const categoryIndex = categories.findIndex((category) => category.id === categoryId);
+
+    if (categoryIndex >= 0) {
+      categories[categoryIndex] = {
+        ...categories[categoryIndex],
+        status: tabs.length > 0 ? "ready" : "empty",
+        tabCount: tabs.length,
+        lastSavedLabel: tabs.length > 0 ? "Just now" : "Not saved yet"
+      };
+    }
+  }
 
   ipcMain.handle("bridge:status", () => ({ running: true, host: "127.0.0.1", port: 17383 }));
   ipcMain.handle("extension:install-info", () => ({
@@ -34,32 +52,46 @@ async function runElectronSmoke() {
   }));
   ipcMain.handle("categories:list", () => categories);
   ipcMain.handle("categories:deleted", () => []);
-  ipcMain.handle("tabs:list", () => smokeTabs);
+  ipcMain.handle("tabs:list", (_event, categoryId) => getActiveTabs(categoryId));
   ipcMain.handle("tabs:deleted", () => []);
   ipcMain.handle("tabs:add", (_event, input) => {
     const tab = {
-      id: "smoke-tab",
+      id: `smoke-tab-${input.categoryId}-${Date.now()}`,
       categoryId: input.categoryId,
       title: input.title || input.url,
       url: input.url
     };
-    smokeTabs.splice(0, smokeTabs.length, tab);
-    categories[0] = {
-      ...categories[0],
-      status: "ready",
-      tabCount: 1,
-      lastSavedLabel: "Just now"
-    };
+    const nextTabs = [...getActiveTabs(input.categoryId), tab];
+    setActiveTabs(input.categoryId, nextTabs);
 
     return {
       categories,
-      tabs: smokeTabs
+      tabs: nextTabs
+    };
+  });
+  ipcMain.handle("tabs:delete", (_event, id) => {
+    let affectedCategoryId = "";
+
+    for (const [categoryId, tabs] of tabsByCategory.entries()) {
+      if (tabs.some((tab) => tab.id === id)) {
+        affectedCategoryId = categoryId;
+        setActiveTabs(
+          categoryId,
+          tabs.filter((tab) => tab.id !== id)
+        );
+        break;
+      }
+    }
+
+    return {
+      categories,
+      tabs: affectedCategoryId ? getActiveTabs(affectedCategoryId) : []
     };
   });
 
   const window = new BrowserWindow({
     width: 1180,
-    height: 720,
+    height: 390,
     show: false,
     webPreferences: {
       preload: path.join(prototypeRoot, "dist-electron", "preload", "index.cjs"),
@@ -95,28 +127,86 @@ async function runElectronSmoke() {
         setTimeout(() => waitForText(needle, callback, attempts - 1), 25);
       };
 
-      waitForText("Local SQLite storage is active.", () => {
-        const urlInput = document.querySelector('input[aria-label="URL to save"]');
-        const saveButton = Array.from(document.querySelectorAll("button")).find((button) =>
-          button.textContent.includes("Save URL")
-        );
+      const setInputValue = (input, value) => {
         const valueSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
-        const previousValue = urlInput.value;
+        const previousValue = input.value;
 
-        valueSetter.call(urlInput, "https://example.com");
-        if (urlInput._valueTracker) {
-          urlInput._valueTracker.setValue(previousValue);
+        valueSetter.call(input, value);
+        if (input._valueTracker) {
+          input._valueTracker.setValue(previousValue);
         }
-        urlInput.dispatchEvent(new Event("input", { bubbles: true }));
-        urlInput.dispatchEvent(new Event("change", { bubbles: true }));
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+      };
+
+      const findButtonByText = (text) =>
+        Array.from(document.querySelectorAll("button")).find((button) => button.textContent.includes(text));
+
+      const clickCategory = (name) => {
+        const category = Array.from(document.querySelectorAll(".categoryCard")).find((card) =>
+          card.textContent.includes(name)
+        );
+        category.click();
+      };
+
+      waitForText("Local SQLite storage is active.", () => {
+        waitForText("Target: Work", () => {
+        const urlInput = document.querySelector('input[aria-label="URL to save"]');
+        const titleInput = document.querySelector('input[aria-label="URL title"]');
+        const saveButton = findButtonByText("Save URL");
+
+        setInputValue(urlInput, "https://example.com/work");
+        setInputValue(titleInput, "Work title");
         saveButton.click();
 
-        setTimeout(() => {
-          resolve({
-            hasDeskPilotApi: Boolean(window.deskPilot),
-            bodyText: getRenderedText()
+        waitForText("Saved URL to Work.", () => {
+          document.querySelector('.savedUrlManagerItem button[title="Remove URL"]').click();
+
+          waitForText("Saved URL removed safely.", () => {
+            clickCategory("Projects");
+
+            waitForText("Target: Projects", () => {
+              const nextUrlInput = document.querySelector('input[aria-label="URL to save"]');
+              const nextTitleInput = document.querySelector('input[aria-label="URL title"]');
+              const nextSaveButton = findButtonByText("Save URL");
+              const titleRect = nextTitleInput.getBoundingClientRect();
+              const titleCenterElement = document.elementFromPoint(
+                titleRect.left + titleRect.width / 2,
+                titleRect.top + titleRect.height / 2
+              );
+
+              nextTitleInput.focus();
+              setInputValue(nextUrlInput, "https://example.com/projects");
+              setInputValue(nextTitleInput, "Project title");
+              const titleInputAcceptsText = nextTitleInput.value === "Project title";
+              nextSaveButton.click();
+
+              setTimeout(() => {
+                resolve({
+                  hasDeskPilotApi: Boolean(window.deskPilot),
+                  titleInputAcceptsText,
+                  titleInputReceivesClicks: titleCenterElement === nextTitleInput,
+                  titleInputCover: titleCenterElement
+                    ? {
+                        tagName: titleCenterElement.tagName,
+                        className: titleCenterElement.className,
+                        textContent: titleCenterElement.textContent,
+                        ariaLabel: titleCenterElement.getAttribute("aria-label")
+                      }
+                    : null,
+                  titleInputRect: {
+                    top: titleRect.top,
+                    left: titleRect.left,
+                    width: titleRect.width,
+                    height: titleRect.height
+                  },
+                  bodyText: getRenderedText()
+                });
+              }, 250);
+            });
           });
-        }, 200);
+        });
+      });
       });
     })
   `);
@@ -126,10 +216,16 @@ async function runElectronSmoke() {
     !result.bodyText.includes("Saving URLs requires the Electron app."),
     "Expected Save URL not to report a missing Electron app"
   );
-  if (!result.bodyText.includes("Saved URL to Work.")) {
+  if (!result.titleInputReceivesClicks) {
+    console.error(JSON.stringify({ titleInputCover: result.titleInputCover, titleInputRect: result.titleInputRect }, null, 2));
+  }
+  assert(result.titleInputReceivesClicks, "Expected the Projects title input not to be covered by another element");
+  assert(result.titleInputAcceptsText, "Expected the Projects title input to accept text after deleting a Work URL");
+  if (!result.bodyText.includes("Saved URL to Projects.")) {
     console.error(result.bodyText);
   }
-  assert(result.bodyText.includes("Saved URL to Work."), "Expected Save URL to use the Electron preload API");
+  assert(result.bodyText.includes("Saved URL to Projects."), "Expected Save URL to work after switching to Projects");
+  assert(result.bodyText.includes("Project title"), "Expected the Projects saved URL to keep the entered title");
 
   window.destroy();
   app.quit();
@@ -139,7 +235,7 @@ async function runElectronSmoke() {
       {
         renderer: "dist/index.html",
         preloadApi: result.hasDeskPilotApi,
-        saveUrl: "ok"
+        moveAfterDelete: "ok"
       },
       null,
       2
