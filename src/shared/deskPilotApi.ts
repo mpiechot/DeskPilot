@@ -10,6 +10,8 @@ export type DeskPilotApi = {
   exportStorageBackup: (fileName?: string) => Promise<StorageExportResult | null>;
   importStorageBackup: () => Promise<StorageRestoreResult | null>;
   listCategories: () => Promise<SessionCategory[]>;
+  getActiveCategory: () => Promise<string>;
+  setActiveCategory: (id: string) => Promise<string>;
   createCategory: (input: CategoryInput) => Promise<SessionCategory[]>;
   updateCategory: (id: string, input: CategoryInput) => Promise<SessionCategory[]>;
   deleteCategory: (id: string) => Promise<SessionCategory[]>;
@@ -74,6 +76,10 @@ export type StorageExportResult = {
 
 export type CaptureMode = "append" | "replace";
 
+export type CrossCategoryDuplicatePolicy = "ask" | "allow" | "skip" | "ignore";
+
+export type SaveStatus = "saved" | "already-saved" | "restored" | "skipped-cross-category-duplicate";
+
 export type CategoryRow = {
   id: string;
   name: string;
@@ -101,10 +107,18 @@ export type SessionTabInput = {
 export type SessionMutationResult = {
   categories: SessionCategory[];
   tabs: SessionTab[];
+  saveStatus?: SaveStatus;
 };
 
 export type CaptureResult = SessionMutationResult & {
   savedCount: number;
+  restoredCount: number;
+  skippedSameCategoryDuplicateCount: number;
+  skippedCrossCategoryDuplicateCount: number;
+  skippedUnsupportedCount: number;
+  confirmationRequired: boolean;
+  duplicateCategoryNames: string[];
+  savedUrls: string[];
   mode: CaptureMode;
 };
 

@@ -20,6 +20,7 @@ import {
   deleteCategory,
   deleteTab,
   exportStorageBackup,
+  getActiveCategoryId,
   getStorageInfo,
   importStorageBackup,
   initializeStorage,
@@ -30,6 +31,7 @@ import {
   restoreCategory,
   restoreManualBackup,
   restoreTab,
+  setActiveCategoryId,
   updateCategory
 } from "./storage.js";
 import { getBrowserBridgeStatus, startBrowserBridge } from "./browserBridge.js";
@@ -43,6 +45,20 @@ let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let isQuitting = false;
 let bridgeServer: ReturnType<typeof startBrowserBridge> | null = null;
+
+function showMainWindow(): void {
+  if (!mainWindow) {
+    createMainWindow();
+    return;
+  }
+
+  if (mainWindow.isMinimized()) {
+    mainWindow.restore();
+  }
+
+  mainWindow.show();
+  mainWindow.focus();
+}
 
 function createMainWindow(): void {
   const bounds = loadWindowBounds(app.getPath("userData"));
@@ -87,7 +103,7 @@ function createTray(): void {
   tray.setToolTip("DeskPilot");
   tray.setContextMenu(
     Menu.buildFromTemplate([
-      { label: "Show DeskPilot", click: () => mainWindow?.show() },
+      { label: "Show DeskPilot", click: showMainWindow },
       { type: "separator" },
       {
         label: "Quit",
@@ -123,7 +139,7 @@ function showOpenDialog(options: OpenDialogOptions) {
 
 app.whenReady().then(async () => {
   await initializeStorage(app.getPath("userData"));
-  bridgeServer = startBrowserBridge();
+  bridgeServer = startBrowserBridge({ showApp: showMainWindow });
   ipcMain.handle("bridge:status", () => getBrowserBridgeStatus(bridgeServer));
   ipcMain.handle("extension:install-info", () => getExtensionInstallInfo(projectRoot));
   ipcMain.handle("storage:info", () => getStorageInfo());
@@ -158,6 +174,8 @@ app.whenReady().then(async () => {
     return importStorageBackup(result.filePaths[0]);
   });
   ipcMain.handle("categories:list", () => listCategories());
+  ipcMain.handle("categories:active", () => getActiveCategoryId());
+  ipcMain.handle("categories:set-active", (_event, id) => setActiveCategoryId(id));
   ipcMain.handle("categories:create", (_event, input) => createCategory(input));
   ipcMain.handle("categories:update", (_event, id, input) => updateCategory(id, input));
   ipcMain.handle("categories:delete", (_event, id) => deleteCategory(id));

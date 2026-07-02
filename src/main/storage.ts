@@ -8,6 +8,8 @@ import type {
   CategoryInput,
   CategoryRow,
   CategoryRecoveryResult,
+  CrossCategoryDuplicatePolicy,
+  SaveStatus,
   SessionMutationResult,
   SessionTab,
   SessionTabInput,
@@ -23,6 +25,26 @@ type StoragePaths = {
   backupPath: string;
   manualBackupDirectory: string;
   temporaryPath: string;
+};
+
+type SaveTabOptions = {
+  crossCategoryDuplicatePolicy: CrossCategoryDuplicatePolicy;
+};
+
+type CaptureSaveOptions = {
+  crossCategoryDuplicatePolicy?: CrossCategoryDuplicatePolicy;
+  skippedUnsupportedCount?: number;
+};
+
+type SaveTabOutcome = {
+  status: SaveStatus;
+  savedCount: number;
+  restoredCount: number;
+  skippedSameCategoryDuplicateCount: number;
+  skippedCrossCategoryDuplicateCount: number;
+  confirmationRequired: boolean;
+  duplicateCategoryNames: string[];
+  savedUrls: string[];
 };
 
 let sqlite: SqlJsStatic | null = null;
@@ -107,6 +129,21 @@ export function listCategories(): SessionCategory[] {
   return listCategoryRows("c.deleted_at IS NULL");
 }
 
+export function getActiveCategoryId(): string {
+  return resolveActiveCategoryId(getDatabase());
+}
+
+export function setActiveCategoryId(id: string): string {
+  const db = getDatabase();
+  const safeId = normalizeCategoryId(id);
+
+  assertActiveCategoryExists(db, safeId);
+  setAppStateValue(db, "activeCategoryId", safeId);
+  saveDatabase();
+
+  return safeId;
+}
+
 export function createCategory(input: CategoryInput): SessionCategory[] {
   const db = getDatabase();
   const normalized = normalizeCategoryInput(input);
@@ -126,6 +163,7 @@ export function createCategory(input: CategoryInput): SessionCategory[] {
     }
   );
 
+  resolveActiveCategoryId(db);
   saveDatabase();
   return listCategories();
 }
@@ -150,6 +188,7 @@ export function updateCategory(id: string, input: CategoryInput): SessionCategor
     }
   );
 
+  resolveActiveCategoryId(db);
   saveDatabase();
   return listCategories();
 }
@@ -170,6 +209,7 @@ export function deleteCategory(id: string): SessionCategory[] {
     }
   );
 
+  resolveActiveCategoryId(db);
   saveDatabase();
   return listCategories();
 }
@@ -194,6 +234,7 @@ export function restoreCategory(id: string): CategoryRecoveryResult {
     }
   );
 
+  resolveActiveCategoryId(db);
   saveDatabase();
   return {
     categories: listCategories(),
@@ -238,21 +279,54 @@ function listTabsByDeletedState(categoryId: string, deleted: boolean): SessionTa
 export function addTab(input: SessionTabInput): SessionMutationResult {
   const db = getDatabase();
   const normalized = normalizeTabInput(input);
-
-  insertTab(db, normalized);
+  const outcome = saveTab(db, normalized, { crossCategoryDuplicatePolicy: "ignore" });
 
   saveDatabase();
   return {
     categories: listCategories(),
-    tabs: listTabs(normalized.categoryId)
+    tabs: listTabs(normalized.categoryId),
+    saveStatus: outcome.status
   };
 }
 
-export function saveCapturedTabs(categoryId: string, tabs: SessionTabInput[], mode: CaptureMode): CaptureResult {
+export function saveCapturedTab(categoryId: string, tab: SessionTabInput, options: CaptureSaveOptions = {}): CaptureResult {
+  return saveCapturedTabs(categoryId, [tab], "append", options);
+}
+
+export function saveCapturedTabs(
+  categoryId: string,
+  tabs: SessionTabInput[],
+  mode: CaptureMode,
+  options: CaptureSaveOptions = {}
+): CaptureResult {
   const db = getDatabase();
   const safeCategoryId = normalizeCategoryId(categoryId);
   const safeMode = normalizeCaptureMode(mode);
+  const crossCategoryDuplicatePolicy = options.crossCategoryDuplicatePolicy ?? "ask";
+
+  assertActiveCategoryExists(db, safeCategoryId);
   const normalizedTabs = tabs.map((tab) => normalizeTabInput({ ...tab, categoryId: safeCategoryId }));
+
+  if (normalizedTabs.length === 0) {
+    return createCaptureResult(safeCategoryId, safeMode, createEmptySaveOutcome(), options.skippedUnsupportedCount ?? 0);
+  }
+
+  if (safeMode === "append" && crossCategoryDuplicatePolicy === "ask") {
+    const duplicateCategoryNames = getCrossCategoryDuplicateNamesForTabs(db, safeCategoryId, normalizedTabs);
+
+    if (duplicateCategoryNames.length > 0) {
+      return createCaptureResult(safeCategoryId, safeMode, {
+        status: "skipped-cross-category-duplicate",
+        savedCount: 0,
+        restoredCount: 0,
+        skippedSameCategoryDuplicateCount: 0,
+        skippedCrossCategoryDuplicateCount: 0,
+        confirmationRequired: true,
+        duplicateCategoryNames,
+        savedUrls: []
+      }, options.skippedUnsupportedCount ?? 0);
+    }
+  }
 
   if (safeMode === "replace") {
     db.run(
@@ -267,17 +341,18 @@ export function saveCapturedTabs(categoryId: string, tabs: SessionTabInput[], mo
     );
   }
 
+  const total = createEmptySaveOutcome();
+
   for (const tab of normalizedTabs) {
-    insertTab(db, tab);
+    const outcome = saveTab(db, tab, {
+      crossCategoryDuplicatePolicy: safeMode === "replace" ? "ignore" : crossCategoryDuplicatePolicy
+    });
+
+    mergeSaveOutcome(total, outcome);
   }
 
   saveDatabase();
-  return {
-    categories: listCategories(),
-    tabs: listTabs(safeCategoryId),
-    savedCount: normalizedTabs.length,
-    mode: safeMode
-  };
+  return createCaptureResult(safeCategoryId, safeMode, total, options.skippedUnsupportedCount ?? 0);
 }
 
 export function deleteTab(id: string): SessionMutationResult {
@@ -459,7 +534,7 @@ function replaceActiveDatabase(sourcePath: string): void {
 
 function createStorageRestoreResult(sourcePath: string, safetyBackupPath: string): StorageRestoreResult {
   const categories = listCategories();
-  const selectedCategoryId = categories[0]?.id ?? "";
+  const selectedCategoryId = getActiveCategoryId();
 
   return {
     storageInfo: getStorageInfo(),
@@ -530,6 +605,14 @@ function migrate(db: Database): void {
       FOREIGN KEY (category_id) REFERENCES categories(id)
     );
   `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS app_state (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
 }
 
 function seedDefaultCategories(db: Database): void {
@@ -550,6 +633,77 @@ function seedDefaultCategories(db: Database): void {
     });
   } finally {
     statement.free();
+  }
+}
+
+function resolveActiveCategoryId(db: Database): string {
+  const storedCategoryId = getAppStateValue(db, "activeCategoryId");
+
+  if (storedCategoryId && isActiveCategoryId(db, storedCategoryId)) {
+    return storedCategoryId;
+  }
+
+  const fallbackCategoryId = getFirstActiveCategoryId(db);
+  setAppStateValue(db, "activeCategoryId", fallbackCategoryId);
+
+  return fallbackCategoryId;
+}
+
+function getAppStateValue(db: Database, key: string): string {
+  const result = db.exec("SELECT value FROM app_state WHERE key = $key", {
+    $key: key
+  });
+
+  if (result.length === 0 || result[0].values.length === 0) {
+    return "";
+  }
+
+  return String(result[0].values[0][0]);
+}
+
+function setAppStateValue(db: Database, key: string, value: string): void {
+  db.run(
+    `
+      INSERT INTO app_state (key, value, updated_at)
+      VALUES ($key, $value, CURRENT_TIMESTAMP)
+      ON CONFLICT(key) DO UPDATE SET
+        value = excluded.value,
+        updated_at = CURRENT_TIMESTAMP
+    `,
+    {
+      $key: key,
+      $value: value
+    }
+  );
+}
+
+function getFirstActiveCategoryId(db: Database): string {
+  const result = db.exec(`
+    SELECT id
+    FROM categories
+    WHERE deleted_at IS NULL
+    ORDER BY position ASC, name ASC
+    LIMIT 1
+  `);
+
+  if (result.length === 0 || result[0].values.length === 0) {
+    return "";
+  }
+
+  return String(result[0].values[0][0]);
+}
+
+function isActiveCategoryId(db: Database, id: string): boolean {
+  const result = db.exec("SELECT 1 FROM categories WHERE id = $id AND deleted_at IS NULL LIMIT 1", {
+    $id: id
+  });
+
+  return result.length > 0 && result[0].values.length > 0;
+}
+
+function assertActiveCategoryExists(db: Database, id: string): void {
+  if (!isActiveCategoryId(db, id)) {
+    throw new Error("DeskPilot category not found.");
   }
 }
 
@@ -698,6 +852,222 @@ function getNextTabPosition(db: Database, categoryId: string): number {
   }
 
   return Number(result[0].values[0][0]);
+}
+
+function saveTab(db: Database, input: SessionTabInput, options: SaveTabOptions): SaveTabOutcome {
+  assertActiveCategoryExists(db, input.categoryId);
+
+  const activeSameCategoryTab = findTabByUrl(db, input.categoryId, input.url, false);
+
+  if (activeSameCategoryTab) {
+    return {
+      status: "already-saved",
+      savedCount: 0,
+      restoredCount: 0,
+      skippedSameCategoryDuplicateCount: 1,
+      skippedCrossCategoryDuplicateCount: 0,
+      confirmationRequired: false,
+      duplicateCategoryNames: [],
+      savedUrls: []
+    };
+  }
+
+  const deletedSameCategoryTab = findTabByUrl(db, input.categoryId, input.url, true);
+
+  if (deletedSameCategoryTab) {
+    restoreTabRow(db, deletedSameCategoryTab.id, input);
+
+    return {
+      status: "restored",
+      savedCount: 1,
+      restoredCount: 1,
+      skippedSameCategoryDuplicateCount: 0,
+      skippedCrossCategoryDuplicateCount: 0,
+      confirmationRequired: false,
+      duplicateCategoryNames: [],
+      savedUrls: [input.url]
+    };
+  }
+
+  const duplicateCategoryNames = findCrossCategoryDuplicateNames(db, input.categoryId, input.url);
+
+  if (duplicateCategoryNames.length > 0) {
+    if (options.crossCategoryDuplicatePolicy === "ask") {
+      return {
+        status: "skipped-cross-category-duplicate",
+        savedCount: 0,
+        restoredCount: 0,
+        skippedSameCategoryDuplicateCount: 0,
+        skippedCrossCategoryDuplicateCount: 0,
+        confirmationRequired: true,
+        duplicateCategoryNames,
+        savedUrls: []
+      };
+    }
+
+    if (options.crossCategoryDuplicatePolicy === "skip") {
+      return {
+        status: "skipped-cross-category-duplicate",
+        savedCount: 0,
+        restoredCount: 0,
+        skippedSameCategoryDuplicateCount: 0,
+        skippedCrossCategoryDuplicateCount: 1,
+        confirmationRequired: false,
+        duplicateCategoryNames,
+        savedUrls: []
+      };
+    }
+  }
+
+  insertTab(db, input);
+
+  return {
+    status: "saved",
+    savedCount: 1,
+    restoredCount: 0,
+    skippedSameCategoryDuplicateCount: 0,
+    skippedCrossCategoryDuplicateCount: 0,
+    confirmationRequired: false,
+    duplicateCategoryNames: [],
+    savedUrls: [input.url]
+  };
+}
+
+function findTabByUrl(db: Database, categoryId: string, url: string, deleted: boolean): SessionTab | null {
+  const result = db.exec(
+    `
+      SELECT id, category_id, url, title, saved_at
+      FROM session_tabs
+      WHERE category_id = $categoryId AND url = $url AND deleted_at IS ${deleted ? "NOT NULL" : "NULL"}
+      ORDER BY saved_at DESC, position DESC
+      LIMIT 1
+    `,
+    {
+      $categoryId: categoryId,
+      $url: url
+    }
+  );
+
+  if (result.length === 0 || result[0].values.length === 0) {
+    return null;
+  }
+
+  const columns = result[0].columns;
+  const row = Object.fromEntries(columns.map((column, index) => [column, result[0].values[0][index]])) as SessionTabRow;
+  return mapSessionTabRow(row);
+}
+
+function restoreTabRow(db: Database, tabId: string, input: SessionTabInput): void {
+  db.run(
+    `
+      UPDATE session_tabs
+      SET title = $title,
+          position = $position,
+          saved_at = CURRENT_TIMESTAMP,
+          deleted_at = NULL
+      WHERE id = $id
+    `,
+    {
+      $id: tabId,
+      $title: input.title,
+      $position: getNextTabPosition(db, input.categoryId)
+    }
+  );
+}
+
+function findCrossCategoryDuplicateNames(db: Database, categoryId: string, url: string): string[] {
+  const result = db.exec(
+    `
+      SELECT DISTINCT c.name
+      FROM session_tabs t
+      INNER JOIN categories c ON c.id = t.category_id
+      WHERE t.url = $url
+        AND t.category_id != $categoryId
+        AND t.deleted_at IS NULL
+        AND c.deleted_at IS NULL
+      ORDER BY c.position ASC, c.name ASC
+    `,
+    {
+      $categoryId: categoryId,
+      $url: url
+    }
+  );
+
+  if (result.length === 0) {
+    return [];
+  }
+
+  return result[0].values.map((value) => String(value[0]));
+}
+
+function getCrossCategoryDuplicateNamesForTabs(db: Database, categoryId: string, tabs: SessionTabInput[]): string[] {
+  const names = new Set<string>();
+
+  for (const tab of tabs) {
+    if (findTabByUrl(db, categoryId, tab.url, false)) {
+      continue;
+    }
+
+    for (const name of findCrossCategoryDuplicateNames(db, categoryId, tab.url)) {
+      names.add(name);
+    }
+  }
+
+  return [...names];
+}
+
+function createEmptySaveOutcome(): SaveTabOutcome {
+  return {
+    status: "saved",
+    savedCount: 0,
+    restoredCount: 0,
+    skippedSameCategoryDuplicateCount: 0,
+    skippedCrossCategoryDuplicateCount: 0,
+    confirmationRequired: false,
+    duplicateCategoryNames: [],
+    savedUrls: []
+  };
+}
+
+function mergeSaveOutcome(target: SaveTabOutcome, source: SaveTabOutcome): void {
+  target.savedCount += source.savedCount;
+  target.restoredCount += source.restoredCount;
+  target.skippedSameCategoryDuplicateCount += source.skippedSameCategoryDuplicateCount;
+  target.skippedCrossCategoryDuplicateCount += source.skippedCrossCategoryDuplicateCount;
+  target.confirmationRequired = target.confirmationRequired || source.confirmationRequired;
+  target.savedUrls.push(...source.savedUrls);
+
+  for (const name of source.duplicateCategoryNames) {
+    if (!target.duplicateCategoryNames.includes(name)) {
+      target.duplicateCategoryNames.push(name);
+    }
+  }
+
+  if (source.status !== "saved") {
+    target.status = source.status;
+  }
+}
+
+function createCaptureResult(
+  categoryId: string,
+  mode: CaptureMode,
+  outcome: SaveTabOutcome,
+  skippedUnsupportedCount: number
+): CaptureResult {
+  return {
+    categories: listCategories(),
+    tabs: listTabs(categoryId),
+    saveStatus: outcome.status,
+    savedCount: outcome.savedCount,
+    restoredCount: outcome.restoredCount,
+    skippedSameCategoryDuplicateCount: outcome.skippedSameCategoryDuplicateCount,
+    skippedCrossCategoryDuplicateCount: outcome.skippedCrossCategoryDuplicateCount,
+    skippedUnsupportedCount,
+    confirmationRequired: outcome.confirmationRequired,
+    duplicateCategoryNames: outcome.duplicateCategoryNames,
+    savedUrls: outcome.savedUrls,
+    mode
+  };
 }
 
 function insertTab(db: Database, input: SessionTabInput): void {

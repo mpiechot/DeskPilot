@@ -120,15 +120,18 @@ function App() {
       })
       .catch(() => undefined);
 
-    window.deskPilot
-      .listCategories()
-      .then((storedCategories: SessionCategory[]) => {
+    Promise.all([window.deskPilot.listCategories(), window.deskPilot.getActiveCategory()])
+      .then(([storedCategories, activeCategoryId]: [SessionCategory[], string]) => {
         if (!isMounted) {
           return;
         }
 
         setCategories(storedCategories);
-        setSelectedCategoryId((currentId) => currentId || storedCategories[0]?.id || "");
+        setSelectedCategoryId(
+          storedCategories.some((category) => category.id === activeCategoryId)
+            ? activeCategoryId
+            : storedCategories[0]?.id || ""
+        );
         setStorageStatus("ready");
       })
       .catch(() => {
@@ -171,6 +174,14 @@ function App() {
       .then((storedTabs: SessionTab[]) => setDeletedTabs(storedTabs))
       .catch(() => undefined);
   }, [selectedCategoryId]);
+
+  useEffect(() => {
+    if (!window.deskPilot || storageStatus !== "ready" || !selectedCategoryId) {
+      return;
+    }
+
+    window.deskPilot.setActiveCategory(selectedCategoryId).catch(() => undefined);
+  }, [selectedCategoryId, storageStatus]);
 
   const storageMessage = operationMessage
     ? operationMessage
@@ -266,7 +277,13 @@ function App() {
       .then((result: SessionMutationResult) => {
         updateSessionResult(result);
         setTabDraft({ categoryId: selectedCategoryId, url: "", title: "" });
-        setOperationMessage(`Saved URL to ${selectedCategoryName()}.`);
+        setOperationMessage(
+          result.saveStatus === "already-saved"
+            ? `Already saved in ${selectedCategoryName()}.`
+            : result.saveStatus === "restored"
+              ? `Restored URL in ${selectedCategoryName()}.`
+              : `Saved URL to ${selectedCategoryName()}.`
+        );
       })
       .catch(() => {
         setOperationMessage("Could not save URL. Use a full http or https URL.");

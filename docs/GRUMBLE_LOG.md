@@ -39,3 +39,6 @@ Creating backup snapshots is straightforward, but import/restore is where data-l
 
 Prototype packaging note:
 The current prototype package is intentionally not a real installer. It launches from a generated folder but still relies on the repository's installed Electron runtime, which is acceptable for local trial use and not acceptable for sharing with non-developers.
+
+Extension bridge test note:
+The production bridge needs a stable localhost port so the browser extension can find it, but tests should not assume that port is free. The bridge smoke test now asks the OS for a free port so it can run while the normal DeskPilot app is already open.

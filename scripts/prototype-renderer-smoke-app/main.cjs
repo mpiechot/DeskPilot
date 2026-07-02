@@ -20,6 +20,7 @@ async function runElectronSmoke() {
   const tabsByCategory = new Map();
   const deletedTabsByCategory = new Map();
   const categories = defaultCategories.map((category) => ({ ...category }));
+  let activeCategoryId = categories[0]?.id ?? "";
 
   function getActiveTabs(categoryId) {
     return tabsByCategory.get(categoryId) ?? [];
@@ -56,6 +57,14 @@ async function runElectronSmoke() {
     manualBackups: []
   }));
   ipcMain.handle("categories:list", () => categories);
+  ipcMain.handle("categories:active", () => activeCategoryId);
+  ipcMain.handle("categories:set-active", (_event, id) => {
+    if (categories.some((category) => category.id === id)) {
+      activeCategoryId = id;
+    }
+
+    return activeCategoryId;
+  });
   ipcMain.handle("categories:deleted", () => []);
   ipcMain.handle("tabs:list", (_event, categoryId) => getActiveTabs(categoryId));
   ipcMain.handle("tabs:deleted", (_event, categoryId) => getDeletedTabs(categoryId));

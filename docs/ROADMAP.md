@@ -43,14 +43,14 @@ Goal:
 Read the current browser window and save it into DeskPilot.
 
 Status:
-Started. A local bridge and unpacked extension prototype exist, including append/replace capture behavior.
+Started. A local bridge and unpacked extension prototype exist, including current-tab saving, append/replace window capture behavior and duplicate-safe save flows.
 
 Expected features:
 - Chrome/Edge-compatible extension - prototype done
 - read tabs from current browser window - prototype done
 - send tab list to DeskPilot - prototype done
 - save current window into selected category - prototype done
-- one-click save current tab into the currently selected DeskPilot category - planned as GitHub issue #10
+- one-click save current tab into the currently selected DeskPilot category - done
 - optionally close saved browser window - prototype done with popup checkbox
 - choose append or replace when capturing - initial pass done with replace using soft-delete
 - visible bridge status in the app - initial pass done

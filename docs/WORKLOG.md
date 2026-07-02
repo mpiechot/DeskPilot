@@ -427,3 +427,27 @@ Current status:
 
 Next recommended step:
 - Implement browser-session restore as a new browser window, likely with a Chrome/Edge launch path and a safe fallback when no supported browser executable is found.
+
+### Browser extension current-tab save session
+
+Completed:
+- Confirmed the repository-local Git identity is `portfolio-pirat <mattzeal@gmail.com>`.
+- Confirmed PR #4 is the single open DeskPilot working pull request and has no review comments, review threads or status checks reported by the connector.
+- Implemented GitHub issue #10's current-tab extension workflow.
+- Added deterministic DeskPilot extension icon PNG assets and wired them in `manifest.json`.
+- Persisted DeskPilot's active category in SQLite and exposed it to the desktop app and extension bridge.
+- Replaced the old `/capture` bridge route with `/tabs/current/save`, `/windows/current/save` and `/app/show`.
+- Added same-category duplicate prevention, soft-deleted URL restore-on-save and cross-category duplicate confirmation results.
+- Updated the extension popup with `Save to`, `Save Current Tab`, `Save Current Window`, `Retry` and `Open DeskPilot`.
+- Extended storage and bridge smoke coverage for current-tab saves, duplicate skips, soft-deleted restores, cross-category confirmation, route names, icon assets and `/capture` removal.
+- Made bridge smoke tests use a dynamic test port so they can run while the normal DeskPilot bridge is open.
+- Updated README, usage notes and roadmap for the new extension workflow.
+- Verified `npm run build`, `npm run lint`, `npm run test:storage`, `npm run test:prototype` and `npm audit`.
+
+Current status:
+- The browser extension is now a lower-friction toolbar workflow for saving either the active tab or the current window.
+- The active category survives app restart and hide-to-tray through SQLite app state.
+- The local prototype was regenerated successfully after stopping stale local Electron processes that had locked `dist-prototype/DeskPilot`.
+
+Next recommended step:
+- Implement browser-session restore as a new browser window, keeping it separate from issue #10's save-side workflow.

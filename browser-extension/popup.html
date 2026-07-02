@@ -3,30 +3,46 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>DeskPilot Capture</title>
+    <title>DeskPilot</title>
     <link rel="stylesheet" href="popup.css" />
   </head>
   <body>
     <main>
-      <h1>DeskPilot</h1>
-      <select id="categorySelect" aria-label="Target category"></select>
-      <fieldset class="modeGroup">
-        <legend>Save mode</legend>
-        <label>
-          <input name="captureMode" type="radio" value="append" checked />
-          Append
+      <header>
+        <h1>DeskPilot</h1>
+      </header>
+
+      <label class="fieldLabel" for="categorySelect">Save to</label>
+      <select id="categorySelect" aria-label="Save to category"></select>
+
+      <button id="saveCurrentTabButton" class="primaryButton" type="button" disabled>Save Current Tab</button>
+
+      <section class="windowSaveSection" aria-label="Save current window">
+        <h2>Save Current Window</h2>
+        <fieldset class="modeGroup">
+          <legend>Mode</legend>
+          <label>
+            <input name="captureMode" type="radio" value="append" checked />
+            Append
+          </label>
+          <label>
+            <input name="captureMode" type="radio" value="replace" />
+            Replace
+          </label>
+        </fieldset>
+        <label class="checkboxRow">
+          <input id="closeAfterSave" type="checkbox" />
+          Close saved tabs
         </label>
-        <label>
-          <input name="captureMode" type="radio" value="replace" />
-          Replace
-        </label>
-      </fieldset>
-      <label class="checkboxRow">
-        <input id="closeAfterSave" type="checkbox" />
-        Close saved tabs
-      </label>
-      <button id="saveButton" type="button" disabled>Save Window</button>
-      <p id="statusText">DeskPilot must be running.</p>
+        <button id="saveCurrentWindowButton" class="secondaryButton" type="button" disabled>Save Current Window</button>
+      </section>
+
+      <div class="utilityActions">
+        <button id="openDeskPilotButton" type="button" disabled>Open DeskPilot</button>
+        <button id="retryButton" type="button">Retry</button>
+      </div>
+
+      <p id="statusText" role="status">DeskPilot must be running.</p>
     </main>
     <script src="popup.js"></script>
   </body>

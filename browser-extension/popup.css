@@ -1,5 +1,5 @@
 body {
-  width: 260px;
+  width: 282px;
   margin: 0;
   background: #f5f1e8;
   color: #20242a;
@@ -8,7 +8,7 @@ body {
 
 main {
   display: grid;
-  gap: 10px;
+  gap: 8px;
   padding: 12px;
 }
 
@@ -17,12 +17,31 @@ h1 {
   font-size: 1.1rem;
 }
 
+h2 {
+  margin: 0;
+  color: #27312d;
+  font-size: 0.86rem;
+}
+
 select,
 button {
   min-height: 38px;
   border: 1px solid #c9c0b2;
   border-radius: 8px;
   font: inherit;
+}
+
+select {
+  width: 100%;
+  background: #fffaf0;
+  color: #20242a;
+  padding: 0 9px;
+}
+
+.fieldLabel {
+  color: #5c625d;
+  font-size: 0.76rem;
+  font-weight: 800;
 }
 
 .checkboxRow {
@@ -60,6 +79,13 @@ button {
   font-weight: 800;
 }
 
+.windowSaveSection {
+  display: grid;
+  gap: 8px;
+  border-top: 1px solid #d7d0c2;
+  padding-top: 10px;
+}
+
 .checkboxRow input {
   width: 16px;
   height: 16px;
@@ -70,11 +96,18 @@ button {
   height: 15px;
 }
 
-button {
+.primaryButton,
+.secondaryButton {
   background: #26352f;
   color: #fffaf0;
   cursor: pointer;
   font-weight: 800;
+}
+
+.secondaryButton {
+  border-color: #b9c9b8;
+  background: #e7efe5;
+  color: #243d32;
 }
 
 button:disabled {
@@ -83,7 +116,28 @@ button:disabled {
   cursor: not-allowed;
 }
 
+.utilityActions {
+  display: grid;
+  grid-template-columns: 1fr 72px;
+  gap: 8px;
+}
+
+.utilityActions button {
+  min-height: 32px;
+  background: #fffaf0;
+  color: #27312d;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.utilityActions button:disabled {
+  background: #ebe4d8;
+  color: #7a7e78;
+}
+
 p {
+  min-height: 18px;
   margin: 0;
   color: #5c625d;
   font-size: 0.82rem;

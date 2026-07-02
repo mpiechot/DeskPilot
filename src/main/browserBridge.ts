@@ -1,29 +1,47 @@
 import http from "node:http";
 import type { AddressInfo } from "node:net";
-import type { BridgeStatus, CaptureMode, SessionTabInput } from "../shared/deskPilotApi.js";
-import { listCategories, saveCapturedTabs } from "./storage.js";
+import type {
+  BridgeStatus,
+  CaptureMode,
+  CaptureResult,
+  CrossCategoryDuplicatePolicy,
+  SessionTabInput
+} from "../shared/deskPilotApi.js";
+import { getActiveCategoryId, listCategories, saveCapturedTab, saveCapturedTabs } from "./storage.js";
 
 type CapturedTab = {
   url?: unknown;
   title?: unknown;
 };
 
-type CapturePayload = {
+type CurrentTabSavePayload = {
   categoryId?: unknown;
-  mode?: unknown;
+  tab?: unknown;
+  allowCrossCategoryDuplicate?: unknown;
+};
+
+type WindowSavePayload = {
+  categoryId?: unknown;
+  allowCrossCategoryDuplicates?: unknown;
   tabs?: unknown;
+  mode?: unknown;
+};
+
+type BridgeOptions = {
+  port?: number;
+  showApp?: () => void;
 };
 
 export const bridgeHost = "127.0.0.1";
 export const bridgePort = 17383;
 export const allowedOriginPrefixes = ["chrome-extension://", "edge-extension://"];
 
-export function startBrowserBridge(): http.Server {
+export function startBrowserBridge(options: BridgeOptions = {}): http.Server {
   const server = http.createServer((request, response) => {
-    void handleRequest(request, response);
+    void handleRequest(request, response, options);
   });
 
-  server.listen(bridgePort, bridgeHost);
+  server.listen(options.port ?? bridgePort, bridgeHost);
   server.on("listening", () => {
     const address = server.address() as AddressInfo;
     console.log(`DeskPilot extension bridge listening on ${address.address}:${address.port} (not the app UI)`);
@@ -33,15 +51,22 @@ export function startBrowserBridge(): http.Server {
 }
 
 export function getBrowserBridgeStatus(server: http.Server | null): BridgeStatus {
+  const address = server?.address();
+  const actualPort = typeof address === "object" && address ? address.port : bridgePort;
+
   return {
     running: Boolean(server?.listening),
     host: bridgeHost,
-    port: bridgePort,
+    port: actualPort,
     allowedOrigins: allowedOriginPrefixes
   };
 }
 
-async function handleRequest(request: http.IncomingMessage, response: http.ServerResponse): Promise<void> {
+async function handleRequest(
+  request: http.IncomingMessage,
+  response: http.ServerResponse,
+  options: BridgeOptions
+): Promise<void> {
   if (request.method === "GET" && isBridgeInfoPath(request.url)) {
     writeText(
       response,
@@ -70,45 +95,64 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
   }
 
   if (request.method === "GET" && request.url === "/categories") {
-    writeJson(response, 200, { categories: listCategories() });
+    writeJson(response, 200, { categories: listCategories(), activeCategoryId: getActiveCategoryId() });
     return;
   }
 
-  if (request.method === "POST" && request.url === "/capture") {
-    await handleCapture(request, response);
+  if (request.method === "POST" && request.url === "/tabs/current/save") {
+    await handleCurrentTabSave(request, response);
+    return;
+  }
+
+  if (request.method === "POST" && request.url === "/windows/current/save") {
+    await handleCurrentWindowSave(request, response);
+    return;
+  }
+
+  if (request.method === "POST" && request.url === "/app/show") {
+    options.showApp?.();
+    writeJson(response, 200, { shown: true });
     return;
   }
 
   writeJson(response, 404, { error: "Not found" });
 }
 
-async function handleCapture(request: http.IncomingMessage, response: http.ServerResponse): Promise<void> {
+async function handleCurrentTabSave(request: http.IncomingMessage, response: http.ServerResponse): Promise<void> {
   try {
-    const payload = (await readJsonBody(request)) as CapturePayload;
+    const payload = (await readJsonBody(request)) as CurrentTabSavePayload;
+    const categoryId = typeof payload.categoryId === "string" ? payload.categoryId : "";
+    const tab = normalizeCurrentTabPayload(payload.tab, categoryId);
+    const result = saveCapturedTab(categoryId, tab, {
+      crossCategoryDuplicatePolicy: payload.allowCrossCategoryDuplicate === true ? "allow" : "ask"
+    });
+
+    writeCaptureResult(response, result);
+  } catch (error) {
+    writeJson(response, 400, { error: error instanceof Error ? error.message : "Current tab save failed" });
+  }
+}
+
+async function handleCurrentWindowSave(request: http.IncomingMessage, response: http.ServerResponse): Promise<void> {
+  try {
+    const payload = (await readJsonBody(request)) as WindowSavePayload;
     const categoryId = typeof payload.categoryId === "string" ? payload.categoryId : "";
     const mode = normalizeCaptureMode(payload.mode);
-    const tabs = Array.isArray(payload.tabs) ? payload.tabs : [];
-    const saveableTabs: SessionTabInput[] = [];
+    const { saveableTabs, skippedUnsupportedCount } = normalizeWindowTabsPayload(payload.tabs, categoryId);
 
-    for (const tab of tabs) {
-      const capturedTab = tab as CapturedTab;
-
-      if (typeof capturedTab.url !== "string") {
-        continue;
-      }
-
-      saveableTabs.push({
-        categoryId,
-        url: capturedTab.url,
-        title: typeof capturedTab.title === "string" ? capturedTab.title : ""
-      });
+    if (saveableTabs.length === 0) {
+      writeCaptureResult(response, saveCapturedTabs(categoryId, [], mode, { skippedUnsupportedCount }));
+      return;
     }
 
-    const result = saveCapturedTabs(categoryId, saveableTabs, mode);
+    const result = saveCapturedTabs(categoryId, saveableTabs, mode, {
+      crossCategoryDuplicatePolicy: normalizeCrossCategoryDuplicatePolicy(payload.allowCrossCategoryDuplicates),
+      skippedUnsupportedCount
+    });
 
-    writeJson(response, 200, { savedCount: result.savedCount, mode: result.mode, categories: listCategories() });
+    writeCaptureResult(response, result);
   } catch (error) {
-    writeJson(response, 400, { error: error instanceof Error ? error.message : "Capture failed" });
+    writeJson(response, 400, { error: error instanceof Error ? error.message : "Current window save failed" });
   }
 }
 
@@ -122,6 +166,74 @@ function normalizeCaptureMode(value: unknown): CaptureMode {
   }
 
   throw new Error("Capture mode is not supported.");
+}
+
+function normalizeCrossCategoryDuplicatePolicy(value: unknown): CrossCategoryDuplicatePolicy {
+  if (value === true) {
+    return "allow";
+  }
+
+  if (value === false) {
+    return "skip";
+  }
+
+  return "ask";
+}
+
+function normalizeCurrentTabPayload(value: unknown, categoryId: string): SessionTabInput {
+  const tab = value as CapturedTab;
+
+  if (!tab || typeof tab.url !== "string" || !isHttpUrl(tab.url)) {
+    throw new Error("This browser page cannot be saved.");
+  }
+
+  return {
+    categoryId,
+    url: tab.url,
+    title: typeof tab.title === "string" ? tab.title : ""
+  };
+}
+
+function normalizeWindowTabsPayload(value: unknown, categoryId: string): {
+  saveableTabs: SessionTabInput[];
+  skippedUnsupportedCount: number;
+} {
+  const tabs = Array.isArray(value) ? value : [];
+  const saveableTabs: SessionTabInput[] = [];
+  let skippedUnsupportedCount = 0;
+
+  for (const item of tabs) {
+    const tab = item as CapturedTab;
+
+    if (typeof tab.url !== "string" || !isHttpUrl(tab.url)) {
+      skippedUnsupportedCount += 1;
+      continue;
+    }
+
+    saveableTabs.push({
+      categoryId,
+      url: tab.url,
+      title: typeof tab.title === "string" ? tab.title : ""
+    });
+  }
+
+  return { saveableTabs, skippedUnsupportedCount };
+}
+
+function isHttpUrl(value: string): boolean {
+  return /^https?:\/\//i.test(value);
+}
+
+function writeCaptureResult(response: http.ServerResponse, result: CaptureResult): void {
+  if (result.confirmationRequired) {
+    writeJson(response, 409, {
+      ...result,
+      error: "URL already saved in another category."
+    });
+    return;
+  }
+
+  writeJson(response, 200, result);
 }
 
 function isAllowedOrigin(origin: string | undefined): boolean {
