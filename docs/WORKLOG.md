@@ -409,3 +409,21 @@ Current status:
 
 Next recommended step:
 - Relaunch the regenerated prototype and manually repeat the Work-to-Projects URL move flow.
+
+### Recovery layout and capture friction feedback
+
+Completed:
+- Created GitHub issue #10 for one-click browser-extension saving of the current tab into the currently selected DeskPilot category.
+- Reproduced the Recovery layout overflow with a long unbroken deleted URL title in the packaged Electron renderer smoke test.
+- Fixed the control rail grid so long Recovery content cannot expand the rail into the category list.
+- Ellipsized long Recovery restore buttons inside the rail.
+- Extended the renderer smoke test to assert Recovery mode does not visually overlap the category list.
+- Documented that opening a saved category should restore it as a new browser window, not reuse the current default-browser window.
+- Verified `npm run test:prototype`, `npm run test:storage` and `npm run lint`.
+
+Current status:
+- Recovery should stay inside the left control rail even with long deleted URL titles.
+- GitHub issue #10 tracks the lower-friction browser save flow.
+
+Next recommended step:
+- Implement browser-session restore as a new browser window, likely with a Chrome/Edge launch path and a safe fallback when no supported browser executable is found.

@@ -35,6 +35,7 @@ Expected features:
 - URL recovery - initial pass done
 - create/edit/delete categories - initial pass done with soft-delete
 - open category URLs in browser - initial pass done
+- open saved category as a new browser window instead of reusing an existing browser window
 
 ## v0.3 - Browser Extension
 
@@ -49,6 +50,7 @@ Expected features:
 - read tabs from current browser window - prototype done
 - send tab list to DeskPilot - prototype done
 - save current window into selected category - prototype done
+- one-click save current tab into the currently selected DeskPilot category - planned as GitHub issue #10
 - optionally close saved browser window - prototype done with popup checkbox
 - choose append or replace when capturing - initial pass done with replace using soft-delete
 - visible bridge status in the app - initial pass done

@@ -18,6 +18,7 @@ async function runElectronSmoke() {
   console.log("Prototype renderer smoke: Electron ready");
 
   const tabsByCategory = new Map();
+  const deletedTabsByCategory = new Map();
   const categories = defaultCategories.map((category) => ({ ...category }));
 
   function getActiveTabs(categoryId) {
@@ -38,6 +39,10 @@ async function runElectronSmoke() {
     }
   }
 
+  function getDeletedTabs(categoryId) {
+    return deletedTabsByCategory.get(categoryId) ?? [];
+  }
+
   ipcMain.handle("bridge:status", () => ({ running: true, host: "127.0.0.1", port: 17383 }));
   ipcMain.handle("extension:install-info", () => ({
     extensionPath: path.join(prototypeRoot, "browser-extension"),
@@ -53,7 +58,7 @@ async function runElectronSmoke() {
   ipcMain.handle("categories:list", () => categories);
   ipcMain.handle("categories:deleted", () => []);
   ipcMain.handle("tabs:list", (_event, categoryId) => getActiveTabs(categoryId));
-  ipcMain.handle("tabs:deleted", () => []);
+  ipcMain.handle("tabs:deleted", (_event, categoryId) => getDeletedTabs(categoryId));
   ipcMain.handle("tabs:add", (_event, input) => {
     const tab = {
       id: `smoke-tab-${input.categoryId}-${Date.now()}`,
@@ -73,12 +78,15 @@ async function runElectronSmoke() {
     let affectedCategoryId = "";
 
     for (const [categoryId, tabs] of tabsByCategory.entries()) {
-      if (tabs.some((tab) => tab.id === id)) {
+      const deletedTab = tabs.find((tab) => tab.id === id);
+
+      if (deletedTab) {
         affectedCategoryId = categoryId;
         setActiveTabs(
           categoryId,
           tabs.filter((tab) => tab.id !== id)
         );
+        deletedTabsByCategory.set(categoryId, [...getDeletedTabs(categoryId), deletedTab]);
         break;
       }
     }
@@ -148,6 +156,47 @@ async function runElectronSmoke() {
         );
         category.click();
       };
+      const longWorkTitle =
+        "WorkTitleWithEnoughDetailToOverflowTheRecoveryPanelWhenRenderedInsideTheNarrowControlRail";
+
+      const getControlRailOverflow = () => {
+        const controlRail = document.querySelector(".controlRail");
+        const categoryList = document.querySelector(".categoryList");
+        const categoryLeft = categoryList.getBoundingClientRect().left;
+        const visibleElements = Array.from(controlRail.querySelectorAll("*")).filter((element) => {
+          const rect = element.getBoundingClientRect();
+          return rect.width > 0 && rect.height > 0;
+        });
+        const contentOverflow = visibleElements
+          .filter((element) => element.scrollWidth > element.clientWidth + 1)
+          .map((element) => ({
+            tagName: element.tagName,
+            className: element.className,
+            textContent: element.textContent,
+            clientWidth: element.clientWidth,
+            scrollWidth: element.scrollWidth
+          }));
+        const offenders = visibleElements
+          .map((element) => {
+            const rect = element.getBoundingClientRect();
+
+            return {
+              tagName: element.tagName,
+              className: element.className,
+              textContent: element.textContent,
+              right: rect.right
+            };
+          })
+          .filter((item) => item.right > categoryLeft);
+
+        return {
+          categoryLeft,
+          controlRailClientWidth: controlRail.clientWidth,
+          controlRailScrollWidth: controlRail.scrollWidth,
+          contentOverflow,
+          offenders
+        };
+      };
 
       waitForText("Local SQLite storage is active.", () => {
         waitForText("Target: Work", () => {
@@ -156,7 +205,7 @@ async function runElectronSmoke() {
         const saveButton = findButtonByText("Save URL");
 
         setInputValue(urlInput, "https://example.com/work");
-        setInputValue(titleInput, "Work title");
+        setInputValue(titleInput, longWorkTitle);
         saveButton.click();
 
         waitForText("Saved URL to Work.", () => {
@@ -182,10 +231,20 @@ async function runElectronSmoke() {
               nextSaveButton.click();
 
               setTimeout(() => {
+                const projectTitleSavedBeforeRecovery = getRenderedText().includes("Project title");
+                clickCategory("Work");
+
+                setTimeout(() => {
+                  findButtonByText("Recovery").click();
+
+                  waitForText("Restore " + longWorkTitle, () => {
+                  const recoveryOverflow = getControlRailOverflow();
+
                 resolve({
                   hasDeskPilotApi: Boolean(window.deskPilot),
                   titleInputAcceptsText,
                   titleInputReceivesClicks: titleCenterElement === nextTitleInput,
+                  projectTitleSavedBeforeRecovery,
                   titleInputCover: titleCenterElement
                     ? {
                         tagName: titleCenterElement.tagName,
@@ -200,8 +259,14 @@ async function runElectronSmoke() {
                     width: titleRect.width,
                     height: titleRect.height
                   },
+                  recoveryStaysInsideRail:
+                    recoveryOverflow.offenders.length === 0 &&
+                    recoveryOverflow.controlRailScrollWidth <= recoveryOverflow.controlRailClientWidth + 1,
+                  recoveryOverflow,
                   bodyText: getRenderedText()
                 });
+                  });
+                }, 50);
               }, 250);
             });
           });
@@ -221,11 +286,15 @@ async function runElectronSmoke() {
   }
   assert(result.titleInputReceivesClicks, "Expected the Projects title input not to be covered by another element");
   assert(result.titleInputAcceptsText, "Expected the Projects title input to accept text after deleting a Work URL");
-  if (!result.bodyText.includes("Saved URL to Projects.")) {
+  if (!result.recoveryStaysInsideRail) {
+    console.error(JSON.stringify(result.recoveryOverflow, null, 2));
+  }
+  assert(result.recoveryStaysInsideRail, "Expected Recovery mode controls not to overlap the category list");
+  if (!result.bodyText.includes("Saved URL to Projects.") && !result.projectTitleSavedBeforeRecovery) {
     console.error(result.bodyText);
   }
   assert(result.bodyText.includes("Saved URL to Projects."), "Expected Save URL to work after switching to Projects");
-  assert(result.bodyText.includes("Project title"), "Expected the Projects saved URL to keep the entered title");
+  assert(result.projectTitleSavedBeforeRecovery, "Expected the Projects saved URL to keep the entered title");
 
   window.destroy();
   app.quit();
