@@ -542,6 +542,8 @@ Completed:
 - Hardened storage and prototype smoke tests so Productive cannot be selected unintentionally.
 - Updated README, usage notes, roadmap, technical decisions and grumble log.
 - Verified `npm run build`, `npm run lint`, `npm run test:storage`, `npm run test:prototype` and `npm audit`.
+- Pushed `codex/productive-mvp-data-profiles` and opened draft working pull request #19 against `main`.
+- Checked PR #19 comments, review threads, commit statuses and workflow runs through the connector; none were reported yet.
 
 Current status:
 - Development and Productive browser-session data are isolated.
