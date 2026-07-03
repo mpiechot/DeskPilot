@@ -451,3 +451,23 @@ Current status:
 
 Next recommended step:
 - Implement browser-session restore as a new browser window, keeping it separate from issue #10's save-side workflow.
+
+## 2026-07-03
+
+### Extension origin rejection fix
+
+Completed:
+- Reproduced the reported extension popup failure with a storage smoke test: a bridge request without an `Origin` header returned `403 Origin not allowed`.
+- Kept ordinary origin-less bridge requests forbidden.
+- Added a DeskPilot-specific browser-extension client header and taught the bridge to accept it only when `Origin` is missing.
+- Updated the extension popup to send that client header for category loading, current-tab saves, current-window saves and app-show requests.
+- Extended bridge smoke coverage for origin-less extension-client category loading and current-tab saving.
+- Regenerated and verified the local prototype package.
+- Verified `npm run test:storage`, `npm run lint`, `npm run build` and `npm run test:prototype`.
+
+Current status:
+- The unpacked browser extension no longer depends on a stable browser-provided `Origin` header, so the extension ID itself should not block local prototype testing.
+- A previously loaded unpacked extension must be reloaded in the browser extension management page to pick up the new popup code.
+
+Next recommended step:
+- Reload the unpacked extension from `dist-prototype/DeskPilot/browser-extension/`, start DeskPilot from the regenerated prototype and manually test `Save Current Tab` plus `Save Current Window`.

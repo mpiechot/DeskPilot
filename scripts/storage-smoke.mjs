@@ -25,7 +25,12 @@ import {
   updateCategory
 } from "../dist-electron/main/storage.js";
 import { loadWindowBounds, saveWindowBounds } from "../dist-electron/main/windowSettings.js";
-import { getBrowserBridgeStatus, startBrowserBridge } from "../dist-electron/main/browserBridge.js";
+import {
+  extensionClientHeaderName,
+  extensionClientHeaderValue,
+  getBrowserBridgeStatus,
+  startBrowserBridge
+} from "../dist-electron/main/browserBridge.js";
 import { getExtensionInstallInfo } from "../dist-electron/main/extensionInstall.js";
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "deskpilot-storage-"));
@@ -164,6 +169,7 @@ assert(
 
 const bridgeServer = startBrowserBridge({ port: 0 });
 await new Promise((resolve) => bridgeServer.once("listening", resolve));
+const extensionClientHeaders = { [extensionClientHeaderName]: extensionClientHeaderValue };
 
 try {
   const bridgeStatus = getBrowserBridgeStatus(bridgeServer);
@@ -179,6 +185,19 @@ try {
 
   const forbiddenResponse = await fetch(`${bridgeUrl}/categories`);
   assert(forbiddenResponse.status === 403, "Expected origin-less bridge request to be forbidden");
+
+  const extensionClientCategoriesResponse = await fetch(`${bridgeUrl}/categories`, {
+    headers: extensionClientHeaders
+  });
+  assert(
+    extensionClientCategoriesResponse.status === 200,
+    "Expected extension client header to allow browser-extension requests without an Origin header"
+  );
+  const extensionClientCategoriesPayload = await extensionClientCategoriesResponse.json();
+  assert(
+    extensionClientCategoriesPayload.activeCategoryId === getActiveCategoryId(),
+    "Expected extension client header request to expose the active category"
+  );
 
   const categoriesResponse = await fetch(`${bridgeUrl}/categories`, {
     headers: { origin: "chrome-extension://deskpilot-test" }
@@ -203,6 +222,28 @@ try {
 
   assert(currentTabPayload.savedCount === 1, "Expected current-tab route to save one tab");
   assert(listTabs(categoryId).some((item) => item.title === "Current Tab"), "Expected current tab in storage");
+
+  const extensionClientCurrentTabResponse = await fetch(`${bridgeUrl}/tabs/current/save`, {
+    method: "POST",
+    headers: {
+      ...extensionClientHeaders,
+      "content-type": "application/json"
+    },
+    body: JSON.stringify({
+      categoryId,
+      tab: { url: "https://example.com/current-tab-extension-client", title: "Current Tab Extension Client" }
+    })
+  });
+  const extensionClientCurrentTabPayload = await extensionClientCurrentTabResponse.json();
+
+  assert(
+    extensionClientCurrentTabPayload.savedCount === 1,
+    "Expected extension client header to allow current-tab saves without an Origin header"
+  );
+  assert(
+    listTabs(categoryId).some((item) => item.title === "Current Tab Extension Client"),
+    "Expected extension client current tab in storage"
+  );
 
   const currentTabDuplicateResponse = await fetch(`${bridgeUrl}/tabs/current/save`, {
     method: "POST",
@@ -455,6 +496,10 @@ assert(!extensionPopupScript.includes("/capture"), "Expected extension popup not
 assert(extensionPopupScript.includes("/tabs/current/save"), "Expected extension popup to call current-tab route");
 assert(extensionPopupScript.includes("/windows/current/save"), "Expected extension popup to call current-window route");
 assert(extensionPopupScript.includes("/app/show"), "Expected extension popup to call app-show route");
+assert(
+  extensionPopupScript.includes(extensionClientHeaderName) && extensionPopupScript.includes(extensionClientHeaderValue),
+  "Expected extension popup to send the DeskPilot bridge client header"
+);
 
 console.log(
   JSON.stringify(

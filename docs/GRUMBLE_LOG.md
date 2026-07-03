@@ -42,3 +42,6 @@ The current prototype package is intentionally not a real installer. It launches
 
 Extension bridge test note:
 The production bridge needs a stable localhost port so the browser extension can find it, but tests should not assume that port is free. The bridge smoke test now asks the OS for a free port so it can run while the normal DeskPilot app is already open.
+
+MV3 origin note:
+Do not assume every browser-extension popup request will carry a useful `Origin` header. The bridge now accepts a DeskPilot-specific extension client header when `Origin` is missing, while still rejecting ordinary origin-less browser requests.

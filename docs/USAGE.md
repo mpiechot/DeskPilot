@@ -140,7 +140,7 @@ The extension uses DeskPilot's active desktop category as the default `Save to` 
 
 Current-tab saves reject unsupported browser pages such as `chrome://...`. Same-category duplicates are not added twice; soft-deleted matching URLs in the same category are restored. If a URL is already active in another category, the extension asks before saving it into the selected category too.
 
-The control panel's Extension mode shows the current load-unpacked folder and whether the extension manifest is present. For packaged prototype trials, load the `browser-extension/` folder from `dist-prototype/DeskPilot/`.
+The control panel's Extension mode shows the current load-unpacked folder and whether the extension manifest is present. For packaged prototype trials, load the `browser-extension/` folder from `dist-prototype/DeskPilot/`. After regenerating the prototype, reload the unpacked extension in the browser extension management page so the popup uses the latest bridge client headers.
 
 ## Data Safety
 

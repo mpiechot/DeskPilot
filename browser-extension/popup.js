@@ -1,4 +1,5 @@
 const bridgeUrl = "http://127.0.0.1:17383";
+const bridgeClientHeaders = { "x-deskpilot-client": "deskpilot-browser-extension" };
 const categorySelect = document.querySelector("#categorySelect");
 const closeAfterSave = document.querySelector("#closeAfterSave");
 const captureModeInputs = document.querySelectorAll("input[name='captureMode']");
@@ -20,7 +21,9 @@ async function loadCategories() {
   statusText.textContent = "Connecting to DeskPilot.";
 
   try {
-    const response = await fetch(`${bridgeUrl}/categories`);
+    const response = await fetch(`${bridgeUrl}/categories`, {
+      headers: bridgeClientHeaders
+    });
     const payload = await response.json();
     const categories = Array.isArray(payload.categories) ? payload.categories : [];
 
@@ -169,6 +172,7 @@ async function postJson(path, body) {
   const response = await fetch(`${bridgeUrl}${path}`, {
     method: "POST",
     headers: {
+      ...bridgeClientHeaders,
       "content-type": "application/json"
     },
     body: JSON.stringify(body)

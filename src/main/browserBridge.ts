@@ -35,6 +35,8 @@ type BridgeOptions = {
 export const bridgeHost = "127.0.0.1";
 export const bridgePort = 17383;
 export const allowedOriginPrefixes = ["chrome-extension://", "edge-extension://"];
+export const extensionClientHeaderName = "x-deskpilot-client";
+export const extensionClientHeaderValue = "deskpilot-browser-extension";
 
 export function startBrowserBridge(options: BridgeOptions = {}): http.Server {
   const server = http.createServer((request, response) => {
@@ -81,7 +83,7 @@ async function handleRequest(
     return;
   }
 
-  if (!isAllowedOrigin(request.headers.origin)) {
+  if (!isAllowedBridgeClient(request)) {
     writeJson(response, 403, { error: "Origin not allowed" });
     return;
   }
@@ -244,6 +246,20 @@ function isAllowedOrigin(origin: string | undefined): boolean {
   return allowedOriginPrefixes.some((prefix) => origin.startsWith(prefix));
 }
 
+function isAllowedBridgeClient(request: http.IncomingMessage): boolean {
+  const origin = request.headers.origin;
+
+  if (isAllowedOrigin(origin)) {
+    return true;
+  }
+
+  if (origin) {
+    return false;
+  }
+
+  return request.headers[extensionClientHeaderName] === extensionClientHeaderValue;
+}
+
 function isBridgeInfoPath(url: string | undefined): boolean {
   return url === "/" || url === "/health";
 }
@@ -255,7 +271,7 @@ function applyCorsHeaders(request: http.IncomingMessage, response: http.ServerRe
     response.setHeader("Access-Control-Allow-Origin", origin);
   }
 
-  response.setHeader("Access-Control-Allow-Headers", "content-type");
+  response.setHeader("Access-Control-Allow-Headers", `content-type, ${extensionClientHeaderName}`);
   response.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
 }
 
