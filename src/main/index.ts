@@ -35,6 +35,7 @@ import {
   updateCategory
 } from "./storage.js";
 import { getBrowserBridgeStatus, startBrowserBridge } from "./browserBridge.js";
+import { openUrlsInNewBrowserWindow } from "./browserLauncher.js";
 import { getExtensionInstallInfo } from "./extensionInstall.js";
 import { loadWindowBounds, saveWindowBounds } from "./windowSettings.js";
 
@@ -204,10 +205,10 @@ if (!hasSingleInstanceLock) {
     ipcMain.handle("tabs:restore", (_event, id) => restoreTab(id));
     ipcMain.handle("categories:open", async (_event, categoryId) => {
       const tabs = listTabs(categoryId);
-
-      for (const tab of tabs) {
-        await shell.openExternal(tab.url);
-      }
+      await openUrlsInNewBrowserWindow(
+        tabs.map((tab) => tab.url),
+        (url) => shell.openExternal(url)
+      );
 
       return tabs;
     });

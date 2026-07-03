@@ -35,7 +35,7 @@ Expected features:
 - URL recovery - initial pass done
 - create/edit/delete categories - initial pass done with soft-delete
 - open category URLs in browser - initial pass done
-- open saved category as a new browser window instead of reusing an existing browser window
+- open saved category as a new browser window instead of reusing an existing browser window - initial pass done with Chrome/Edge launcher
 
 ## v0.3 - Browser Extension
 

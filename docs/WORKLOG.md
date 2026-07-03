@@ -491,3 +491,19 @@ Current status:
 
 Next recommended step:
 - Start the regenerated prototype, reload the unpacked browser extension and run a manual save-current-tab/window trial with DeskPilot left open and then hidden to tray.
+
+### New-window restore fix
+
+Completed:
+- Reproduced the restore bug at the code seam: `Open Selected` opened each saved URL with Electron `shell.openExternal`, which lets the default browser reuse the current window.
+- Added a Chrome/Edge restore launcher that starts one browser process with `--new-window` and all saved URLs as arguments.
+- Kept an `openExternal` fallback for machines where no supported Chrome/Edge executable is found.
+- Updated `Open Selected` to use the new-window launcher instead of opening URLs one by one.
+- Extended storage smoke coverage for the new-window launch plan and prototype coverage to reject the old one-by-one `openExternal(tab.url)` path.
+- Verified `npm run test:storage`, `npm run test:prototype`, `npm run lint` and `npm run build`.
+
+Current status:
+- `Open Selected` should restore the selected category as one new Chrome/Edge window containing all saved URLs.
+
+Next recommended step:
+- Manually retest `Open Selected` from the regenerated prototype with a category containing multiple saved URLs.

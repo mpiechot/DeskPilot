@@ -13,7 +13,7 @@ Working today:
 - create, rename and remove active categories
 - restore removed categories
 - save http/https URLs into a selected category
-- open saved URLs from the selected category
+- open saved URLs from the selected category together in a new Chrome/Edge browser window
 - view and remove saved URLs in the selected category
 - restore removed URLs from the selected category
 - remember the desktop window size and position between app runs

@@ -36,6 +36,7 @@ Current state:
 - Categories and saved URLs are stored locally in a SQLite database.
 - Categories and saved URLs use soft-delete recovery flows.
 - Saved URLs can be viewed and removed from the selected category.
+- Saved URLs from a selected category open together in a new Chrome/Edge browser window.
 - Manual SQLite backup snapshots can be created, restored, exported and imported from the Safety mode.
 - A Chrome/Edge unpacked extension prototype can capture the current browser window through the local bridge in append or replace mode.
 - The extension can save the current tab into the active DeskPilot category with duplicate protection.

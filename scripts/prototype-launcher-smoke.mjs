@@ -36,6 +36,8 @@ assert(!rendererIndex.includes('src="/assets/'), "Expected renderer script path 
 assert(!rendererIndex.includes('href="/assets/'), "Expected renderer stylesheet path to be relative for Electron loadFile");
 assert(mainProcess.includes("requestSingleInstanceLock"), "Expected DeskPilot to prevent parallel app instances");
 assert(mainProcess.includes("second-instance"), "Expected DeskPilot to focus the existing window when started twice");
+assert(mainProcess.includes("openUrlsInNewBrowserWindow"), "Expected Open Selected to restore saved URLs in a new browser window");
+assert(!mainProcess.includes("openExternal(tab.url)"), "Expected Open Selected not to open saved URLs one-by-one");
 
 console.log(
   JSON.stringify(

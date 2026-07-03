@@ -32,6 +32,10 @@ import {
   getBrowserBridgeStatus,
   startBrowserBridge
 } from "../dist-electron/main/browserBridge.js";
+import {
+  createBrowserWindowLaunchPlan,
+  getSupportedBrowserExecutableCandidates
+} from "../dist-electron/main/browserLauncher.js";
 import { getExtensionInstallInfo } from "../dist-electron/main/extensionInstall.js";
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "deskpilot-storage-"));
@@ -166,6 +170,32 @@ assert(
     loadedBounds.width === customBounds.width &&
     loadedBounds.height === customBounds.height,
   "Expected window bounds to round-trip through settings storage"
+);
+
+const restoreLaunchPlan = createBrowserWindowLaunchPlan(
+  ["https://example.com/one", "https://example.com/two"],
+  "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+);
+assert(
+  restoreLaunchPlan.args[0] === "--new-window",
+  "Expected saved category restore to request a new browser window"
+);
+assert(
+  restoreLaunchPlan.args.includes("https://example.com/one") && restoreLaunchPlan.args.includes("https://example.com/two"),
+  "Expected saved category restore to launch all saved URLs together"
+);
+const restoreBrowserCandidates = getSupportedBrowserExecutableCandidates({
+  ProgramFiles: "C:\\Program Files",
+  "ProgramFiles(x86)": "C:\\Program Files (x86)",
+  LOCALAPPDATA: "C:\\Users\\DeskPilot\\AppData\\Local"
+});
+assert(
+  restoreBrowserCandidates.some((candidate) => candidate.endsWith("Chrome\\Application\\chrome.exe")),
+  "Expected saved category restore to support Chrome"
+);
+assert(
+  restoreBrowserCandidates.some((candidate) => candidate.endsWith("Edge\\Application\\msedge.exe")),
+  "Expected saved category restore to support Edge"
 );
 
 const bridgeServer = startBrowserBridge({ port: 0 });
