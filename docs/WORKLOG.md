@@ -544,6 +544,7 @@ Completed:
 - Verified `npm run build`, `npm run lint`, `npm run test:storage`, `npm run test:prototype` and `npm audit`.
 - Pushed `codex/productive-mvp-data-profiles` and opened draft working pull request #19 against `main`.
 - Checked PR #19 comments, review threads, commit statuses and workflow runs through the connector; none were reported yet.
+- Closed completed GitHub issues #5 through #10 because their implementations are already merged through PR #4.
 
 Current status:
 - Development and Productive browser-session data are isolated.
