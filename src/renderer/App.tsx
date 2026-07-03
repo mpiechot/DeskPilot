@@ -3,7 +3,9 @@ import {
   CheckCircle2,
   DatabaseBackup,
   Download,
+  ExternalLink,
   FolderOpen,
+  GripVertical,
   PanelTopOpen,
   Pencil,
   Plus,
@@ -15,7 +17,7 @@ import {
   Upload,
   X
 } from "lucide-react";
-import { type FormEvent, useEffect, useState } from "react";
+import { type DragEvent, type FormEvent, useEffect, useState } from "react";
 import type {
   BridgeStatus,
   CategoryInput,
@@ -76,12 +78,14 @@ function App() {
   const [deletedCategories, setDeletedCategories] = useState<SessionCategory[]>([]);
   const [deletedTabs, setDeletedTabs] = useState<SessionTab[]>([]);
   const [tabs, setTabs] = useState<SessionTab[]>([]);
+  const [boardTabsByCategory, setBoardTabsByCategory] = useState<Record<string, SessionTab[]>>({});
   const [tabDraft, setTabDraft] = useState<SessionTabInput>({ categoryId: selectedCategoryId, url: "", title: "" });
   const [controlMode, setControlMode] = useState<"session" | "categories" | "recovery" | "extension" | "safety">("session");
   const [operationMessage, setOperationMessage] = useState("");
   const [bridgeStatus, setBridgeStatus] = useState<BridgeStatus | null>(null);
   const [extensionInfo, setExtensionInfo] = useState<ExtensionInstallInfo | null>(null);
   const [storageInfo, setStorageInfo] = useState<StorageBackupInfo | null>(null);
+  const [draggedTab, setDraggedTab] = useState<{ id: string; categoryId: string } | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -182,6 +186,39 @@ function App() {
 
     window.deskPilot.setActiveCategory(selectedCategoryId).catch(() => undefined);
   }, [selectedCategoryId, storageStatus]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    if (!window.deskPilot || storageStatus !== "ready") {
+      setBoardTabsByCategory({});
+      return () => {
+        isMounted = false;
+      };
+    }
+
+    Promise.all(categories.map((category) => window.deskPilot?.listTabs(category.id) ?? Promise.resolve([])))
+      .then((tabLists: SessionTab[][]) => {
+        if (!isMounted) {
+          return;
+        }
+
+        const nextBoardTabs = Object.fromEntries(
+          categories.map((category, index) => [category.id, tabLists[index] ?? []])
+        );
+        setBoardTabsByCategory(nextBoardTabs);
+        setTabs(nextBoardTabs[selectedCategoryId] ?? []);
+      })
+      .catch(() => {
+        if (isMounted) {
+          setOperationMessage("Could not load Session Board tabs.");
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [categories, selectedCategoryId, storageStatus]);
 
   useEffect(() => {
     if (!window.deskPilot?.onSessionsChanged) {
@@ -304,6 +341,87 @@ function App() {
 
   function selectedCategoryName(): string {
     return categories.find((category) => category.id === selectedCategoryId)?.name ?? "category";
+  }
+
+  function getBoardTabs(categoryId: string): SessionTab[] {
+    return boardTabsByCategory[categoryId] ?? [];
+  }
+
+  function handleBoardDragStart(event: DragEvent<HTMLElement>, tab: SessionTab): void {
+    event.stopPropagation();
+
+    if (!isStorageWritable) {
+      event.preventDefault();
+      setOperationMessage("Moving URLs requires the Electron app.");
+      return;
+    }
+
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("application/x-deskpilot-tab", tab.id);
+    event.dataTransfer.setData("text/plain", tab.id);
+    setDraggedTab({ id: tab.id, categoryId: tab.categoryId });
+  }
+
+  function handleBoardDragOver(event: DragEvent<HTMLElement>): void {
+    if (!isStorageWritable || !draggedTab) {
+      return;
+    }
+
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+  }
+
+  function handleBoardDrop(event: DragEvent<HTMLElement>, targetCategoryId: string, targetPosition: number): void {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const tabId = event.dataTransfer.getData("application/x-deskpilot-tab") || draggedTab?.id;
+    const sourceCategoryId = draggedTab?.categoryId;
+
+    if (!tabId || !isStorageWritable) {
+      setDraggedTab(null);
+      return;
+    }
+
+    window.deskPilot
+      ?.moveTab(tabId, { targetCategoryId, targetPosition })
+      .then((result: SessionMutationResult) => {
+        const targetCategoryName = categories.find((category) => category.id === targetCategoryId)?.name ?? "category";
+
+        updateCategories(result.categories);
+
+        if (selectedCategoryId === targetCategoryId) {
+          setTabs(result.tabs);
+        } else if (selectedCategoryId) {
+          window.deskPilot
+            ?.listTabs(selectedCategoryId)
+            .then((storedTabs: SessionTab[]) => setTabs(storedTabs))
+            .catch(() => undefined);
+        }
+
+        refreshDeletedTabs();
+        setOperationMessage(
+          sourceCategoryId === targetCategoryId
+            ? `Updated tab order in ${targetCategoryName}.`
+            : `Moved URL to ${targetCategoryName}.`
+        );
+      })
+      .catch(() => setOperationMessage("Could not move saved URL. Existing data was left untouched."))
+      .finally(() => setDraggedTab(null));
+  }
+
+  function handleOpenTab(tab: SessionTab): void {
+    if (!window.deskPilot) {
+      setOperationMessage("Opening a saved URL requires the Electron app.");
+      return;
+    }
+
+    window.deskPilot
+      .openTab(tab.id)
+      .then((openedTab: SessionTab | null) => {
+        setOperationMessage(openedTab ? `Opened ${openedTab.title}.` : "Saved URL is no longer active.");
+      })
+      .catch(() => setOperationMessage("Could not open saved URL."));
   }
 
   function handleSaveUrl(): void {
@@ -823,9 +941,13 @@ function App() {
       </aside>
 
       <section className="categoryList" aria-label="Session categories">
-        {categories.map((category) => (
+        {categories.map((category) => {
+          const boardTabs = getBoardTabs(category.id);
+
+          return (
           <article
             className={`categoryCard ${selectedCategoryId === category.id ? "categoryCard-selected" : ""}`}
+            data-category-id={category.id}
             key={category.id}
             onClick={() => setSelectedCategoryId(category.id)}
           >
@@ -884,6 +1006,55 @@ function App() {
                     <span>{category.tabCount} tabs</span>
                     <span>{category.lastSavedLabel}</span>
                   </div>
+                  <div
+                    className="sessionBoardList"
+                    data-category-id={category.id}
+                    onDragOver={handleBoardDragOver}
+                    onDrop={(event) => handleBoardDrop(event, category.id, boardTabs.length)}
+                    role="list"
+                    aria-label={`Saved tabs in ${category.name}`}
+                  >
+                    {boardTabs.length === 0 ? <span className="sessionBoardEmpty">No saved tabs</span> : null}
+                    {boardTabs.map((tab, index) => (
+                      <div
+                        className={
+                          draggedTab?.id === tab.id ? "sessionBoardTab sessionBoardTab-dragging" : "sessionBoardTab"
+                        }
+                        data-category-id={category.id}
+                        data-tab-id={tab.id}
+                        draggable={isStorageWritable}
+                        key={tab.id}
+                        onClick={(event) => event.stopPropagation()}
+                        onDragEnd={() => setDraggedTab(null)}
+                        onDragOver={handleBoardDragOver}
+                        onDragStart={(event) => handleBoardDragStart(event, tab)}
+                        onDrop={(event) => {
+                          const rect = event.currentTarget.getBoundingClientRect();
+                          const nextPosition = event.clientY > rect.top + rect.height / 2 ? index + 1 : index;
+                          handleBoardDrop(event, category.id, nextPosition);
+                        }}
+                        role="listitem"
+                      >
+                        <GripVertical aria-hidden="true" />
+                        <div>
+                          <span>{tab.title}</span>
+                          <small>{getUrlHost(tab.url)}</small>
+                        </div>
+                        <button
+                          type="button"
+                          className="sessionBoardOpenAction"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleOpenTab(tab);
+                          }}
+                          title="Open saved tab"
+                          aria-label={`Open ${tab.title}`}
+                        >
+                          <ExternalLink aria-hidden="true" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                   <div className="cardActions">
                     <button
                       type="button"
@@ -912,7 +1083,8 @@ function App() {
               )}
             </div>
           </article>
-        ))}
+          );
+        })}
       </section>
     </main>
   );

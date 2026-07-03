@@ -17,6 +17,10 @@ Working today:
 - restore removed categories
 - save http/https URLs into a selected category
 - open saved URLs from the selected category together in saved order in a new Chrome/Edge browser window
+- view saved tabs under each category on the Session Board
+- move saved tabs between categories with mouse-first drag and drop
+- reorder saved tabs within a category with mouse-first drag and drop
+- open individual saved tabs from the Session Board
 - view and remove saved URLs in the selected category
 - restore removed URLs from the selected category
 - remember the desktop window size and position between app runs
@@ -181,6 +185,7 @@ DeskPilot creates local SQLite databases inside the active data profile.
 At this stage, SQLite stores categories and manually saved URLs.
 If a default category is added in a later build, DeskPilot seeds the missing category on the next start without deleting existing data.
 Saved URLs keep a persisted position inside their category. Existing databases with missing or duplicated tab positions are normalized deterministically on startup, and backup restore/import preserves the stored order.
+Moving or reordering a saved tab updates the existing saved-tab row instead of deleting and recreating it.
 
 The Safety mode can create manual SQLite snapshots in the active profile storage folder under `manual-backups/`. DeskPilot also keeps a rolling `deskpilot.sqlite.bak` file beside the active database after writes.
 

@@ -98,3 +98,11 @@ Persist a numeric tab position on every saved URL and use that stored order when
 
 Reason:
 The Productive MVP needs the browser session restored as the user arranged it, not as an accidental save-time or database order. Existing databases are normalized deterministically on startup so older data receives a stable order without deleting or rewriting the saved URLs themselves.
+
+## 2026-07-03 - Session Board Controls
+
+Decision:
+Keep `Open Selected` as the category-level restore action and add compact per-tab open icons inside Session Board rows.
+
+Reason:
+The low control-panel layout has room for a small icon without hiding tab titles or hosts. This gives precise single-tab access while preserving the safer full-session restore workflow.

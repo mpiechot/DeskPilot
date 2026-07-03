@@ -574,3 +574,25 @@ Current status:
 
 Next recommended step:
 - Implement GitHub issue #15: show saved tabs under each category in the Session Board.
+
+### Session Board completion session
+
+Completed:
+- Confirmed PR #19 is still the single open DeskPilot working pull request and has no comments, review threads, commit statuses or workflow runs reported yet.
+- Implemented GitHub issues #15 through #18 locally.
+- Added Session Board saved-tab lists inside each category card.
+- Added a storage/API `moveTab` operation that moves existing saved-tab rows between categories and reorders rows inside a category without deleting and recreating user data.
+- Added mouse-first drag and drop for cross-category saved-tab moves.
+- Added mouse-first drag and drop for same-category saved-tab reordering.
+- Added compact per-tab open icons on Session Board rows while keeping `Open Selected` as the category-level restore action.
+- Extended storage smoke coverage for cross-category moves, same-category reorder, restart persistence and restore order after reorder.
+- Extended packaged renderer smoke coverage for Session Board rendering, drag/drop moves, drag/drop reorder, per-tab open controls and low-height layout safety.
+- Updated README, usage notes, roadmap and technical decisions for the completed Session Board block.
+- Verified `npm run build`, `npm run test:storage` and `npm run test:prototype` during implementation.
+
+Current status:
+- The planned Productive MVP implementation issues #11 through #18 are implemented on PR #19.
+- DeskPilot can now show, open, move and reorder saved tabs in the app, with storage preserving the resulting order.
+
+Next recommended step:
+- Run final lint/audit verification, push PR #19, then use the regenerated prototype for a real productive browser-session trial and fix any quality-gate or daily-use issues before declaring 1.0 complete.

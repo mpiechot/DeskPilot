@@ -22,6 +22,12 @@ const silentLauncher = fs.readFileSync(silentLauncherPath, "utf-8");
 const prototypePackage = JSON.parse(fs.readFileSync(packagePath, "utf-8"));
 const rendererIndex = fs.readFileSync(rendererIndexPath, "utf-8");
 const mainProcess = fs.readFileSync(mainProcessPath, "utf-8");
+const categoryOpenHandlerStart = mainProcess.indexOf('ipcMain.handle("categories:open"');
+const categoryOpenHandlerEnd = mainProcess.indexOf("createMainWindow()", categoryOpenHandlerStart);
+const categoryOpenHandler =
+  categoryOpenHandlerStart >= 0 && categoryOpenHandlerEnd > categoryOpenHandlerStart
+    ? mainProcess.slice(categoryOpenHandlerStart, categoryOpenHandlerEnd)
+    : "";
 
 assert(prototypePackage.main === "dist-electron/main/index.js", "Expected prototype to point at the Electron main process");
 assert(launcher.includes("electron.exe"), "Expected launcher to use the Electron executable directly");
@@ -53,8 +59,14 @@ assert(!rendererIndex.includes('src="/assets/'), "Expected renderer script path 
 assert(!rendererIndex.includes('href="/assets/'), "Expected renderer stylesheet path to be relative for Electron loadFile");
 assert(mainProcess.includes("requestSingleInstanceLock"), "Expected DeskPilot to prevent parallel app instances");
 assert(mainProcess.includes("second-instance"), "Expected DeskPilot to focus the existing window when started twice");
-assert(mainProcess.includes("openUrlsInNewBrowserWindow"), "Expected Open Selected to restore saved URLs in a new browser window");
-assert(!mainProcess.includes("openExternal(tab.url)"), "Expected Open Selected not to open saved URLs one-by-one");
+assert(
+  categoryOpenHandler.includes("openUrlsInNewBrowserWindow"),
+  "Expected Open Selected to restore saved URLs in a new browser window"
+);
+assert(
+  !categoryOpenHandler.includes("openExternal(tab.url)"),
+  "Expected Open Selected not to open saved URLs one-by-one"
+);
 
 console.log(
   JSON.stringify(

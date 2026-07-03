@@ -11,6 +11,7 @@ import type {
   CrossCategoryDuplicatePolicy,
   DataProfileId,
   DataProfileInfo,
+  MoveTabInput,
   SaveStatus,
   SessionMutationResult,
   SessionTab,
@@ -56,6 +57,12 @@ type TabOrderRow = {
   deleted_at: string | null;
   position: number;
   saved_at: string;
+};
+
+type ActiveTabPlacementRow = {
+  category_id: string;
+  position: number;
+  url: string;
 };
 
 let sqlite: SqlJsStatic | null = null;
@@ -292,6 +299,30 @@ export function listDeletedTabs(categoryId: string): SessionTab[] {
   return listTabsByDeletedState(categoryId, true);
 }
 
+export function getActiveTab(id: string): SessionTab | null {
+  const db = getDatabase();
+  const safeId = normalizeRequiredString(id, "Tab id is required.");
+  const result = db.exec(
+    `
+      SELECT id, category_id, url, title, position, saved_at
+      FROM session_tabs
+      WHERE id = $id AND deleted_at IS NULL
+      LIMIT 1
+    `,
+    {
+      $id: safeId
+    }
+  );
+
+  if (result.length === 0 || result[0].values.length === 0) {
+    return null;
+  }
+
+  const columns = result[0].columns;
+  const row = Object.fromEntries(columns.map((column, index) => [column, result[0].values[0][index]])) as SessionTabRow;
+  return mapSessionTabRow(row);
+}
+
 function listTabsByDeletedState(categoryId: string, deleted: boolean): SessionTab[] {
   const db = getDatabase();
   const safeCategoryId = normalizeCategoryId(categoryId);
@@ -417,6 +448,68 @@ export function deleteTab(id: string): SessionMutationResult {
   return {
     categories: listCategories(),
     tabs: categoryId ? listTabs(categoryId) : []
+  };
+}
+
+export function moveTab(id: string, input: MoveTabInput): SessionMutationResult {
+  const db = getDatabase();
+  const safeId = normalizeRequiredString(id, "Tab id is required.");
+  const targetCategoryId = normalizeCategoryId(input.targetCategoryId);
+  const targetPosition = normalizeTabPosition(input.targetPosition);
+
+  assertActiveCategoryExists(db, targetCategoryId);
+  const currentPlacement = getActiveTabPlacement(db, safeId);
+
+  if (!currentPlacement) {
+    throw new Error("Saved tab is not active.");
+  }
+
+  if (
+    currentPlacement.category_id !== targetCategoryId &&
+    hasActiveTabUrlInCategoryExcept(db, targetCategoryId, currentPlacement.url, safeId)
+  ) {
+    throw new Error("Target category already contains this URL.");
+  }
+
+  db.run("BEGIN TRANSACTION");
+
+  try {
+    if (currentPlacement.category_id !== targetCategoryId) {
+      db.run(
+        `
+          UPDATE session_tabs
+          SET category_id = $targetCategoryId
+          WHERE id = $id AND deleted_at IS NULL
+        `,
+        {
+          $id: safeId,
+          $targetCategoryId: targetCategoryId
+        }
+      );
+    }
+
+    const affectedCategoryIds = new Set([currentPlacement.category_id, targetCategoryId]);
+
+    for (const categoryId of affectedCategoryIds) {
+      const orderedIds = getActiveTabIds(db, categoryId).filter((tabId) => tabId !== safeId);
+
+      if (categoryId === targetCategoryId) {
+        orderedIds.splice(Math.min(targetPosition, orderedIds.length), 0, safeId);
+      }
+
+      rewriteTabPositions(db, categoryId, orderedIds);
+    }
+
+    db.run("COMMIT");
+  } catch (error) {
+    db.run("ROLLBACK");
+    throw error;
+  }
+
+  saveDatabase();
+  return {
+    categories: listCategories(),
+    tabs: listTabs(targetCategoryId)
   };
 }
 
@@ -900,6 +993,16 @@ function normalizeRequiredString(value: string, message: string): string {
   return normalized;
 }
 
+function normalizeTabPosition(value: number): number {
+  const position = Number(value);
+
+  if (!Number.isFinite(position)) {
+    return 0;
+  }
+
+  return Math.max(0, Math.trunc(position));
+}
+
 function createTabId(url: string): string {
   const baseSlug =
     url
@@ -934,6 +1037,89 @@ function getAllTabIds(): Set<string> {
   }
 
   return new Set(result[0].values.map((value) => String(value[0])));
+}
+
+function getActiveTabPlacement(db: Database, id: string): ActiveTabPlacementRow | null {
+  const result = db.exec(
+    `
+      SELECT category_id, position, url
+      FROM session_tabs
+      WHERE id = $id AND deleted_at IS NULL
+      LIMIT 1
+    `,
+    {
+      $id: id
+    }
+  );
+
+  if (result.length === 0 || result[0].values.length === 0) {
+    return null;
+  }
+
+  const columns = result[0].columns;
+  return Object.fromEntries(columns.map((column, index) => [column, result[0].values[0][index]])) as ActiveTabPlacementRow;
+}
+
+function hasActiveTabUrlInCategoryExcept(db: Database, categoryId: string, url: string, excludedTabId: string): boolean {
+  const result = db.exec(
+    `
+      SELECT id
+      FROM session_tabs
+      WHERE category_id = $categoryId
+        AND url = $url
+        AND id != $excludedTabId
+        AND deleted_at IS NULL
+      LIMIT 1
+    `,
+    {
+      $categoryId: categoryId,
+      $url: url,
+      $excludedTabId: excludedTabId
+    }
+  );
+
+  return result.length > 0 && result[0].values.length > 0;
+}
+
+function getActiveTabIds(db: Database, categoryId: string): string[] {
+  const result = db.exec(
+    `
+      SELECT id
+      FROM session_tabs
+      WHERE category_id = $categoryId AND deleted_at IS NULL
+      ORDER BY position ASC, saved_at ASC, id ASC
+    `,
+    {
+      $categoryId: categoryId
+    }
+  );
+
+  if (result.length === 0) {
+    return [];
+  }
+
+  return result[0].values.map((value) => String(value[0]));
+}
+
+function rewriteTabPositions(db: Database, categoryId: string, tabIds: string[]): void {
+  const statement = db.prepare(`
+    UPDATE session_tabs
+    SET category_id = $categoryId,
+        position = $position
+    WHERE id = $id AND deleted_at IS NULL
+  `);
+
+  try {
+    tabIds.forEach((tabId, position) => {
+      statement.run({
+        $id: tabId,
+        $categoryId: categoryId,
+        $position: position
+      });
+    });
+  } finally {
+    statement.free();
+  }
 }
 
 function getNextTabPosition(db: Database, categoryId: string): number {

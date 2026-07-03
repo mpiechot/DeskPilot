@@ -19,6 +19,7 @@ import {
   listDeletedTabs,
   listCategories,
   listTabs,
+  moveTab,
   restoreCategory,
   restoreManualBackup,
   restoreTab,
@@ -222,6 +223,83 @@ assert(restoreResult.safetyBackupFileName.includes("pre-restore"), "Expected res
 assert(
   fs.existsSync(path.join(dir, "profiles", "development", "storage", "manual-backups", restoreResult.safetyBackupFileName)),
   "Expected pre-restore safety backup file"
+);
+
+const boardSourceCategory = createCategory({
+  name: "Board Source",
+  description: "Session Board move source."
+}).find((category) => category.name === "Board Source");
+const boardTargetCategory = createCategory({
+  name: "Board Target",
+  description: "Session Board move target."
+}).find((category) => category.name === "Board Target");
+assert(boardSourceCategory && boardTargetCategory, "Expected Session Board categories after create");
+addTab({
+  categoryId: boardSourceCategory.id,
+  url: "https://example.com/board-alpha",
+  title: "Board Alpha"
+});
+addTab({
+  categoryId: boardSourceCategory.id,
+  url: "https://example.com/board-beta",
+  title: "Board Beta"
+});
+addTab({
+  categoryId: boardTargetCategory.id,
+  url: "https://example.com/board-gamma",
+  title: "Board Gamma"
+});
+
+let boardBeta = listTabs(boardSourceCategory.id).find((item) => item.title === "Board Beta");
+assert(boardBeta, "Expected Board Beta before cross-category move");
+const boardMoveResult = moveTab(boardBeta.id, {
+  targetCategoryId: boardTargetCategory.id,
+  targetPosition: 1
+});
+assert(
+  boardMoveResult.categories.some((category) => category.id === boardSourceCategory.id && category.tabCount === 1),
+  "Expected source category count to update after Session Board move"
+);
+assert(
+  boardMoveResult.categories.some((category) => category.id === boardTargetCategory.id && category.tabCount === 2),
+  "Expected target category count to update after Session Board move"
+);
+assertTabOrder(
+  listTabs(boardSourceCategory.id),
+  ["Board Alpha"],
+  "Expected cross-category move to remove the tab from the source category"
+);
+assertTabOrder(
+  listTabs(boardTargetCategory.id),
+  ["Board Gamma", "Board Beta"],
+  "Expected cross-category move to insert the tab at the requested target position"
+);
+
+await initializeStorage(dir, { profile: "development", disallowProductive: true });
+assertTabOrder(
+  listTabs(boardTargetCategory.id),
+  ["Board Gamma", "Board Beta"],
+  "Expected Session Board cross-category move to survive storage restart"
+);
+
+boardBeta = listTabs(boardTargetCategory.id).find((item) => item.title === "Board Beta");
+assert(boardBeta, "Expected Board Beta before same-category reorder");
+moveTab(boardBeta.id, {
+  targetCategoryId: boardTargetCategory.id,
+  targetPosition: 0
+});
+assertTabOrder(
+  listTabs(boardTargetCategory.id),
+  ["Board Beta", "Board Gamma"],
+  "Expected same-category Session Board reorder to update Tab Order"
+);
+const reorderedRestoreLaunchPlan = createBrowserWindowLaunchPlan(
+  listTabs(boardTargetCategory.id).map((item) => item.url),
+  "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+);
+assert(
+  reorderedRestoreLaunchPlan.args[1] === "https://example.com/board-beta",
+  "Expected reordered Session Board category restore to use the updated order"
 );
 
 const exportPath = path.join(dir, "exported-deskpilot.sqlite");
