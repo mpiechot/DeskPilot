@@ -507,3 +507,23 @@ Current status:
 
 Next recommended step:
 - Manually retest `Open Selected` from the regenerated prototype with a category containing multiple saved URLs.
+
+### Productive MVP planning session
+
+Completed:
+- Reframed DeskPilot 1.0 as the Productive MVP: safe, reliable productive use of the existing browser-session workflow.
+- Moved larger enhancements such as sleep lists, bookmarks, notifications and deeper touch polish after 1.0.
+- Defined Productive Use, Development Use, Productive MVP, Data Profile, Productive Cutover, Saved Tab, Tab Order and Session Board in `CONTEXT.md`.
+- Recorded ADRs for Productive MVP scope, productive/development data separation, automatic prototype-to-productive migration and Session Board drag-and-drop organization.
+- Decided that Productive and Development data must be hard-separated before further feature work.
+- Decided that existing prototype data should be copied into the Productive data profile once, immediately when Productive storage is created.
+- Chose Session Board drag-and-drop as the Productive MVP workflow feature.
+- Scoped Session Board drag-and-drop to app-only and mouse-first for 1.0.
+- Created GitHub issues #11 through #18 for the Productive MVP plan.
+- Added `Blocked by` and `Blocks` issue references to represent dependencies because the available GitHub connector did not expose a native issue-relationship mutation.
+
+Current status:
+- The Productive MVP plan is clear and tracked in GitHub: implement data profile isolation and cutover first, then build the Session Board.
+
+Next recommended step:
+- Start with GitHub issue #11: implement Productive and Development data profiles with visible profile status.

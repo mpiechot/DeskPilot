@@ -1,5 +1,35 @@
 # Roadmap
 
+## v1.0 - Productive MVP
+
+Goal:
+Make DeskPilot safe and useful as the user's real local browser-session system while development continues separately.
+
+Status:
+Planned. The main browser-session workflow already exists, but productive and development data must be separated before daily use can be trusted.
+
+Expected features:
+1. Hard separation between Productive and Development data profiles.
+2. One-time automatic Productive cutover that copies existing prototype data without deleting the source.
+3. Visible profile and cutover status in the app.
+4. Tests and prototype runs must not touch productive data.
+5. Session Board with saved tabs shown under each category.
+6. App-only drag-and-drop moving of saved tabs between categories.
+7. App-only drag-and-drop reordering of saved tabs within a category.
+8. Mouse-first drag-and-drop for v1.0, with deeper touch polish after productive use is safe.
+9. Category restore opens tabs in the user-defined order.
+10. Evaluate whether per-tab open icons replace or complement `Open Selected`.
+
+Tracking issues:
+- #11 Productive MVP: add isolated data profiles and visible profile status
+- #12 Productive MVP: copy existing prototype data during productive cutover
+- #13 Productive MVP: make tests and prototype tooling unable to touch productive data
+- #14 Productive MVP: persist saved tab order and restore categories in that order
+- #15 Productive MVP: show saved tabs under each category in the Session Board
+- #16 Productive MVP: move saved tabs between categories with app drag and drop
+- #17 Productive MVP: reorder saved tabs within a category with app drag and drop
+- #18 Productive MVP: evaluate and implement per-tab open controls on the Session Board
+
 ## v0.1 - Control Panel Skeleton
 
 Goal:

@@ -1,6 +1,6 @@
 # Definition Of Done
 
-This document defines when DeskPilot version 1.0 is considered complete.
+This document defines when DeskPilot version 1.0, the productive MVP, is considered complete.
 
 Codex may improve the implementation, but may not remove these requirements.
 
@@ -21,15 +21,18 @@ DeskPilot must:
 
 # Control Panel
 
-The application must provide:
+The application must provide for version 1.0:
 
 - a dedicated desktop window
 - touch-friendly controls
+- system tray integration
+- persistent window position
+
+The application should provide after version 1.0:
+
 - configurable window size
 - configurable monitor placement
-- system tray integration
 - automatic startup with Windows
-- persistent window position
 
 The application should not require a normal taskbar entry.
 
@@ -37,11 +40,14 @@ The application should not require a normal taskbar entry.
 
 # Categories
 
-The user must be able to:
+The user must be able to for version 1.0:
 
 - create categories
 - rename categories
 - delete categories
+
+The user should be able to after version 1.0:
+
 - reorder categories
 - assign icons or colors
 - mark favorite categories
@@ -66,6 +72,9 @@ The user must be able to:
 - append additional tabs to an existing category
 - replace existing category tabs
 - manually remove tabs
+- move saved tabs between categories in the app
+- reorder saved tabs within a category in the app
+- support mouse-first saved-tab drag-and-drop for version 1.0
 
 Browser sessions must survive:
 
@@ -84,18 +93,21 @@ DeskPilot must:
 - provide restore functionality
 - never silently overwrite data
 - never silently delete data
+- keep productive user data isolated from development, prototype and test data
+- automatically copy existing prototype data into the productive profile once, without deleting the prototype source or silently overwriting productive data
+- clearly show after productive cutover that further prototype data changes will not be migrated automatically
 
 ---
 
-# Sleep Lists
+# Post-1.0 Sleep Lists
 
-DeskPilot must support:
+DeskPilot should later support:
 
 - inactive tabs
 - archived tabs
 - sleep lists
 
-The user must:
+The user should later:
 
 - review sleeping tabs
 - restore sleeping tabs
@@ -105,9 +117,9 @@ Automatic deletion must provide advance warning.
 
 ---
 
-# Bookmarks
+# Post-1.0 Bookmarks
 
-The user must be able to:
+The user should later be able to:
 
 - create bookmark folders
 - move tabs into bookmarks
@@ -117,9 +129,9 @@ Bookmarks and sessions are separate concepts.
 
 ---
 
-# Inbox
+# Post-1.0 Inbox
 
-DeskPilot must provide:
+DeskPilot should later provide:
 
 - a temporary holding area
 - "look at this later" functionality
@@ -128,7 +140,7 @@ The Inbox should prevent permanent tab accumulation.
 
 ---
 
-# Notifications
+# Post-1.0 Notifications
 
 DeskPilot should warn the user about:
 
@@ -141,12 +153,15 @@ DeskPilot should warn the user about:
 
 # Touch Display Support
 
-DeskPilot must support:
+DeskPilot must support for version 1.0:
 
 - small touch displays
 - large buttons
 - readable text
 - touch interaction
+
+DeskPilot should support after version 1.0:
+
 - monitor selection
 
 ---
@@ -169,10 +184,11 @@ These features may be implemented later.
 
 DeskPilot Version 1 is complete when:
 
-- all required features are implemented
+- the productive browser-session workflow is implemented
 - the application is stable
 - no critical data-loss bugs are known
 - the user can realistically use DeskPilot every day
+- development and testing data cannot silently mix with productive user data
 
 Perfection is not required.
 
