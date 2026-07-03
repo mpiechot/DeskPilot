@@ -542,12 +542,6 @@ h2 {
   gap: 8px;
 }
 
-.savedUrlList {
-  display: grid;
-  gap: 6px;
-  margin-top: 10px;
-}
-
 .savedUrlManager {
   display: grid;
   min-height: 0;
@@ -623,25 +617,6 @@ h2 {
   color: #5c625d;
   font-size: 0.7rem;
   font-weight: 700;
-}
-
-.savedUrlItem {
-  display: grid;
-  grid-template-columns: 1fr 26px;
-  gap: 6px;
-  align-items: center;
-  border-radius: 8px;
-  background: rgba(231, 239, 229, 0.62);
-  padding: 5px 5px 5px 8px;
-  color: #3f4843;
-  font-size: 0.75rem;
-  font-weight: 700;
-}
-
-.savedUrlItem span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .miniDangerAction {

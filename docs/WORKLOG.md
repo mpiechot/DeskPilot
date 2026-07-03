@@ -471,3 +471,23 @@ Current status:
 
 Next recommended step:
 - Reload the unpacked extension from `dist-prototype/DeskPilot/browser-extension/`, start DeskPilot from the regenerated prototype and manually test `Save Current Tab` plus `Save Current Window`.
+
+### Single-instance and extension UI refresh fix
+
+Completed:
+- Reproduced the screenshot failure with a storage smoke test: starting the bridge on an occupied localhost port crashed with `EADDRINUSE`.
+- Added bridge error handling so an occupied port no longer crashes the main process.
+- Added an Electron single-instance lock so relaunching DeskPilot focuses the existing instance instead of starting a second bridge.
+- Added a `sessions:changed` notification from extension bridge saves through Electron preload into the React renderer.
+- Refreshed category counts, visible saved URLs and deleted URLs when extension saves complete.
+- Removed the small saved-URL preview from category cards; the Session panel remains the scrollable saved-URL list.
+- Extended prototype smoke coverage for the single-instance guard and renderer refresh after an external extension-style save.
+- Regenerated and verified the local prototype package.
+- Verified `npm run test:storage`, `npm run test:prototype`, `npm run lint` and `npm run build`.
+
+Current status:
+- Relaunching DeskPilot while a tray instance is still running should not produce the `127.0.0.1:17383 already in use` dialog.
+- Extension saves should update the Electron category counters without needing to click the category first.
+
+Next recommended step:
+- Start the regenerated prototype, reload the unpacked browser extension and run a manual save-current-tab/window trial with DeskPilot left open and then hidden to tray.

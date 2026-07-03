@@ -23,7 +23,13 @@ const deskPilot: DeskPilotApi = {
   deleteTab: (id) => ipcRenderer.invoke("tabs:delete", id),
   listDeletedTabs: (categoryId) => ipcRenderer.invoke("tabs:deleted", categoryId),
   restoreTab: (id) => ipcRenderer.invoke("tabs:restore", id),
-  openCategory: (categoryId) => ipcRenderer.invoke("categories:open", categoryId)
+  openCategory: (categoryId) => ipcRenderer.invoke("categories:open", categoryId),
+  onSessionsChanged: (callback) => {
+    const listener = () => callback();
+
+    ipcRenderer.on("sessions:changed", listener);
+    return () => ipcRenderer.removeListener("sessions:changed", listener);
+  }
 };
 
 contextBridge.exposeInMainWorld("deskPilot", deskPilot);

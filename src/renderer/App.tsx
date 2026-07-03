@@ -183,6 +183,48 @@ function App() {
     window.deskPilot.setActiveCategory(selectedCategoryId).catch(() => undefined);
   }, [selectedCategoryId, storageStatus]);
 
+  useEffect(() => {
+    if (!window.deskPilot?.onSessionsChanged) {
+      return;
+    }
+
+    let isMounted = true;
+    const unsubscribe = window.deskPilot.onSessionsChanged(() => {
+      const currentCategoryId = selectedCategoryId;
+      const tabsPromise = currentCategoryId ? window.deskPilot?.listTabs(currentCategoryId) : Promise.resolve([]);
+      const deletedTabsPromise = currentCategoryId ? window.deskPilot?.listDeletedTabs(currentCategoryId) : Promise.resolve([]);
+
+      Promise.all([window.deskPilot?.listCategories(), tabsPromise, deletedTabsPromise])
+        .then(([nextCategories, nextTabs, nextDeletedTabs]) => {
+          if (!isMounted || !nextCategories || !nextTabs || !nextDeletedTabs) {
+            return;
+          }
+
+          setCategories(nextCategories);
+          setSelectedCategoryId((currentId) => {
+            if (nextCategories.some((category) => category.id === currentId)) {
+              return currentId;
+            }
+
+            return nextCategories[0]?.id ?? "";
+          });
+          setTabs(nextTabs);
+          setDeletedTabs(nextDeletedTabs);
+          setStorageStatus("ready");
+        })
+        .catch(() => {
+          if (isMounted) {
+            setOperationMessage("Could not refresh saved URLs.");
+          }
+        });
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
+  }, [selectedCategoryId]);
+
   const storageMessage = operationMessage
     ? operationMessage
     : storageStatus === "ready"
@@ -849,18 +891,6 @@ function App() {
                   </div>
                 </>
               )}
-              {selectedCategoryId === category.id && tabs.length > 0 ? (
-                <div className="savedUrlList">
-                  {tabs.slice(0, 3).map((tab) => (
-                    <div className="savedUrlItem" key={tab.id}>
-                      <span>{tab.title}</span>
-                      <button type="button" className="miniDangerAction" onClick={() => removeTab(tab.id)} title="Remove URL">
-                        <X aria-hidden="true" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              ) : null}
             </div>
           </article>
         ))}

@@ -45,3 +45,6 @@ The production bridge needs a stable localhost port so the browser extension can
 
 MV3 origin note:
 Do not assume every browser-extension popup request will carry a useful `Origin` header. The bridge now accepts a DeskPilot-specific extension client header when `Origin` is missing, while still rejecting ordinary origin-less browser requests.
+
+Close-to-tray note:
+A resident tray app must be single-instance from the beginning. Otherwise a normal relaunch after closing the window looks like a crash because the hidden first instance still owns the local bridge port.

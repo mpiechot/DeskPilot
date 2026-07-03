@@ -124,6 +124,18 @@ async function runElectronSmoke() {
   await window.loadFile(path.join(prototypeRoot, "dist", "index.html"));
   console.log("Prototype renderer smoke: renderer loaded");
 
+  setTimeout(() => {
+    setActiveTabs("entertainment", [
+      {
+        id: "external-extension-entertainment",
+        categoryId: "entertainment",
+        title: "External Extension Save",
+        url: "https://example.com/external-extension-save"
+      }
+    ]);
+    window.webContents.send("sessions:changed");
+  }, 750);
+
   const result = await window.webContents.executeJavaScript(`
     new Promise((resolve) => {
       const getRenderedText = () => document.body.textContent;
@@ -158,6 +170,31 @@ async function runElectronSmoke() {
 
       const findButtonByText = (text) =>
         Array.from(document.querySelectorAll("button")).find((button) => button.textContent.includes(text));
+      const getCategoryCardText = (name) => {
+        const category = Array.from(document.querySelectorAll(".categoryCard")).find((card) =>
+          card.textContent.includes(name)
+        );
+
+        return category ? category.textContent : "";
+      };
+      const waitForCondition = (predicate, callback, attempts = 120) => {
+        if (predicate()) {
+          callback();
+          return;
+        }
+
+        if (attempts === 0) {
+          resolve({
+            hasDeskPilotApi: Boolean(window.deskPilot),
+            extensionRefreshUpdatedCategoryCount: false,
+            entertainmentCardText: getCategoryCardText("Entertainment"),
+            bodyText: getRenderedText()
+          });
+          return;
+        }
+
+        setTimeout(() => waitForCondition(predicate, callback, attempts - 1), 25);
+      };
 
       const clickCategory = (name) => {
         const category = Array.from(document.querySelectorAll(".categoryCard")).find((card) =>
@@ -208,6 +245,7 @@ async function runElectronSmoke() {
       };
 
       waitForText("Local SQLite storage is active.", () => {
+        waitForCondition(() => getCategoryCardText("Entertainment").includes("1 tabs"), () => {
         waitForText("Target: Work", () => {
         const urlInput = document.querySelector('input[aria-label="URL to save"]');
         const titleInput = document.querySelector('input[aria-label="URL title"]');
@@ -251,6 +289,8 @@ async function runElectronSmoke() {
 
                 resolve({
                   hasDeskPilotApi: Boolean(window.deskPilot),
+                  extensionRefreshUpdatedCategoryCount: getCategoryCardText("Entertainment").includes("1 tabs"),
+                  entertainmentCardText: getCategoryCardText("Entertainment"),
                   titleInputAcceptsText,
                   titleInputReceivesClicks: titleCenterElement === nextTitleInput,
                   projectTitleSavedBeforeRecovery,
@@ -282,10 +322,18 @@ async function runElectronSmoke() {
         });
       });
       });
+      });
     })
   `);
 
   assert(result.hasDeskPilotApi, "Expected packaged renderer to receive the Electron preload API");
+  if (!result.extensionRefreshUpdatedCategoryCount) {
+    console.error(JSON.stringify({ entertainmentCardText: result.entertainmentCardText, bodyText: result.bodyText }, null, 2));
+  }
+  assert(
+    result.extensionRefreshUpdatedCategoryCount,
+    "Expected external extension saves to refresh category counts in the renderer"
+  );
   assert(
     !result.bodyText.includes("Saving URLs requires the Electron app."),
     "Expected Save URL not to report a missing Electron app"

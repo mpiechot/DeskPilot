@@ -18,6 +18,7 @@ Working today:
 - restore removed URLs from the selected category
 - remember the desktop window size and position between app runs
 - close the window to the system tray and quit explicitly from the tray menu
+- relaunch DeskPilot while it is already running without opening a second app instance
 - create manual local SQLite backup snapshots from Safety mode
 - restore, export and import local SQLite backup snapshots from Safety mode
 - wide, low touch-display layout
@@ -25,6 +26,7 @@ Working today:
 - guided Extension mode with bridge, manifest and load-unpacked status
 - unpacked browser-extension prototype for saving the current browser window
 - one-click current-tab save from the browser extension into the active DeskPilot category
+- automatic Electron UI refresh after browser-extension saves
 - append or replace mode when capturing a browser window
 - local prototype package command for a double-click launcher
 - local development, lint and build commands

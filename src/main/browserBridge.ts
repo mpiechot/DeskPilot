@@ -30,6 +30,7 @@ type WindowSavePayload = {
 type BridgeOptions = {
   port?: number;
   showApp?: () => void;
+  onSessionsChanged?: () => void;
 };
 
 export const bridgeHost = "127.0.0.1";
@@ -41,6 +42,15 @@ export const extensionClientHeaderValue = "deskpilot-browser-extension";
 export function startBrowserBridge(options: BridgeOptions = {}): http.Server {
   const server = http.createServer((request, response) => {
     void handleRequest(request, response, options);
+  });
+
+  server.on("error", (error: NodeJS.ErrnoException) => {
+    if (error.code === "EADDRINUSE") {
+      console.warn(`DeskPilot extension bridge could not bind ${bridgeHost}:${options.port ?? bridgePort}; port is already in use.`);
+      return;
+    }
+
+    console.warn(`DeskPilot extension bridge failed: ${error.message}`);
   });
 
   server.listen(options.port ?? bridgePort, bridgeHost);
@@ -102,12 +112,12 @@ async function handleRequest(
   }
 
   if (request.method === "POST" && request.url === "/tabs/current/save") {
-    await handleCurrentTabSave(request, response);
+    await handleCurrentTabSave(request, response, options);
     return;
   }
 
   if (request.method === "POST" && request.url === "/windows/current/save") {
-    await handleCurrentWindowSave(request, response);
+    await handleCurrentWindowSave(request, response, options);
     return;
   }
 
@@ -120,7 +130,11 @@ async function handleRequest(
   writeJson(response, 404, { error: "Not found" });
 }
 
-async function handleCurrentTabSave(request: http.IncomingMessage, response: http.ServerResponse): Promise<void> {
+async function handleCurrentTabSave(
+  request: http.IncomingMessage,
+  response: http.ServerResponse,
+  options: BridgeOptions
+): Promise<void> {
   try {
     const payload = (await readJsonBody(request)) as CurrentTabSavePayload;
     const categoryId = typeof payload.categoryId === "string" ? payload.categoryId : "";
@@ -129,13 +143,18 @@ async function handleCurrentTabSave(request: http.IncomingMessage, response: htt
       crossCategoryDuplicatePolicy: payload.allowCrossCategoryDuplicate === true ? "allow" : "ask"
     });
 
+    notifySessionsChangedIfNeeded(options, result);
     writeCaptureResult(response, result);
   } catch (error) {
     writeJson(response, 400, { error: error instanceof Error ? error.message : "Current tab save failed" });
   }
 }
 
-async function handleCurrentWindowSave(request: http.IncomingMessage, response: http.ServerResponse): Promise<void> {
+async function handleCurrentWindowSave(
+  request: http.IncomingMessage,
+  response: http.ServerResponse,
+  options: BridgeOptions
+): Promise<void> {
   try {
     const payload = (await readJsonBody(request)) as WindowSavePayload;
     const categoryId = typeof payload.categoryId === "string" ? payload.categoryId : "";
@@ -152,6 +171,7 @@ async function handleCurrentWindowSave(request: http.IncomingMessage, response: 
       skippedUnsupportedCount
     });
 
+    notifySessionsChangedIfNeeded(options, result);
     writeCaptureResult(response, result);
   } catch (error) {
     writeJson(response, 400, { error: error instanceof Error ? error.message : "Current window save failed" });
@@ -236,6 +256,18 @@ function writeCaptureResult(response: http.ServerResponse, result: CaptureResult
   }
 
   writeJson(response, 200, result);
+}
+
+function notifySessionsChangedIfNeeded(options: BridgeOptions, result: CaptureResult): void {
+  if (result.savedCount === 0 && result.restoredCount === 0) {
+    return;
+  }
+
+  try {
+    options.onSessionsChanged?.();
+  } catch {
+    // The bridge response is more important than a renderer refresh notification.
+  }
 }
 
 function isAllowedOrigin(origin: string | undefined): boolean {

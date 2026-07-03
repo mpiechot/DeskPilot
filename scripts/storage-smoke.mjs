@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import http from "node:http";
 import os from "node:os";
 import path from "node:path";
 import {
@@ -476,6 +477,21 @@ try {
 } finally {
   await new Promise((resolve) => bridgeServer.close(resolve));
 }
+
+const occupiedPortServer = http.createServer();
+await new Promise((resolve) => occupiedPortServer.listen(0, "127.0.0.1", resolve));
+const occupiedAddress = occupiedPortServer.address();
+const occupiedPort = typeof occupiedAddress === "object" && occupiedAddress ? occupiedAddress.port : 0;
+const conflictingBridgeServer = startBrowserBridge({ port: occupiedPort });
+await new Promise((resolve) => setTimeout(resolve, 50));
+assert(
+  !getBrowserBridgeStatus(conflictingBridgeServer).running,
+  "Expected bridge startup on an occupied port to fail without crashing DeskPilot"
+);
+if (conflictingBridgeServer.listening) {
+  await new Promise((resolve) => conflictingBridgeServer.close(resolve));
+}
+await new Promise((resolve) => occupiedPortServer.close(resolve));
 
 const extensionInfo = getExtensionInstallInfo(process.cwd());
 assert(extensionInfo.manifestPresent, "Expected browser extension manifest to be present");

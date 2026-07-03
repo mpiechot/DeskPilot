@@ -41,3 +41,5 @@ Current state:
 - The extension can save the current tab into the active DeskPilot category with duplicate protection.
 - The local browser bridge is origin-restricted to browser-extension origins and visible in the app status area.
 - A local prototype package can be generated for double-click launch during development.
+- Starting DeskPilot again while it is already running focuses the existing instance instead of opening a second bridge.
+- Browser-extension saves refresh the visible category counts in the Electron UI.

@@ -45,6 +45,15 @@ let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let isQuitting = false;
 let bridgeServer: ReturnType<typeof startBrowserBridge> | null = null;
+const hasSingleInstanceLock = app.requestSingleInstanceLock();
+
+function notifySessionsChanged(): void {
+  for (const window of BrowserWindow.getAllWindows()) {
+    if (!window.isDestroyed()) {
+      window.webContents.send("sessions:changed");
+    }
+  }
+}
 
 function showMainWindow(): void {
   if (!mainWindow) {
@@ -137,89 +146,99 @@ function showOpenDialog(options: OpenDialogOptions) {
   return mainWindow ? dialog.showOpenDialog(mainWindow, options) : dialog.showOpenDialog(options);
 }
 
-app.whenReady().then(async () => {
-  await initializeStorage(app.getPath("userData"));
-  bridgeServer = startBrowserBridge({ showApp: showMainWindow });
-  ipcMain.handle("bridge:status", () => getBrowserBridgeStatus(bridgeServer));
-  ipcMain.handle("extension:install-info", () => getExtensionInstallInfo(projectRoot));
-  ipcMain.handle("storage:info", () => getStorageInfo());
-  ipcMain.handle("storage:create-backup", () => createManualBackup());
-  ipcMain.handle("storage:restore-backup", (_event, fileName) => restoreManualBackup(fileName));
-  ipcMain.handle("storage:export-backup", async (_event, fileName?: string) => {
-    const defaultFileName = fileName || `deskpilot-current-${new Date().toISOString().slice(0, 10)}.sqlite`;
-    const result = await showSaveDialog({
-      title: "Export DeskPilot backup",
-      defaultPath: path.join(app.getPath("downloads"), defaultFileName),
-      filters: [{ name: "SQLite database", extensions: ["sqlite"] }]
+if (!hasSingleInstanceLock) {
+  app.quit();
+} else {
+  app.on("second-instance", () => {
+    showMainWindow();
+  });
+
+  app.whenReady().then(async () => {
+    await initializeStorage(app.getPath("userData"));
+    bridgeServer = startBrowserBridge({ showApp: showMainWindow, onSessionsChanged: notifySessionsChanged });
+    ipcMain.handle("bridge:status", () => getBrowserBridgeStatus(bridgeServer));
+    ipcMain.handle("extension:install-info", () => getExtensionInstallInfo(projectRoot));
+    ipcMain.handle("storage:info", () => getStorageInfo());
+    ipcMain.handle("storage:create-backup", () => createManualBackup());
+    ipcMain.handle("storage:restore-backup", (_event, fileName) => restoreManualBackup(fileName));
+    ipcMain.handle("storage:export-backup", async (_event, fileName?: string) => {
+      const defaultFileName = fileName || `deskpilot-current-${new Date().toISOString().slice(0, 10)}.sqlite`;
+      const result = await showSaveDialog({
+        title: "Export DeskPilot backup",
+        defaultPath: path.join(app.getPath("downloads"), defaultFileName),
+        filters: [{ name: "SQLite database", extensions: ["sqlite"] }]
+      });
+
+      if (result.canceled || !result.filePath) {
+        return null;
+      }
+
+      const sourceFileName = typeof fileName === "string" && fileName.trim() ? fileName : null;
+      return exportStorageBackup(sourceFileName, result.filePath);
+    });
+    ipcMain.handle("storage:import-backup", async () => {
+      const result = await showOpenDialog({
+        title: "Import DeskPilot backup",
+        properties: ["openFile"],
+        filters: [{ name: "SQLite database", extensions: ["sqlite"] }]
+      });
+
+      if (result.canceled || result.filePaths.length === 0) {
+        return null;
+      }
+
+      return importStorageBackup(result.filePaths[0]);
+    });
+    ipcMain.handle("categories:list", () => listCategories());
+    ipcMain.handle("categories:active", () => getActiveCategoryId());
+    ipcMain.handle("categories:set-active", (_event, id) => setActiveCategoryId(id));
+    ipcMain.handle("categories:create", (_event, input) => createCategory(input));
+    ipcMain.handle("categories:update", (_event, id, input) => updateCategory(id, input));
+    ipcMain.handle("categories:delete", (_event, id) => deleteCategory(id));
+    ipcMain.handle("categories:deleted", () => listDeletedCategories());
+    ipcMain.handle("categories:restore", (_event, id) => restoreCategory(id));
+    ipcMain.handle("tabs:list", (_event, categoryId) => listTabs(categoryId));
+    ipcMain.handle("tabs:add", (_event, input) => addTab(input));
+    ipcMain.handle("tabs:delete", (_event, id) => deleteTab(id));
+    ipcMain.handle("tabs:deleted", (_event, categoryId) => listDeletedTabs(categoryId));
+    ipcMain.handle("tabs:restore", (_event, id) => restoreTab(id));
+    ipcMain.handle("categories:open", async (_event, categoryId) => {
+      const tabs = listTabs(categoryId);
+
+      for (const tab of tabs) {
+        await shell.openExternal(tab.url);
+      }
+
+      return tabs;
     });
 
-    if (result.canceled || !result.filePath) {
-      return null;
+    createMainWindow();
+
+    try {
+      createTray();
+    } catch {
+      tray = null;
     }
 
-    const sourceFileName = typeof fileName === "string" && fileName.trim() ? fileName : null;
-    return exportStorageBackup(sourceFileName, result.filePath);
-  });
-  ipcMain.handle("storage:import-backup", async () => {
-    const result = await showOpenDialog({
-      title: "Import DeskPilot backup",
-      properties: ["openFile"],
-      filters: [{ name: "SQLite database", extensions: ["sqlite"] }]
+    app.on("activate", () => {
+      if (BrowserWindow.getAllWindows().length === 0) {
+        createMainWindow();
+      } else {
+        mainWindow?.show();
+      }
     });
-
-    if (result.canceled || result.filePaths.length === 0) {
-      return null;
-    }
-
-    return importStorageBackup(result.filePaths[0]);
-  });
-  ipcMain.handle("categories:list", () => listCategories());
-  ipcMain.handle("categories:active", () => getActiveCategoryId());
-  ipcMain.handle("categories:set-active", (_event, id) => setActiveCategoryId(id));
-  ipcMain.handle("categories:create", (_event, input) => createCategory(input));
-  ipcMain.handle("categories:update", (_event, id, input) => updateCategory(id, input));
-  ipcMain.handle("categories:delete", (_event, id) => deleteCategory(id));
-  ipcMain.handle("categories:deleted", () => listDeletedCategories());
-  ipcMain.handle("categories:restore", (_event, id) => restoreCategory(id));
-  ipcMain.handle("tabs:list", (_event, categoryId) => listTabs(categoryId));
-  ipcMain.handle("tabs:add", (_event, input) => addTab(input));
-  ipcMain.handle("tabs:delete", (_event, id) => deleteTab(id));
-  ipcMain.handle("tabs:deleted", (_event, categoryId) => listDeletedTabs(categoryId));
-  ipcMain.handle("tabs:restore", (_event, id) => restoreTab(id));
-  ipcMain.handle("categories:open", async (_event, categoryId) => {
-    const tabs = listTabs(categoryId);
-
-    for (const tab of tabs) {
-      await shell.openExternal(tab.url);
-    }
-
-    return tabs;
   });
 
-  createMainWindow();
-
-  try {
-    createTray();
-  } catch {
-    tray = null;
-  }
-
-  app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createMainWindow();
-    } else {
-      mainWindow?.show();
+  app.on("window-all-closed", () => {
+    if (process.platform !== "darwin") {
+      app.quit();
     }
   });
-});
 
-app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") {
-    app.quit();
-  }
-});
-
-app.on("before-quit", () => {
-  isQuitting = true;
-  bridgeServer?.close();
-});
+  app.on("before-quit", () => {
+    isQuitting = true;
+    if (bridgeServer?.listening) {
+      bridgeServer.close();
+    }
+  });
+}
