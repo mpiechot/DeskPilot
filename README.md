@@ -26,6 +26,8 @@ Commands:
 - `npm run dev:electron` starts the Electron shell with the renderer.
 - `npm run lint` checks TypeScript and React source files.
 - `npm run build` builds the Electron main/preload code and renderer.
+- `npm run package:prototype` creates a local Windows prototype folder under `dist-prototype/DeskPilot`.
+- `npm run test:prototype` regenerates the local prototype and verifies the desktop launchers do not fall back to the browser dev server.
 
 More detailed run and verification notes live in `docs/USAGE.md`.
 
@@ -33,7 +35,12 @@ Current state:
 - The Electron control panel exists in a wide, low touch-display layout.
 - Categories and saved URLs are stored locally in a SQLite database.
 - Categories and saved URLs use soft-delete recovery flows.
-- A Chrome/Edge unpacked extension prototype can capture the current browser window through the local bridge.
+- Saved URLs can be viewed and removed from the selected category.
+- Saved URLs from a selected category open together in a new Chrome/Edge browser window.
+- Manual SQLite backup snapshots can be created, restored, exported and imported from the Safety mode.
+- A Chrome/Edge unpacked extension prototype can capture the current browser window through the local bridge in append or replace mode.
+- The extension can save the current tab into the active DeskPilot category with duplicate protection.
 - The local browser bridge is origin-restricted to browser-extension origins and visible in the app status area.
-
-
+- A local prototype package can be generated for double-click launch during development.
+- Starting DeskPilot again while it is already running focuses the existing instance instead of opening a second bridge.
+- Browser-extension saves refresh the visible category counts in the Electron UI.

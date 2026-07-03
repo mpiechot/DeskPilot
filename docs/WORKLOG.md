@@ -243,3 +243,267 @@ Current status:
 
 Next recommended step:
 - Add a guided extension install/checklist view or start export/import backup work before deeper browser workflow polish.
+
+## 2026-06-30
+
+### PR quality workflow and extension install view session
+
+Completed:
+- Adopted the single working-pull-request quality-gate workflow in `AGENTS.md`.
+- Confirmed the repository-local Git identity is `portfolio-pirat <mattzeal@gmail.com>`.
+- Created the `codex/deskpilot-working-pr` branch for ongoing quality-gate work.
+- Added a main-process extension install-info API that exposes the local unpacked extension path and manifest status.
+- Added an Extension mode to the control panel with bridge readiness, manifest status, load-unpacked path and supported browser chips.
+- Extended the smoke test to verify the browser-extension manifest is discoverable.
+- Updated roadmap, usage notes and technical decisions for the new PR workflow and Extension mode.
+- Verified `npm run lint`, `npm run build`, `npm run test:storage` and `npm audit`.
+- Committed and pushed `codex/deskpilot-working-pr` to `origin`.
+
+Current status:
+- DeskPilot now has an in-app place to diagnose the extension prototype setup before using the popup.
+- The working branch exists on GitHub and is ready for a pull request.
+- The local `gh` CLI is still authenticated as `mpiechot`, so PR creation must use an allowed connector path or a future `portfolio-pirat` GitHub CLI login.
+
+Next recommended step:
+- Open the working pull request for `codex/deskpilot-working-pr` once an allowed GitHub identity is available, then inspect SonarQube and ReviewDog feedback.
+
+## 2026-07-02
+
+### Working PR and manual backup session
+
+Completed:
+- Confirmed the repository-local Git identity is `portfolio-pirat <mattzeal@gmail.com>`.
+- Opened draft working pull request #4 from `codex/deskpilot-working-pr` to `main` through the GitHub connector as `portfolio-pirat`.
+- Checked PR #4 comments, review threads and commit statuses; none were reported yet.
+- Added storage APIs for reading database backup status and creating manual SQLite snapshot backups.
+- Added IPC/preload bindings for the backup status and manual backup action.
+- Added a Safety mode to the control panel with database path, manual backup folder, latest backup and `Create Backup`.
+- Extended `npm run test:storage` to verify manual backup creation and file metadata.
+- Updated README, usage notes, roadmap, technical decisions and grumble log for the backup step.
+- Verified `npm run build`, `npm run lint`, `npm run test:storage` and `npm audit`.
+
+Current status:
+- The working PR quality gate exists and the app has a first visible v0.4 safety feature.
+- Manual backup creation is implemented, but import/restore from a selected backup is not implemented yet.
+- UI screenshot verification was not available in this session because no in-app browser backend was exposed; local build, lint, storage smoke and audit checks passed.
+
+Next recommended step:
+- Start the next session by planning the next DeskPilot tasks as small, independently implementable steps.
+- If GitHub is reachable, create GitHub issues for those planned tasks before implementing them. The user explicitly allowed GitHub issue creation for this next-session planning pass.
+- Then inspect PR #4 automated feedback once checks appear and continue with the highest-priority issue, likely a cautious restore/import workflow that always creates a pre-restore backup before replacing data.
+
+### Issue planning and URL list session
+
+Completed:
+- Confirmed the repository-local Git identity is `portfolio-pirat <mattzeal@gmail.com>`.
+- Confirmed GitHub was reachable through the connector and PR #4 is the single open working pull request against `main`.
+- Checked PR #4 comments, review threads and commit status; none were reported.
+- Created new GitHub planning issues:
+  - #5 Restore data from manual backup safely.
+  - #6 Export and import DeskPilot backup files.
+  - #7 Choose append or replace when capturing browser windows.
+  - #8 Show saved URLs as a manageable list.
+  - #9 Package a first local prototype build.
+- Implemented issue #8 locally by adding a scrollable saved-URL list to Session mode with title, host and soft-delete remove action.
+- Updated README, usage notes and roadmap to reflect the saved URL list.
+
+Current status:
+- DeskPilot now has a more usable daily session view: the selected category's saved URLs are visible and removable, not only previewed on category cards.
+- The next high-value slices are safe backup restore (#5) and append/replace capture behavior (#7).
+
+Next recommended step:
+- Run final verification, commit and push the URL-list work, then continue with #5 or #7 depending on whether safety or browser capture polish is more important for the next session.
+
+### Prototype completion push
+
+Completed:
+- Confirmed the repository-local Git identity is `portfolio-pirat <mattzeal@gmail.com>`.
+- Checked PR #4 comments, review threads and commit status; none were reported.
+- Implemented #5 safe backup restore from manual snapshots with pre-restore safety backup creation.
+- Implemented #6 backup export/import through native Electron file dialogs with invalid import rejection and pre-import safety backups.
+- Implemented #7 append/replace browser-window capture mode in the local bridge and extension popup. Replace soft-deletes active URLs before saving captured tabs.
+- Implemented #9 local prototype packaging through `npm run package:prototype`, producing `dist-prototype/DeskPilot/start-deskpilot.cmd`.
+- Extended storage smoke coverage for restore, invalid import rejection, import round-trip, append capture and replace capture.
+- Updated README, usage notes, roadmap, technical decisions and grumble log.
+
+Current status:
+- DeskPilot now has the practical pieces needed for a first local trial prototype: capture, save, open, manage, recover, back up, restore/import/export and package locally.
+- The prototype package is not a signed installer and still uses the repository's installed Electron runtime.
+
+Next recommended step:
+- Run final verification, commit and push. After that, use the local prototype for a real browser-session trial and log usability problems before adding larger v1 features such as sleep lists or monitor selection.
+
+### Prototype launcher fix
+
+Completed:
+- Reproduced the reported launcher problem from `dist-prototype/DeskPilot/start-deskpilot.cmd`.
+- Identified the generated `"%~dp0"` argument as the cause of the malformed trailing quote path passed through `electron.cmd`.
+- Changed the generated launcher to `pushd` into the prototype folder and run Electron with `.` as the app path.
+- Regenerated the local prototype folder and verified Electron starts as `electron.exe .` from the prototype directory.
+
+Current status:
+- The local prototype launcher no longer passes the prototype path with a trailing backslash quote hazard.
+
+Next recommended step:
+- Retest the double-click launcher manually, then continue with real-session usability feedback.
+
+### Prototype desktop launcher follow-up
+
+Completed:
+- Reworked the generated prototype launchers so the normal path starts Electron detached from the console instead of running the npm `electron.cmd` shim in the foreground.
+- Added `start-deskpilot.vbs` for launching the desktop app without a visible console window and `start-deskpilot-debug.cmd` for explicit diagnostics.
+- Added a prototype launcher smoke test that rejects Vite/browser-dev-server launcher regressions.
+- Changed the local bridge root URL to show a clear diagnostic message instead of `{"error":"Origin not allowed"}` while keeping protected endpoints origin-restricted.
+
+Current status:
+- The prototype package now has separate normal, no-console and debug launch paths.
+- The bridge URL is explicitly labeled as an extension bridge, not the DeskPilot UI.
+
+Next recommended step:
+- Regenerate the prototype package and test the no-console launcher by double-clicking `dist-prototype/DeskPilot/start-deskpilot.vbs`.
+
+### Prototype blank-window fix
+
+Completed:
+- Investigated a reported packaged Electron window that showed only the dark window background.
+- Identified absolute Vite asset paths in `dist/index.html` as the likely cause: Electron `loadFile` cannot resolve `/assets/...` relative to the packaged renderer.
+- Changed the Vite base path to emit relative renderer asset URLs.
+- Extended the prototype launcher smoke test to reject absolute renderer asset paths.
+
+Current status:
+- The packaged prototype should load the React control panel instead of an empty window.
+
+Next recommended step:
+- Regenerate the prototype package and retest `dist-prototype/DeskPilot/start-deskpilot.vbs`.
+
+### Prototype preload bridge fix
+
+Completed:
+- Reproduced the reported `Saving URLs requires the Electron app.` message in the packaged renderer.
+- Added an Electron renderer smoke test that loads the packaged prototype, verifies `window.deskPilot`, enters a URL and clicks `Save URL`.
+- Identified that the preload script was emitted as ESM and did not expose the Electron API in the packaged renderer.
+- Changed the preload source to `.cts` so TypeScript emits `dist-electron/preload/index.cjs`.
+- Updated the main process and renderer smoke test to load the CommonJS preload file.
+- Extended ESLint config for CommonJS Electron smoke-test scripts.
+- Verified `npm run test:prototype`, `npm run test:storage` and `npm run lint`.
+
+Current status:
+- The packaged prototype now exposes the Electron preload API to the renderer.
+- `Save URL` should persist URLs instead of reporting that the Electron app is required.
+
+Next recommended step:
+- Relaunch the regenerated prototype and run a real manual save/open URL trial.
+
+### Low-height session form fix
+
+Completed:
+- Reproduced the reported flow in the packaged Electron renderer: save a Work URL with a title, remove it, switch to Projects and enter a replacement URL/title.
+- Found that the low-height control-panel layout could push the optional title input below the visible viewport after the save/delete/switch flow.
+- Made the quick actions and mode switch more compact in the control rail.
+- Allowed the session form area to scroll when the available rail height is tight.
+- Extended the Electron renderer smoke test to cover the Work-delete-then-Projects-save flow and assert that the Projects title input is clickable and accepts text.
+- Verified `npm run test:prototype`, `npm run test:storage` and `npm run lint`.
+
+Current status:
+- The optional URL title field should remain reachable in the low touch-display layout after moving a saved URL between categories.
+
+Next recommended step:
+- Relaunch the regenerated prototype and manually repeat the Work-to-Projects URL move flow.
+
+### Recovery layout and capture friction feedback
+
+Completed:
+- Created GitHub issue #10 for one-click browser-extension saving of the current tab into the currently selected DeskPilot category.
+- Reproduced the Recovery layout overflow with a long unbroken deleted URL title in the packaged Electron renderer smoke test.
+- Fixed the control rail grid so long Recovery content cannot expand the rail into the category list.
+- Ellipsized long Recovery restore buttons inside the rail.
+- Extended the renderer smoke test to assert Recovery mode does not visually overlap the category list.
+- Documented that opening a saved category should restore it as a new browser window, not reuse the current default-browser window.
+- Verified `npm run test:prototype`, `npm run test:storage` and `npm run lint`.
+
+Current status:
+- Recovery should stay inside the left control rail even with long deleted URL titles.
+- GitHub issue #10 tracks the lower-friction browser save flow.
+
+Next recommended step:
+- Implement browser-session restore as a new browser window, likely with a Chrome/Edge launch path and a safe fallback when no supported browser executable is found.
+
+### Browser extension current-tab save session
+
+Completed:
+- Confirmed the repository-local Git identity is `portfolio-pirat <mattzeal@gmail.com>`.
+- Confirmed PR #4 is the single open DeskPilot working pull request and has no review comments, review threads or status checks reported by the connector.
+- Implemented GitHub issue #10's current-tab extension workflow.
+- Added deterministic DeskPilot extension icon PNG assets and wired them in `manifest.json`.
+- Persisted DeskPilot's active category in SQLite and exposed it to the desktop app and extension bridge.
+- Replaced the old `/capture` bridge route with `/tabs/current/save`, `/windows/current/save` and `/app/show`.
+- Added same-category duplicate prevention, soft-deleted URL restore-on-save and cross-category duplicate confirmation results.
+- Updated the extension popup with `Save to`, `Save Current Tab`, `Save Current Window`, `Retry` and `Open DeskPilot`.
+- Extended storage and bridge smoke coverage for current-tab saves, duplicate skips, soft-deleted restores, cross-category confirmation, route names, icon assets and `/capture` removal.
+- Made bridge smoke tests use a dynamic test port so they can run while the normal DeskPilot bridge is open.
+- Updated README, usage notes and roadmap for the new extension workflow.
+- Verified `npm run build`, `npm run lint`, `npm run test:storage`, `npm run test:prototype` and `npm audit`.
+
+Current status:
+- The browser extension is now a lower-friction toolbar workflow for saving either the active tab or the current window.
+- The active category survives app restart and hide-to-tray through SQLite app state.
+- The local prototype was regenerated successfully after stopping stale local Electron processes that had locked `dist-prototype/DeskPilot`.
+
+Next recommended step:
+- Implement browser-session restore as a new browser window, keeping it separate from issue #10's save-side workflow.
+
+## 2026-07-03
+
+### Extension origin rejection fix
+
+Completed:
+- Reproduced the reported extension popup failure with a storage smoke test: a bridge request without an `Origin` header returned `403 Origin not allowed`.
+- Kept ordinary origin-less bridge requests forbidden.
+- Added a DeskPilot-specific browser-extension client header and taught the bridge to accept it only when `Origin` is missing.
+- Updated the extension popup to send that client header for category loading, current-tab saves, current-window saves and app-show requests.
+- Extended bridge smoke coverage for origin-less extension-client category loading and current-tab saving.
+- Regenerated and verified the local prototype package.
+- Verified `npm run test:storage`, `npm run lint`, `npm run build` and `npm run test:prototype`.
+
+Current status:
+- The unpacked browser extension no longer depends on a stable browser-provided `Origin` header, so the extension ID itself should not block local prototype testing.
+- A previously loaded unpacked extension must be reloaded in the browser extension management page to pick up the new popup code.
+
+Next recommended step:
+- Reload the unpacked extension from `dist-prototype/DeskPilot/browser-extension/`, start DeskPilot from the regenerated prototype and manually test `Save Current Tab` plus `Save Current Window`.
+
+### Single-instance and extension UI refresh fix
+
+Completed:
+- Reproduced the screenshot failure with a storage smoke test: starting the bridge on an occupied localhost port crashed with `EADDRINUSE`.
+- Added bridge error handling so an occupied port no longer crashes the main process.
+- Added an Electron single-instance lock so relaunching DeskPilot focuses the existing instance instead of starting a second bridge.
+- Added a `sessions:changed` notification from extension bridge saves through Electron preload into the React renderer.
+- Refreshed category counts, visible saved URLs and deleted URLs when extension saves complete.
+- Removed the small saved-URL preview from category cards; the Session panel remains the scrollable saved-URL list.
+- Extended prototype smoke coverage for the single-instance guard and renderer refresh after an external extension-style save.
+- Regenerated and verified the local prototype package.
+- Verified `npm run test:storage`, `npm run test:prototype`, `npm run lint` and `npm run build`.
+
+Current status:
+- Relaunching DeskPilot while a tray instance is still running should not produce the `127.0.0.1:17383 already in use` dialog.
+- Extension saves should update the Electron category counters without needing to click the category first.
+
+Next recommended step:
+- Start the regenerated prototype, reload the unpacked browser extension and run a manual save-current-tab/window trial with DeskPilot left open and then hidden to tray.
+
+### New-window restore fix
+
+Completed:
+- Reproduced the restore bug at the code seam: `Open Selected` opened each saved URL with Electron `shell.openExternal`, which lets the default browser reuse the current window.
+- Added a Chrome/Edge restore launcher that starts one browser process with `--new-window` and all saved URLs as arguments.
+- Kept an `openExternal` fallback for machines where no supported Chrome/Edge executable is found.
+- Updated `Open Selected` to use the new-window launcher instead of opening URLs one by one.
+- Extended storage smoke coverage for the new-window launch plan and prototype coverage to reject the old one-by-one `openExternal(tab.url)` path.
+- Verified `npm run test:storage`, `npm run test:prototype`, `npm run lint` and `npm run build`.
+
+Current status:
+- `Open Selected` should restore the selected category as one new Chrome/Edge window containing all saved URLs.
+
+Next recommended step:
+- Manually retest `Open Selected` from the regenerated prototype with a category containing multiple saved URLs.
