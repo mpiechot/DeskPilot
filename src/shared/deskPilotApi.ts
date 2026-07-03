@@ -46,10 +46,40 @@ export type ExtensionInstallInfo = {
 };
 
 export type StorageBackupInfo = {
+  dataProfile: DataProfileInfo;
   databasePath: string;
   rollingBackupPath: string;
   manualBackupDirectory: string;
   manualBackups: StorageBackupSnapshot[];
+};
+
+export type DataProfileId = "development" | "productive";
+
+export type DataProfileCutoverStatus =
+  | "not-applicable"
+  | "copied-from-legacy"
+  | "no-legacy-source"
+  | "already-created";
+
+export type DataProfileCutoverInfo = {
+  status: DataProfileCutoverStatus;
+  automaticMigrationComplete: boolean;
+  message: string;
+  completedAt?: string;
+  sourceDatabasePath?: string;
+};
+
+export type DataProfileInfo = {
+  id: DataProfileId;
+  label: string;
+  description: string;
+  storageDirectory: string;
+  databasePath: string;
+  legacyDatabasePath: string;
+  developmentDatabasePath: string;
+  productiveDatabasePath: string;
+  profileStatePath: string;
+  cutover: DataProfileCutoverInfo;
 };
 
 export type StorageBackupSnapshot = {

@@ -13,6 +13,22 @@ async function runElectronSmoke() {
   const { defaultCategories } = await import(
     pathToFileURL(path.join(prototypeRoot, "dist-electron", "shared", "sessions.js")).href
   );
+  const smokeDataProfile = {
+    id: "development",
+    label: "Development",
+    description: "Renderer smoke data isolated from productive use.",
+    storageDirectory: path.join(prototypeRoot, "profiles", "development", "storage"),
+    databasePath: path.join(prototypeRoot, "profiles", "development", "storage", "smoke-deskpilot.sqlite"),
+    legacyDatabasePath: path.join(prototypeRoot, "storage", "deskpilot.sqlite"),
+    developmentDatabasePath: path.join(prototypeRoot, "profiles", "development", "storage", "smoke-deskpilot.sqlite"),
+    productiveDatabasePath: path.join(prototypeRoot, "profiles", "productive", "storage", "deskpilot.sqlite"),
+    profileStatePath: path.join(prototypeRoot, "profiles", "development", "profile-state.json"),
+    cutover: {
+      status: "not-applicable",
+      automaticMigrationComplete: false,
+      message: "Development storage is isolated."
+    }
+  };
 
   await app.whenReady();
   console.log("Prototype renderer smoke: Electron ready");
@@ -52,8 +68,10 @@ async function runElectronSmoke() {
     supportedBrowsers: ["Chrome", "Edge"]
   }));
   ipcMain.handle("storage:info", () => ({
-    databasePath: path.join(prototypeRoot, "smoke-deskpilot.sqlite"),
-    manualBackupDirectory: path.join(prototypeRoot, "manual-backups"),
+    dataProfile: smokeDataProfile,
+    databasePath: smokeDataProfile.databasePath,
+    rollingBackupPath: path.join(prototypeRoot, "profiles", "development", "storage", "smoke-deskpilot.sqlite.bak"),
+    manualBackupDirectory: path.join(prototypeRoot, "profiles", "development", "storage", "manual-backups"),
     manualBackups: []
   }));
   ipcMain.handle("categories:list", () => categories);
@@ -244,7 +262,7 @@ async function runElectronSmoke() {
         };
       };
 
-      waitForText("Local SQLite storage is active.", () => {
+      waitForText("Development data profile is active.", () => {
         waitForCondition(() => getCategoryCardText("Entertainment").includes("1 tabs"), () => {
         waitForText("Target: Work", () => {
         const urlInput = document.querySelector('input[aria-label="URL to save"]');

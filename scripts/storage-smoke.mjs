@@ -10,6 +10,7 @@ import {
   deleteTab,
   exportStorageBackup,
   getActiveCategoryId,
+  getDataProfileInfo,
   getStorageInfo,
   importStorageBackup,
   initializeStorage,
@@ -38,9 +39,12 @@ import {
 } from "../dist-electron/main/browserLauncher.js";
 import { getExtensionInstallInfo } from "../dist-electron/main/extensionInstall.js";
 
+process.env.DESKPILOT_DATA_PROFILE = "development";
+process.env.DESKPILOT_DISALLOW_PRODUCTIVE_PROFILE = "1";
+
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "deskpilot-storage-"));
 
-await initializeStorage(dir);
+await initializeStorage(dir, { profile: "development", disallowProductive: true });
 
 const initialNames = listCategories().map((category) => category.name);
 assert(initialNames.length === 5, `Expected 5 default categories, got ${initialNames.length}`);
@@ -116,12 +120,18 @@ assert(result.tabs.length === 0, "Expected restored tab to be removable again");
 result = restoreTab(manualRestore.tabs[0].id);
 assert(result.tabs.length === 1, "Expected restored tab to return to active list");
 
-const databasePath = path.join(dir, "storage", "deskpilot.sqlite");
-const backupPath = path.join(dir, "storage", "deskpilot.sqlite.bak");
+const databasePath = path.join(dir, "profiles", "development", "storage", "deskpilot.sqlite");
+const backupPath = path.join(dir, "profiles", "development", "storage", "deskpilot.sqlite.bak");
 assert(fs.existsSync(databasePath), "Expected SQLite database file");
 assert(fs.existsSync(backupPath), "Expected SQLite backup file after writes");
 
 const initialStorageInfo = getStorageInfo();
+assert(getDataProfileInfo().id === "development", "Expected active data profile helper to report Development");
+assert(initialStorageInfo.dataProfile.id === "development", "Expected smoke tests to use the Development profile");
+assert(
+  initialStorageInfo.dataProfile.databasePath === databasePath,
+  "Expected profile info to expose the active Development database path"
+);
 assert(initialStorageInfo.databasePath === databasePath, "Expected storage info to expose the database path");
 assert(initialStorageInfo.rollingBackupPath === backupPath, "Expected storage info to expose the rolling backup path");
 assert(initialStorageInfo.manualBackups.length === 0, "Expected no manual backups before creating one");
@@ -139,7 +149,7 @@ const restoreResult = restoreManualBackup(backupInfo.manualBackups[0].fileName);
 assert(!listCategories().some((category) => category.name === "After Backup"), "Expected restore to replace active data");
 assert(restoreResult.safetyBackupFileName.includes("pre-restore"), "Expected restore to create a pre-restore safety backup");
 assert(
-  fs.existsSync(path.join(dir, "storage", "manual-backups", restoreResult.safetyBackupFileName)),
+  fs.existsSync(path.join(dir, "profiles", "development", "storage", "manual-backups", restoreResult.safetyBackupFileName)),
   "Expected pre-restore safety backup file"
 );
 
@@ -523,6 +533,82 @@ if (conflictingBridgeServer.listening) {
 }
 await new Promise((resolve) => occupiedPortServer.close(resolve));
 
+const profileIsolationDir = fs.mkdtempSync(path.join(os.tmpdir(), "deskpilot-profiles-"));
+await initializeStorage(profileIsolationDir, { profile: "development", disallowProductive: true });
+createCategory({ name: "Development Only", description: "Must stay out of Productive." });
+const developmentProfileInfo = getStorageInfo();
+assert(developmentProfileInfo.dataProfile.id === "development", "Expected Development profile to initialize");
+assert(fs.existsSync(developmentProfileInfo.databasePath), "Expected Development profile database to exist");
+
+await assertRejects(
+  () => initializeStorage(profileIsolationDir, { profile: "productive", disallowProductive: true }),
+  "Expected tooling guard to block Productive profile initialization"
+);
+assert(getStorageInfo().dataProfile.id === "development", "Expected failed Productive guard not to switch active profile");
+
+await initializeStorage(profileIsolationDir, { profile: "productive", disallowProductive: false });
+assert(getStorageInfo().dataProfile.id === "productive", "Expected explicit Productive profile initialization");
+assert(
+  !listCategories().some((category) => category.name === "Development Only"),
+  "Expected Productive profile not to read Development categories"
+);
+createCategory({ name: "Productive Only", description: "Must stay out of Development." });
+
+await initializeStorage(profileIsolationDir, { profile: "development", disallowProductive: true });
+assert(
+  listCategories().some((category) => category.name === "Development Only"),
+  "Expected Development profile writes to persist"
+);
+assert(
+  !listCategories().some((category) => category.name === "Productive Only"),
+  "Expected Development profile not to read Productive categories"
+);
+
+const cutoverDir = fs.mkdtempSync(path.join(os.tmpdir(), "deskpilot-cutover-"));
+await initializeStorage(cutoverDir, { profile: "development", disallowProductive: true });
+createCategory({ name: "Legacy Copied", description: "Should copy into Productive once." });
+addTab({
+  categoryId: "work",
+  url: "https://example.com/legacy-cutover",
+  title: "Legacy Cutover Tab"
+});
+const legacySourceDatabase = getStorageInfo().databasePath;
+const legacyDatabasePath = path.join(cutoverDir, "storage", "deskpilot.sqlite");
+fs.mkdirSync(path.dirname(legacyDatabasePath), { recursive: true });
+fs.copyFileSync(legacySourceDatabase, legacyDatabasePath);
+
+await initializeStorage(cutoverDir, { profile: "productive", disallowProductive: false });
+const firstCutoverInfo = getStorageInfo();
+assert(firstCutoverInfo.dataProfile.cutover.status === "copied-from-legacy", "Expected Productive cutover to copy legacy data");
+assert(fs.existsSync(legacyDatabasePath), "Expected legacy prototype database to remain untouched after cutover");
+assert(
+  listCategories().some((category) => category.name === "Legacy Copied"),
+  "Expected legacy category to exist in Productive after cutover"
+);
+assert(
+  listTabs("work").some((tab) => tab.title === "Legacy Cutover Tab"),
+  "Expected legacy saved tab to exist in Productive after cutover"
+);
+createCategory({ name: "Productive After Cutover", description: "Must survive later legacy changes." });
+
+await initializeStorage(cutoverDir, { profile: "development", disallowProductive: true });
+createCategory({ name: "Legacy Later", description: "Must not copy after Productive exists." });
+fs.copyFileSync(getStorageInfo().databasePath, legacyDatabasePath);
+
+await initializeStorage(cutoverDir, { profile: "productive", disallowProductive: false });
+assert(
+  listCategories().some((category) => category.name === "Productive After Cutover"),
+  "Expected existing Productive data not to be overwritten by later legacy changes"
+);
+assert(
+  !listCategories().some((category) => category.name === "Legacy Later"),
+  "Expected legacy changes after cutover not to be imported automatically"
+);
+assert(
+  getStorageInfo().dataProfile.cutover.status === "copied-from-legacy",
+  "Expected Productive cutover state to remain one-time"
+);
+
 const extensionInfo = getExtensionInstallInfo(process.cwd());
 assert(extensionInfo.manifestPresent, "Expected browser extension manifest to be present");
 assert(extensionInfo.extensionPath.endsWith("browser-extension"), "Expected extension path to point at browser-extension");
@@ -571,6 +657,16 @@ function assert(condition, message) {
 function assertThrows(operation, message) {
   try {
     operation();
+  } catch {
+    return;
+  }
+
+  throw new Error(message);
+}
+
+async function assertRejects(operation, message) {
+  try {
+    await operation();
   } catch {
     return;
   }

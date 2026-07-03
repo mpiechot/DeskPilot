@@ -29,9 +29,26 @@ assert(launcher.includes("start \"DeskPilot\""), "Expected launcher to detach th
 assert(!launcher.includes("electron.cmd"), "Expected launcher not to use the npm Electron cmd shim");
 assert(!launcher.includes("npm run dev"), "Expected launcher not to start the Vite browser dev server");
 assert(!launcher.includes("5173"), "Expected launcher not to reference the Vite browser port");
+assert(launcher.includes("DESKPILOT_DATA_PROFILE=development"), "Expected launcher to force the Development data profile");
+assert(
+  launcher.includes("DESKPILOT_DISALLOW_PRODUCTIVE_PROFILE=1"),
+  "Expected launcher to forbid the Productive data profile"
+);
 assert(debugLauncher.includes("\"%ELECTRON_EXE%\" ."), "Expected debug launcher to run Electron in the foreground");
+assert(
+  debugLauncher.includes("DESKPILOT_DATA_PROFILE=development"),
+  "Expected debug launcher to force the Development data profile"
+);
 assert(silentLauncher.includes("shell.Run"), "Expected VBS launcher to run Electron without a visible console");
 assert(silentLauncher.includes(", 1, False"), "Expected VBS launcher to show the Electron desktop window");
+assert(
+  silentLauncher.includes("DESKPILOT_DATA_PROFILE") && silentLauncher.includes("development"),
+  "Expected VBS launcher to force the Development data profile"
+);
+assert(
+  silentLauncher.includes("DESKPILOT_DISALLOW_PRODUCTIVE_PROFILE") && silentLauncher.includes("1"),
+  "Expected VBS launcher to forbid the Productive data profile"
+);
 assert(!rendererIndex.includes('src="/assets/'), "Expected renderer script path to be relative for Electron loadFile");
 assert(!rendererIndex.includes('href="/assets/'), "Expected renderer stylesheet path to be relative for Electron loadFile");
 assert(mainProcess.includes("requestSingleInstanceLock"), "Expected DeskPilot to prevent parallel app instances");

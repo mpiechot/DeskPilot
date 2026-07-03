@@ -225,18 +225,21 @@ function App() {
     };
   }, [selectedCategoryId]);
 
+  const isStorageWritable = storageStatus === "ready" && Boolean(window.deskPilot);
+  const latestManualBackup = storageInfo?.manualBackups[0] ?? null;
+  const activeDataProfile = storageInfo?.dataProfile ?? null;
+  const storageReadyMessage = activeDataProfile
+    ? `${activeDataProfile.label} data profile is active.`
+    : "Local SQLite storage is active.";
   const storageMessage = operationMessage
     ? operationMessage
     : storageStatus === "ready"
-      ? "Local SQLite storage is active."
+      ? storageReadyMessage
       : storageStatus === "fallback"
         ? "Browser preview is using fallback categories."
         : storageStatus === "error"
           ? "Storage unavailable; showing fallback categories."
           : "Loading local storage.";
-
-  const isStorageWritable = storageStatus === "ready" && Boolean(window.deskPilot);
-  const latestManualBackup = storageInfo?.manualBackups[0] ?? null;
   const bridgeStatusText = !window.deskPilot
     ? "Bridge: Electron app required"
     : bridgeStatus?.running
@@ -571,6 +574,13 @@ function App() {
           </div>
           <div className="headerMeta">
             <div className="version">v{window.deskPilot?.version ?? "0.1.0"}</div>
+            <div
+              className={
+                activeDataProfile?.id === "productive" ? "profileBadge profileBadge-productive" : "profileBadge"
+              }
+            >
+              {activeDataProfile?.label ?? "Profile"}
+            </div>
             <div className={bridgeStatus?.running ? "bridgeStatus bridgeStatus-ready" : "bridgeStatus"}>{bridgeStatusText}</div>
           </div>
         </header>
@@ -747,6 +757,15 @@ function App() {
           </section>
         ) : (
           <section className="safetyPanel" aria-label="Storage safety">
+            <div
+              className={
+                activeDataProfile?.id === "productive" ? "profileSummary profileSummary-productive" : "profileSummary"
+              }
+            >
+              <strong>{activeDataProfile ? `${activeDataProfile.label} profile` : "Data profile"}</strong>
+              <span>{activeDataProfile?.description ?? "Profile status unavailable."}</span>
+              <small>{activeDataProfile?.cutover.message ?? "Cutover status unavailable."}</small>
+            </div>
             <div className="backupActionGrid">
               <button type="button" className="backupAction" onClick={handleCreateStorageBackup}>
                 <DatabaseBackup aria-hidden="true" />

@@ -82,3 +82,11 @@ Use a local prototype folder with a Windows command launcher before adding a sig
 
 Reason:
 The immediate need is daily local trial use, not distribution. A prototype folder can be generated without adding packaging dependencies, preserves local-first behavior and keeps the future installer decision separate.
+
+## 2026-07-03 - Data Profiles
+
+Decision:
+Store Development and Productive data in separate profile directories under Electron user-data, with normal development and prototype launchers defaulting to Development.
+
+Reason:
+DeskPilot is now close enough to daily use that smoke tests, renderer checks and prototype launchers must not share the user's real browser-session database. Productive use is selected deliberately, and its first creation copies the old prototype database once without deleting or repeatedly importing the source.

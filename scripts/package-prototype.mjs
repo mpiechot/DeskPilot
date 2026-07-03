@@ -61,6 +61,8 @@ fs.writeFileSync(
     "  exit /b 1",
     ")",
     "pushd \"%APP_DIR%\" || exit /b 1",
+    "set \"DESKPILOT_DATA_PROFILE=development\"",
+    "set \"DESKPILOT_DISALLOW_PRODUCTIVE_PROFILE=1\"",
     "start \"DeskPilot\" \"%ELECTRON_EXE%\" .",
     "set EXIT_CODE=%ERRORLEVEL%",
     "popd",
@@ -84,6 +86,8 @@ fs.writeFileSync(
     "  exit /b 1",
     ")",
     "pushd \"%APP_DIR%\" || exit /b 1",
+    "set \"DESKPILOT_DATA_PROFILE=development\"",
+    "set \"DESKPILOT_DISALLOW_PRODUCTIVE_PROFILE=1\"",
     "\"%ELECTRON_EXE%\" .",
     "set EXIT_CODE=%ERRORLEVEL%",
     "popd",
@@ -103,6 +107,8 @@ fs.writeFileSync(
     "  MsgBox \"DeskPilot could not find the Electron runtime. Run npm install in the DeskPilot repository, then package the prototype again.\", 16, \"DeskPilot\"",
     "  WScript.Quit 1",
     "End If",
+    "shell.Environment(\"PROCESS\")(\"DESKPILOT_DATA_PROFILE\") = \"development\"",
+    "shell.Environment(\"PROCESS\")(\"DESKPILOT_DISALLOW_PRODUCTIVE_PROFILE\") = \"1\"",
     "shell.CurrentDirectory = appDir",
     "shell.Run Chr(34) & electronExe & Chr(34) & \" .\", 1, False",
     ""
@@ -126,7 +132,7 @@ fs.writeFileSync(
     "Limitations:",
     "- This is a local development prototype, not a signed installer.",
     "- It uses the repository's installed Electron runtime.",
-    "- User data remains in Electron's DeskPilot user-data folder."
+    "- It starts in the Development data profile and cannot touch Productive data."
   ].join("\r\n")
 );
 

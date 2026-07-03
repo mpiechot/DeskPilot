@@ -48,3 +48,6 @@ Do not assume every browser-extension popup request will carry a useful `Origin`
 
 Close-to-tray note:
 A resident tray app must be single-instance from the beginning. Otherwise a normal relaunch after closing the window looks like a crash because the hidden first instance still owns the local bridge port.
+
+Data profile note:
+Separating Productive and Development storage is necessary, but it makes launch paths matter. Every prototype launcher and smoke test must keep forcing Development, and any future installer must make Productive startup explicit instead of inheriting a random developer environment variable.

@@ -9,6 +9,8 @@ import type {
   CategoryRow,
   CategoryRecoveryResult,
   CrossCategoryDuplicatePolicy,
+  DataProfileId,
+  DataProfileInfo,
   SaveStatus,
   SessionMutationResult,
   SessionTab,
@@ -19,6 +21,7 @@ import type {
   StorageBackupSnapshot,
   StorageRestoreResult
 } from "../shared/deskPilotApi.js";
+import { prepareDataProfile } from "./dataProfile.js";
 
 type StoragePaths = {
   databasePath: string;
@@ -50,30 +53,61 @@ type SaveTabOutcome = {
 let sqlite: SqlJsStatic | null = null;
 let database: Database | null = null;
 let paths: StoragePaths | null = null;
+let dataProfile: DataProfileInfo | null = null;
 
-export async function initializeStorage(userDataPath: string): Promise<void> {
-  paths = getStoragePaths(userDataPath);
-  fs.mkdirSync(path.dirname(paths.databasePath), { recursive: true });
+type InitializeStorageOptions = {
+  profile?: DataProfileId;
+  disallowProductive?: boolean;
+};
 
-  sqlite = await initSqlJs({
-    locateFile: (file) => path.join(process.cwd(), "node_modules", "sql.js", "dist", file)
-  });
+export async function initializeStorage(userDataPath: string, options: InitializeStorageOptions = {}): Promise<void> {
+  const nextDataProfile = prepareDataProfile(userDataPath, options);
+  const nextPaths = getStoragePaths(nextDataProfile.storageDirectory);
+  fs.mkdirSync(path.dirname(nextPaths.databasePath), { recursive: true });
 
-  if (fs.existsSync(paths.databasePath)) {
-    database = new sqlite.Database(fs.readFileSync(paths.databasePath));
-  } else {
-    database = new sqlite.Database();
+  const SQL =
+    sqlite ??
+    (await initSqlJs({
+      locateFile: (file) => path.join(process.cwd(), "node_modules", "sql.js", "dist", file)
+    }));
+  sqlite = SQL;
+
+  const nextDatabase = fs.existsSync(nextPaths.databasePath)
+    ? new SQL.Database(fs.readFileSync(nextPaths.databasePath))
+    : new SQL.Database();
+
+  migrate(nextDatabase);
+  seedDefaultCategories(nextDatabase);
+
+  database?.close();
+  database = nextDatabase;
+  paths = nextPaths;
+  dataProfile = nextDataProfile;
+  saveDatabase();
+}
+
+export function getDataProfileInfo(): DataProfileInfo {
+  if (!dataProfile) {
+    throw new Error("DeskPilot data profile has not been initialized.");
   }
 
-  migrate(database);
-  seedDefaultCategories(database);
-  saveDatabase();
+  return dataProfile;
+}
+
+function getStoragePaths(storageDirectory: string): StoragePaths {
+  return {
+    databasePath: path.join(storageDirectory, "deskpilot.sqlite"),
+    backupPath: path.join(storageDirectory, "deskpilot.sqlite.bak"),
+    manualBackupDirectory: path.join(storageDirectory, "manual-backups"),
+    temporaryPath: path.join(storageDirectory, "deskpilot.sqlite.tmp")
+  };
 }
 
 export function getStorageInfo(): StorageBackupInfo {
   const storagePaths = getPaths();
 
   return {
+    dataProfile: getDataProfileInfo(),
     databasePath: storagePaths.databasePath,
     rollingBackupPath: storagePaths.backupPath,
     manualBackupDirectory: storagePaths.manualBackupDirectory,
@@ -398,17 +432,6 @@ export function restoreTab(id: string): SessionMutationResult {
   return {
     categories: listCategories(),
     tabs: categoryId ? listTabs(categoryId) : []
-  };
-}
-
-function getStoragePaths(userDataPath: string): StoragePaths {
-  const storageDirectory = path.join(userDataPath, "storage");
-
-  return {
-    databasePath: path.join(storageDirectory, "deskpilot.sqlite"),
-    backupPath: path.join(storageDirectory, "deskpilot.sqlite.bak"),
-    manualBackupDirectory: path.join(storageDirectory, "manual-backups"),
-    temporaryPath: path.join(storageDirectory, "deskpilot.sqlite.tmp")
   };
 }
 

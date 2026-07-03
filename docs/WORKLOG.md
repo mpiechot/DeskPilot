@@ -527,3 +527,26 @@ Current status:
 
 Next recommended step:
 - Start with GitHub issue #11: implement Productive and Development data profiles with visible profile status.
+
+### Data profile isolation and productive cutover session
+
+Completed:
+- Confirmed PR #4 was already merged and created a new working branch from updated `origin/main`.
+- Carried forward the Productive MVP planning commit onto the new branch.
+- Implemented GitHub issues #11, #12 and #13 locally.
+- Added explicit Development and Productive data profiles under Electron user-data.
+- Kept normal development and prototype launchers on the Development profile.
+- Added an explicit `npm run dev:electron:productive` command for Productive startup.
+- Added visible profile and cutover status to the Electron UI.
+- Added one-time non-destructive Productive cutover from the old prototype database at `storage/deskpilot.sqlite`.
+- Hardened storage and prototype smoke tests so Productive cannot be selected unintentionally.
+- Updated README, usage notes, roadmap, technical decisions and grumble log.
+- Verified `npm run build`, `npm run lint`, `npm run test:storage`, `npm run test:prototype` and `npm audit`.
+
+Current status:
+- Development and Productive browser-session data are isolated.
+- Productive startup copies existing prototype data once if the legacy prototype database exists, then records that later prototype changes are not imported automatically.
+- The next Productive MVP dependency is saved-tab order.
+
+Next recommended step:
+- Implement GitHub issue #14: persist saved tab order and restore categories in that order.
