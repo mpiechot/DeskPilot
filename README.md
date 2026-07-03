@@ -39,6 +39,7 @@ Current state:
 - The app shows the active data profile and Productive cutover status in the UI.
 - Productive storage copies existing prototype data once when it is first created and leaves the source untouched.
 - Categories and saved URLs use soft-delete recovery flows.
+- Saved URLs have persisted tab positions and are restored in that stored order.
 - Saved URLs can be viewed and removed from the selected category.
 - Saved URLs from a selected category open together in a new Chrome/Edge browser window.
 - Manual SQLite backup snapshots can be created, restored, exported and imported from the Safety mode.

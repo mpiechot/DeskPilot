@@ -90,3 +90,11 @@ Store Development and Productive data in separate profile directories under Elec
 
 Reason:
 DeskPilot is now close enough to daily use that smoke tests, renderer checks and prototype launchers must not share the user's real browser-session database. Productive use is selected deliberately, and its first creation copies the old prototype database once without deleting or repeatedly importing the source.
+
+## 2026-07-03 - Saved Tab Order
+
+Decision:
+Persist a numeric tab position on every saved URL and use that stored order whenever DeskPilot lists or restores a category.
+
+Reason:
+The Productive MVP needs the browser session restored as the user arranged it, not as an accidental save-time or database order. Existing databases are normalized deterministically on startup so older data receives a stable order without deleting or rewriting the saved URLs themselves.

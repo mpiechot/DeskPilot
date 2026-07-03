@@ -2,6 +2,7 @@ import fs from "node:fs";
 import http from "node:http";
 import os from "node:os";
 import path from "node:path";
+import initSqlJs from "sql.js";
 import {
   createCategory,
   createManualBackup,
@@ -122,6 +123,61 @@ assert(result.tabs.length === 1, "Expected restored tab to return to active list
 
 const databasePath = path.join(dir, "profiles", "development", "storage", "deskpilot.sqlite");
 const backupPath = path.join(dir, "profiles", "development", "storage", "deskpilot.sqlite.bak");
+const orderCategory = createCategory({ name: "Order Test", description: "Saved tab order checks." }).find(
+  (category) => category.name === "Order Test"
+);
+assert(orderCategory, "Expected Order Test category after create");
+addTab({
+  categoryId: orderCategory.id,
+  url: "https://example.com/order-alpha",
+  title: "Order Alpha"
+});
+addTab({
+  categoryId: orderCategory.id,
+  url: "https://example.com/order-beta",
+  title: "Order Beta"
+});
+addTab({
+  categoryId: orderCategory.id,
+  url: "https://example.com/order-gamma",
+  title: "Order Gamma"
+});
+assertTabOrder(
+  listTabs(orderCategory.id),
+  ["Order Alpha", "Order Beta", "Order Gamma"],
+  "Expected newly saved tabs to receive stable positions"
+);
+const orderedRestoreUrls = listTabs(orderCategory.id).map((item) => item.url);
+const orderedRestoreLaunchPlan = createBrowserWindowLaunchPlan(
+  orderedRestoreUrls,
+  "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+);
+assert(
+  JSON.stringify(orderedRestoreLaunchPlan.args.slice(1)) === JSON.stringify(orderedRestoreUrls),
+  "Expected saved category restore launch plan to preserve Tab Order"
+);
+
+await initializeStorage(dir, { profile: "development", disallowProductive: true });
+assertTabOrder(
+  listTabs(orderCategory.id),
+  ["Order Alpha", "Order Beta", "Order Gamma"],
+  "Expected saved tab order to survive storage restart"
+);
+
+await rewriteSqliteDatabase(databasePath, (db) => {
+  db.run("UPDATE session_tabs SET position = 0 WHERE category_id = $categoryId", {
+    $categoryId: orderCategory.id
+  });
+  db.run("UPDATE session_tabs SET saved_at = '2026-01-01T00:00:01.000Z' WHERE title = 'Order Alpha'");
+  db.run("UPDATE session_tabs SET saved_at = '2026-01-01T00:00:02.000Z' WHERE title = 'Order Beta'");
+  db.run("UPDATE session_tabs SET saved_at = '2026-01-01T00:00:03.000Z' WHERE title = 'Order Gamma'");
+});
+await initializeStorage(dir, { profile: "development", disallowProductive: true });
+assertTabOrder(
+  listTabs(orderCategory.id),
+  ["Order Alpha", "Order Beta", "Order Gamma"],
+  "Expected migration to normalize legacy duplicate tab positions deterministically"
+);
 assert(fs.existsSync(databasePath), "Expected SQLite database file");
 assert(fs.existsSync(backupPath), "Expected SQLite backup file after writes");
 
@@ -141,12 +197,27 @@ assert(fs.existsSync(backupInfo.manualBackups[0].path), "Expected manual backup 
 assert(backupInfo.manualBackups[0].sizeBytes > 0, "Expected manual backup file to contain data");
 
 createCategory({ name: "After Backup", description: "Should disappear after restore." });
+addTab({
+  categoryId: orderCategory.id,
+  url: "https://example.com/order-delta",
+  title: "Order Delta"
+});
 assert(
   listCategories().some((category) => category.name === "After Backup"),
   "Expected mutation after manual backup"
 );
+assertTabOrder(
+  listTabs(orderCategory.id),
+  ["Order Alpha", "Order Beta", "Order Gamma", "Order Delta"],
+  "Expected mutation after manual backup to append at the end of Tab Order"
+);
 const restoreResult = restoreManualBackup(backupInfo.manualBackups[0].fileName);
 assert(!listCategories().some((category) => category.name === "After Backup"), "Expected restore to replace active data");
+assertTabOrder(
+  listTabs(orderCategory.id),
+  ["Order Alpha", "Order Beta", "Order Gamma"],
+  "Expected restore to recover the backed-up Tab Order"
+);
 assert(restoreResult.safetyBackupFileName.includes("pre-restore"), "Expected restore to create a pre-restore safety backup");
 assert(
   fs.existsSync(path.join(dir, "profiles", "development", "storage", "manual-backups", restoreResult.safetyBackupFileName)),
@@ -672,4 +743,33 @@ async function assertRejects(operation, message) {
   }
 
   throw new Error(message);
+}
+
+function assertTabOrder(tabs, expectedTitles, message) {
+  const titles = tabs.map((tab) => tab.title);
+  const positions = tabs.map((tab) => tab.position);
+  const expectedPositions = expectedTitles.map((_, index) => index);
+
+  assert(
+    JSON.stringify(titles) === JSON.stringify(expectedTitles),
+    `${message}: expected titles ${JSON.stringify(expectedTitles)}, got ${JSON.stringify(titles)}`
+  );
+  assert(
+    JSON.stringify(positions) === JSON.stringify(expectedPositions),
+    `${message}: expected positions ${JSON.stringify(expectedPositions)}, got ${JSON.stringify(positions)}`
+  );
+}
+
+async function rewriteSqliteDatabase(filePath, operation) {
+  const SQL = await initSqlJs({
+    locateFile: (file) => path.join(process.cwd(), "node_modules", "sql.js", "dist", file)
+  });
+  const database = new SQL.Database(fs.readFileSync(filePath));
+
+  try {
+    operation(database);
+    fs.writeFileSync(filePath, Buffer.from(database.export()));
+  } finally {
+    database.close();
+  }
 }

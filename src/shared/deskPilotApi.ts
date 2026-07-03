@@ -126,6 +126,7 @@ export type SessionTab = {
   categoryId: string;
   url: string;
   title: string;
+  position: number;
   savedAt: string;
 };
 
@@ -163,5 +164,6 @@ export type SessionTabRow = {
   category_id: string;
   url: string;
   title: string;
+  position: number;
   saved_at: string;
 };

@@ -553,3 +553,24 @@ Current status:
 
 Next recommended step:
 - Implement GitHub issue #14: persist saved tab order and restore categories in that order.
+
+### Saved tab order session
+
+Completed:
+- Confirmed PR #19 is the single open DeskPilot working pull request and has no comments, review threads, commit statuses or workflow runs reported yet.
+- Implemented GitHub issue #14 locally.
+- Returned saved-tab `position` values through the shared API.
+- Listed saved URLs by persisted tab position with deterministic fallback ordering.
+- Restored selected categories through the existing new-window launch path in persisted tab order.
+- Hardened startup migration so existing databases with missing or duplicate tab positions are normalized deterministically.
+- Made soft-deleted URL restore-on-save and Recovery restore assign a fresh active tab position.
+- Extended storage smoke coverage for stable saved-tab positions, restart persistence, legacy duplicate-position normalization and backup restore preserving tab order.
+- Updated README, usage notes, roadmap and technical decisions for the saved-tab order foundation.
+- Verified `npm run build`, `npm run test:storage`, `npm run lint`, `npm run test:prototype` and `npm audit`.
+
+Current status:
+- Saved URLs now have a stable stored order inside their category, and `Open Selected` uses that order when restoring a browser session.
+- The Productive MVP storage foundation for Session Board ordering is ready on the working PR branch.
+
+Next recommended step:
+- Implement GitHub issue #15: show saved tabs under each category in the Session Board.
