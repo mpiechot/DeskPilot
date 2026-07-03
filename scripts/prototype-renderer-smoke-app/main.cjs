@@ -13,6 +13,22 @@ async function runElectronSmoke() {
   const { defaultCategories } = await import(
     pathToFileURL(path.join(prototypeRoot, "dist-electron", "shared", "sessions.js")).href
   );
+  const smokeDataProfile = {
+    id: "development",
+    label: "Development",
+    description: "Renderer smoke data isolated from productive use.",
+    storageDirectory: path.join(prototypeRoot, "profiles", "development", "storage"),
+    databasePath: path.join(prototypeRoot, "profiles", "development", "storage", "smoke-deskpilot.sqlite"),
+    legacyDatabasePath: path.join(prototypeRoot, "storage", "deskpilot.sqlite"),
+    developmentDatabasePath: path.join(prototypeRoot, "profiles", "development", "storage", "smoke-deskpilot.sqlite"),
+    productiveDatabasePath: path.join(prototypeRoot, "profiles", "productive", "storage", "deskpilot.sqlite"),
+    profileStatePath: path.join(prototypeRoot, "profiles", "development", "profile-state.json"),
+    cutover: {
+      status: "not-applicable",
+      automaticMigrationComplete: false,
+      message: "Development storage is isolated."
+    }
+  };
 
   await app.whenReady();
   console.log("Prototype renderer smoke: Electron ready");
@@ -27,15 +43,24 @@ async function runElectronSmoke() {
   }
 
   function setActiveTabs(categoryId, tabs) {
-    tabsByCategory.set(categoryId, tabs);
+    tabsByCategory.set(
+      categoryId,
+      tabs.map((tab, index) => ({
+        ...tab,
+        categoryId,
+        position: index,
+        savedAt: tab.savedAt || new Date().toISOString()
+      }))
+    );
     const categoryIndex = categories.findIndex((category) => category.id === categoryId);
+    const storedTabs = tabsByCategory.get(categoryId) ?? [];
 
     if (categoryIndex >= 0) {
       categories[categoryIndex] = {
         ...categories[categoryIndex],
-        status: tabs.length > 0 ? "ready" : "empty",
-        tabCount: tabs.length,
-        lastSavedLabel: tabs.length > 0 ? "Just now" : "Not saved yet"
+        status: storedTabs.length > 0 ? "ready" : "empty",
+        tabCount: storedTabs.length,
+        lastSavedLabel: storedTabs.length > 0 ? "Just now" : "Not saved yet"
       };
     }
   }
@@ -52,8 +77,10 @@ async function runElectronSmoke() {
     supportedBrowsers: ["Chrome", "Edge"]
   }));
   ipcMain.handle("storage:info", () => ({
-    databasePath: path.join(prototypeRoot, "smoke-deskpilot.sqlite"),
-    manualBackupDirectory: path.join(prototypeRoot, "manual-backups"),
+    dataProfile: smokeDataProfile,
+    databasePath: smokeDataProfile.databasePath,
+    rollingBackupPath: path.join(prototypeRoot, "profiles", "development", "storage", "smoke-deskpilot.sqlite.bak"),
+    manualBackupDirectory: path.join(prototypeRoot, "profiles", "development", "storage", "manual-backups"),
     manualBackups: []
   }));
   ipcMain.handle("categories:list", () => categories);
@@ -73,7 +100,9 @@ async function runElectronSmoke() {
       id: `smoke-tab-${input.categoryId}-${Date.now()}`,
       categoryId: input.categoryId,
       title: input.title || input.url,
-      url: input.url
+      url: input.url,
+      position: getActiveTabs(input.categoryId).length,
+      savedAt: new Date().toISOString()
     };
     const nextTabs = [...getActiveTabs(input.categoryId), tab];
     setActiveTabs(input.categoryId, nextTabs);
@@ -104,6 +133,59 @@ async function runElectronSmoke() {
       categories,
       tabs: affectedCategoryId ? getActiveTabs(affectedCategoryId) : []
     };
+  });
+  ipcMain.handle("tabs:move", (_event, id, input) => {
+    let movedTab = null;
+    let sourceCategoryId = "";
+
+    for (const [categoryId, tabs] of tabsByCategory.entries()) {
+      const tab = tabs.find((item) => item.id === id);
+
+      if (tab) {
+        movedTab = tab;
+        sourceCategoryId = categoryId;
+        setActiveTabs(
+          categoryId,
+          tabs.filter((item) => item.id !== id)
+        );
+        break;
+      }
+    }
+
+    if (!movedTab) {
+      return {
+        categories,
+        tabs: getActiveTabs(input.targetCategoryId)
+      };
+    }
+
+    const targetTabs = getActiveTabs(input.targetCategoryId).filter((item) => item.id !== id);
+    const targetPosition = Math.max(0, Math.min(Number(input.targetPosition) || 0, targetTabs.length));
+    targetTabs.splice(targetPosition, 0, {
+      ...movedTab,
+      categoryId: input.targetCategoryId
+    });
+    setActiveTabs(input.targetCategoryId, targetTabs);
+
+    if (sourceCategoryId && sourceCategoryId !== input.targetCategoryId) {
+      setActiveTabs(sourceCategoryId, getActiveTabs(sourceCategoryId));
+    }
+
+    return {
+      categories,
+      tabs: getActiveTabs(input.targetCategoryId)
+    };
+  });
+  ipcMain.handle("tabs:open", (_event, id) => {
+    for (const tabs of tabsByCategory.values()) {
+      const tab = tabs.find((item) => item.id === id);
+
+      if (tab) {
+        return tab;
+      }
+    }
+
+    return null;
   });
 
   const window = new BrowserWindow({
@@ -170,12 +252,27 @@ async function runElectronSmoke() {
 
       const findButtonByText = (text) =>
         Array.from(document.querySelectorAll("button")).find((button) => button.textContent.includes(text));
+      const getCategoryCard = (name) =>
+        Array.from(document.querySelectorAll(".categoryCard")).find((card) => card.textContent.includes(name));
       const getCategoryCardText = (name) => {
-        const category = Array.from(document.querySelectorAll(".categoryCard")).find((card) =>
-          card.textContent.includes(name)
-        );
+        const category = getCategoryCard(name);
 
         return category ? category.textContent : "";
+      };
+      const getBoardList = (categoryName) => getCategoryCard(categoryName).querySelector(".sessionBoardList");
+      const getBoardTab = (categoryName, title) =>
+        Array.from(getCategoryCard(categoryName).querySelectorAll(".sessionBoardTab")).find((tab) =>
+          tab.textContent.includes(title)
+        );
+      const getBoardTitles = (categoryName) =>
+        Array.from(getCategoryCard(categoryName).querySelectorAll(".sessionBoardTab span")).map((item) => item.textContent);
+      const dragElementTo = (source, target, clientY) => {
+        const dataTransfer = new DataTransfer();
+
+        source.dispatchEvent(new DragEvent("dragstart", { bubbles: true, cancelable: true, dataTransfer }));
+        target.dispatchEvent(new DragEvent("dragover", { bubbles: true, cancelable: true, dataTransfer, clientY }));
+        target.dispatchEvent(new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer, clientY }));
+        source.dispatchEvent(new DragEvent("dragend", { bubbles: true, cancelable: true, dataTransfer }));
       };
       const waitForCondition = (predicate, callback, attempts = 120) => {
         if (predicate()) {
@@ -244,8 +341,12 @@ async function runElectronSmoke() {
         };
       };
 
-      waitForText("Local SQLite storage is active.", () => {
-        waitForCondition(() => getCategoryCardText("Entertainment").includes("1 tabs"), () => {
+      waitForText("Development data profile is active.", () => {
+        waitForCondition(
+          () =>
+            getCategoryCardText("Entertainment").includes("1 tabs") &&
+            getCategoryCardText("Entertainment").includes("External Extension Save"),
+          () => {
         waitForText("Target: Work", () => {
         const urlInput = document.querySelector('input[aria-label="URL to save"]');
         const titleInput = document.querySelector('input[aria-label="URL title"]');
@@ -277,19 +378,66 @@ async function runElectronSmoke() {
               const titleInputAcceptsText = nextTitleInput.value === "Project title";
               nextSaveButton.click();
 
-              setTimeout(() => {
+              waitForCondition(() => Boolean(getBoardTab("Projects", "Project title")), () => {
                 const projectTitleSavedBeforeRecovery = getRenderedText().includes("Project title");
+                const projectBoardTab = getBoardTab("Projects", "Project title");
+                const workBoardList = getBoardList("Work");
+                const workBoardRect = workBoardList.getBoundingClientRect();
+
+                dragElementTo(projectBoardTab, workBoardList, workBoardRect.bottom - 2);
+
+                waitForCondition(
+                  () =>
+                    getCategoryCardText("Work").includes("Project title") &&
+                    !getCategoryCardText("Projects").includes("Project title"),
+                  () => {
                 clickCategory("Work");
 
-                setTimeout(() => {
+                waitForText("Target: Work", () => {
+                  const workUrlInput = document.querySelector('input[aria-label="URL to save"]');
+                  const workTitleInput = document.querySelector('input[aria-label="URL title"]');
+                  const workSaveButton = findButtonByText("Save URL");
+
+                  setInputValue(workUrlInput, "https://example.com/work-second");
+                  setInputValue(workTitleInput, "Work second");
+                  workSaveButton.click();
+
+                  waitForText("Saved URL to Work.", () => {
+                    const workSecondTab = getBoardTab("Work", "Work second");
+                    const movedProjectTab = getBoardTab("Work", "Project title");
+                    const movedProjectRect = movedProjectTab.getBoundingClientRect();
+
+                    dragElementTo(workSecondTab, movedProjectTab, movedProjectRect.top + 1);
+
+                    waitForCondition(() => {
+                      const workTitles = getBoardTitles("Work");
+
+                      return (
+                        workTitles.includes("Work second") &&
+                        workTitles.includes("Project title") &&
+                        workTitles.indexOf("Work second") < workTitles.indexOf("Project title")
+                      );
+                    }, () => {
+                  getBoardTab("Work", "Work second").querySelector('button[title="Open saved tab"]').click();
+
+                  waitForText("Opened Work second.", () => {
                   findButtonByText("Recovery").click();
 
                   waitForText("Restore " + longWorkTitle, () => {
                   const recoveryOverflow = getControlRailOverflow();
+                  const workBoardTitles = getBoardTitles("Work");
 
                 resolve({
                   hasDeskPilotApi: Boolean(window.deskPilot),
                   extensionRefreshUpdatedCategoryCount: getCategoryCardText("Entertainment").includes("1 tabs"),
+                  sessionBoardShowsSavedTabs: getCategoryCardText("Entertainment").includes("External Extension Save"),
+                  sessionBoardMoveWorked: getCategoryCardText("Work").includes("Project title"),
+                  sessionBoardReorderWorked:
+                    workBoardTitles.includes("Work second") &&
+                    workBoardTitles.includes("Project title") &&
+                    workBoardTitles.indexOf("Work second") < workBoardTitles.indexOf("Project title"),
+                  sessionBoardOpenWorked: getRenderedText().includes("Opened Work second."),
+                  workBoardTitles,
                   entertainmentCardText: getCategoryCardText("Entertainment"),
                   titleInputAcceptsText,
                   titleInputReceivesClicks: titleCenterElement === nextTitleInput,
@@ -315,8 +463,13 @@ async function runElectronSmoke() {
                   bodyText: getRenderedText()
                 });
                   });
-                }, 50);
-              }, 250);
+                  });
+                    });
+                  });
+                });
+                  }
+                );
+              });
             });
           });
         });
@@ -334,6 +487,13 @@ async function runElectronSmoke() {
     result.extensionRefreshUpdatedCategoryCount,
     "Expected external extension saves to refresh category counts in the renderer"
   );
+  assert(result.sessionBoardShowsSavedTabs, "Expected Session Board cards to show saved tabs");
+  assert(result.sessionBoardMoveWorked, "Expected Session Board drag/drop to move a saved tab between categories");
+  if (!result.sessionBoardReorderWorked) {
+    console.error(JSON.stringify({ workBoardTitles: result.workBoardTitles, bodyText: result.bodyText }, null, 2));
+  }
+  assert(result.sessionBoardReorderWorked, "Expected Session Board drag/drop to reorder saved tabs within a category");
+  assert(result.sessionBoardOpenWorked, "Expected Session Board per-tab open control to open a saved tab");
   assert(
     !result.bodyText.includes("Saving URLs requires the Electron app."),
     "Expected Save URL not to report a missing Electron app"
@@ -350,7 +510,10 @@ async function runElectronSmoke() {
   if (!result.bodyText.includes("Saved URL to Projects.") && !result.projectTitleSavedBeforeRecovery) {
     console.error(result.bodyText);
   }
-  assert(result.bodyText.includes("Saved URL to Projects."), "Expected Save URL to work after switching to Projects");
+  assert(
+    result.bodyText.includes("Saved URL to Projects.") || result.projectTitleSavedBeforeRecovery,
+    "Expected Save URL to work after switching to Projects"
+  );
   assert(result.projectTitleSavedBeforeRecovery, "Expected the Projects saved URL to keep the entered title");
 
   window.destroy();

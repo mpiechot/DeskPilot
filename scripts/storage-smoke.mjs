@@ -2,6 +2,7 @@ import fs from "node:fs";
 import http from "node:http";
 import os from "node:os";
 import path from "node:path";
+import initSqlJs from "sql.js";
 import {
   createCategory,
   createManualBackup,
@@ -10,6 +11,7 @@ import {
   deleteTab,
   exportStorageBackup,
   getActiveCategoryId,
+  getDataProfileInfo,
   getStorageInfo,
   importStorageBackup,
   initializeStorage,
@@ -17,6 +19,7 @@ import {
   listDeletedTabs,
   listCategories,
   listTabs,
+  moveTab,
   restoreCategory,
   restoreManualBackup,
   restoreTab,
@@ -38,9 +41,12 @@ import {
 } from "../dist-electron/main/browserLauncher.js";
 import { getExtensionInstallInfo } from "../dist-electron/main/extensionInstall.js";
 
+process.env.DESKPILOT_DATA_PROFILE = "development";
+process.env.DESKPILOT_DISALLOW_PRODUCTIVE_PROFILE = "1";
+
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "deskpilot-storage-"));
 
-await initializeStorage(dir);
+await initializeStorage(dir, { profile: "development", disallowProductive: true });
 
 const initialNames = listCategories().map((category) => category.name);
 assert(initialNames.length === 5, `Expected 5 default categories, got ${initialNames.length}`);
@@ -116,12 +122,73 @@ assert(result.tabs.length === 0, "Expected restored tab to be removable again");
 result = restoreTab(manualRestore.tabs[0].id);
 assert(result.tabs.length === 1, "Expected restored tab to return to active list");
 
-const databasePath = path.join(dir, "storage", "deskpilot.sqlite");
-const backupPath = path.join(dir, "storage", "deskpilot.sqlite.bak");
+const databasePath = path.join(dir, "profiles", "development", "storage", "deskpilot.sqlite");
+const backupPath = path.join(dir, "profiles", "development", "storage", "deskpilot.sqlite.bak");
+const orderCategory = createCategory({ name: "Order Test", description: "Saved tab order checks." }).find(
+  (category) => category.name === "Order Test"
+);
+assert(orderCategory, "Expected Order Test category after create");
+addTab({
+  categoryId: orderCategory.id,
+  url: "https://example.com/order-alpha",
+  title: "Order Alpha"
+});
+addTab({
+  categoryId: orderCategory.id,
+  url: "https://example.com/order-beta",
+  title: "Order Beta"
+});
+addTab({
+  categoryId: orderCategory.id,
+  url: "https://example.com/order-gamma",
+  title: "Order Gamma"
+});
+assertTabOrder(
+  listTabs(orderCategory.id),
+  ["Order Alpha", "Order Beta", "Order Gamma"],
+  "Expected newly saved tabs to receive stable positions"
+);
+const orderedRestoreUrls = listTabs(orderCategory.id).map((item) => item.url);
+const orderedRestoreLaunchPlan = createBrowserWindowLaunchPlan(
+  orderedRestoreUrls,
+  "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+);
+assert(
+  JSON.stringify(orderedRestoreLaunchPlan.args.slice(1)) === JSON.stringify(orderedRestoreUrls),
+  "Expected saved category restore launch plan to preserve Tab Order"
+);
+
+await initializeStorage(dir, { profile: "development", disallowProductive: true });
+assertTabOrder(
+  listTabs(orderCategory.id),
+  ["Order Alpha", "Order Beta", "Order Gamma"],
+  "Expected saved tab order to survive storage restart"
+);
+
+await rewriteSqliteDatabase(databasePath, (db) => {
+  db.run("UPDATE session_tabs SET position = 0 WHERE category_id = $categoryId", {
+    $categoryId: orderCategory.id
+  });
+  db.run("UPDATE session_tabs SET saved_at = '2026-01-01T00:00:01.000Z' WHERE title = 'Order Alpha'");
+  db.run("UPDATE session_tabs SET saved_at = '2026-01-01T00:00:02.000Z' WHERE title = 'Order Beta'");
+  db.run("UPDATE session_tabs SET saved_at = '2026-01-01T00:00:03.000Z' WHERE title = 'Order Gamma'");
+});
+await initializeStorage(dir, { profile: "development", disallowProductive: true });
+assertTabOrder(
+  listTabs(orderCategory.id),
+  ["Order Alpha", "Order Beta", "Order Gamma"],
+  "Expected migration to normalize legacy duplicate tab positions deterministically"
+);
 assert(fs.existsSync(databasePath), "Expected SQLite database file");
 assert(fs.existsSync(backupPath), "Expected SQLite backup file after writes");
 
 const initialStorageInfo = getStorageInfo();
+assert(getDataProfileInfo().id === "development", "Expected active data profile helper to report Development");
+assert(initialStorageInfo.dataProfile.id === "development", "Expected smoke tests to use the Development profile");
+assert(
+  initialStorageInfo.dataProfile.databasePath === databasePath,
+  "Expected profile info to expose the active Development database path"
+);
 assert(initialStorageInfo.databasePath === databasePath, "Expected storage info to expose the database path");
 assert(initialStorageInfo.rollingBackupPath === backupPath, "Expected storage info to expose the rolling backup path");
 assert(initialStorageInfo.manualBackups.length === 0, "Expected no manual backups before creating one");
@@ -131,16 +198,108 @@ assert(fs.existsSync(backupInfo.manualBackups[0].path), "Expected manual backup 
 assert(backupInfo.manualBackups[0].sizeBytes > 0, "Expected manual backup file to contain data");
 
 createCategory({ name: "After Backup", description: "Should disappear after restore." });
+addTab({
+  categoryId: orderCategory.id,
+  url: "https://example.com/order-delta",
+  title: "Order Delta"
+});
 assert(
   listCategories().some((category) => category.name === "After Backup"),
   "Expected mutation after manual backup"
 );
+assertTabOrder(
+  listTabs(orderCategory.id),
+  ["Order Alpha", "Order Beta", "Order Gamma", "Order Delta"],
+  "Expected mutation after manual backup to append at the end of Tab Order"
+);
 const restoreResult = restoreManualBackup(backupInfo.manualBackups[0].fileName);
 assert(!listCategories().some((category) => category.name === "After Backup"), "Expected restore to replace active data");
+assertTabOrder(
+  listTabs(orderCategory.id),
+  ["Order Alpha", "Order Beta", "Order Gamma"],
+  "Expected restore to recover the backed-up Tab Order"
+);
 assert(restoreResult.safetyBackupFileName.includes("pre-restore"), "Expected restore to create a pre-restore safety backup");
 assert(
-  fs.existsSync(path.join(dir, "storage", "manual-backups", restoreResult.safetyBackupFileName)),
+  fs.existsSync(path.join(dir, "profiles", "development", "storage", "manual-backups", restoreResult.safetyBackupFileName)),
   "Expected pre-restore safety backup file"
+);
+
+const boardSourceCategory = createCategory({
+  name: "Board Source",
+  description: "Session Board move source."
+}).find((category) => category.name === "Board Source");
+const boardTargetCategory = createCategory({
+  name: "Board Target",
+  description: "Session Board move target."
+}).find((category) => category.name === "Board Target");
+assert(boardSourceCategory && boardTargetCategory, "Expected Session Board categories after create");
+addTab({
+  categoryId: boardSourceCategory.id,
+  url: "https://example.com/board-alpha",
+  title: "Board Alpha"
+});
+addTab({
+  categoryId: boardSourceCategory.id,
+  url: "https://example.com/board-beta",
+  title: "Board Beta"
+});
+addTab({
+  categoryId: boardTargetCategory.id,
+  url: "https://example.com/board-gamma",
+  title: "Board Gamma"
+});
+
+let boardBeta = listTabs(boardSourceCategory.id).find((item) => item.title === "Board Beta");
+assert(boardBeta, "Expected Board Beta before cross-category move");
+const boardMoveResult = moveTab(boardBeta.id, {
+  targetCategoryId: boardTargetCategory.id,
+  targetPosition: 1
+});
+assert(
+  boardMoveResult.categories.some((category) => category.id === boardSourceCategory.id && category.tabCount === 1),
+  "Expected source category count to update after Session Board move"
+);
+assert(
+  boardMoveResult.categories.some((category) => category.id === boardTargetCategory.id && category.tabCount === 2),
+  "Expected target category count to update after Session Board move"
+);
+assertTabOrder(
+  listTabs(boardSourceCategory.id),
+  ["Board Alpha"],
+  "Expected cross-category move to remove the tab from the source category"
+);
+assertTabOrder(
+  listTabs(boardTargetCategory.id),
+  ["Board Gamma", "Board Beta"],
+  "Expected cross-category move to insert the tab at the requested target position"
+);
+
+await initializeStorage(dir, { profile: "development", disallowProductive: true });
+assertTabOrder(
+  listTabs(boardTargetCategory.id),
+  ["Board Gamma", "Board Beta"],
+  "Expected Session Board cross-category move to survive storage restart"
+);
+
+boardBeta = listTabs(boardTargetCategory.id).find((item) => item.title === "Board Beta");
+assert(boardBeta, "Expected Board Beta before same-category reorder");
+moveTab(boardBeta.id, {
+  targetCategoryId: boardTargetCategory.id,
+  targetPosition: 0
+});
+assertTabOrder(
+  listTabs(boardTargetCategory.id),
+  ["Board Beta", "Board Gamma"],
+  "Expected same-category Session Board reorder to update Tab Order"
+);
+const reorderedRestoreLaunchPlan = createBrowserWindowLaunchPlan(
+  listTabs(boardTargetCategory.id).map((item) => item.url),
+  "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+);
+assert(
+  reorderedRestoreLaunchPlan.args[1] === "https://example.com/board-beta",
+  "Expected reordered Session Board category restore to use the updated order"
 );
 
 const exportPath = path.join(dir, "exported-deskpilot.sqlite");
@@ -523,6 +682,82 @@ if (conflictingBridgeServer.listening) {
 }
 await new Promise((resolve) => occupiedPortServer.close(resolve));
 
+const profileIsolationDir = fs.mkdtempSync(path.join(os.tmpdir(), "deskpilot-profiles-"));
+await initializeStorage(profileIsolationDir, { profile: "development", disallowProductive: true });
+createCategory({ name: "Development Only", description: "Must stay out of Productive." });
+const developmentProfileInfo = getStorageInfo();
+assert(developmentProfileInfo.dataProfile.id === "development", "Expected Development profile to initialize");
+assert(fs.existsSync(developmentProfileInfo.databasePath), "Expected Development profile database to exist");
+
+await assertRejects(
+  () => initializeStorage(profileIsolationDir, { profile: "productive", disallowProductive: true }),
+  "Expected tooling guard to block Productive profile initialization"
+);
+assert(getStorageInfo().dataProfile.id === "development", "Expected failed Productive guard not to switch active profile");
+
+await initializeStorage(profileIsolationDir, { profile: "productive", disallowProductive: false });
+assert(getStorageInfo().dataProfile.id === "productive", "Expected explicit Productive profile initialization");
+assert(
+  !listCategories().some((category) => category.name === "Development Only"),
+  "Expected Productive profile not to read Development categories"
+);
+createCategory({ name: "Productive Only", description: "Must stay out of Development." });
+
+await initializeStorage(profileIsolationDir, { profile: "development", disallowProductive: true });
+assert(
+  listCategories().some((category) => category.name === "Development Only"),
+  "Expected Development profile writes to persist"
+);
+assert(
+  !listCategories().some((category) => category.name === "Productive Only"),
+  "Expected Development profile not to read Productive categories"
+);
+
+const cutoverDir = fs.mkdtempSync(path.join(os.tmpdir(), "deskpilot-cutover-"));
+await initializeStorage(cutoverDir, { profile: "development", disallowProductive: true });
+createCategory({ name: "Legacy Copied", description: "Should copy into Productive once." });
+addTab({
+  categoryId: "work",
+  url: "https://example.com/legacy-cutover",
+  title: "Legacy Cutover Tab"
+});
+const legacySourceDatabase = getStorageInfo().databasePath;
+const legacyDatabasePath = path.join(cutoverDir, "storage", "deskpilot.sqlite");
+fs.mkdirSync(path.dirname(legacyDatabasePath), { recursive: true });
+fs.copyFileSync(legacySourceDatabase, legacyDatabasePath);
+
+await initializeStorage(cutoverDir, { profile: "productive", disallowProductive: false });
+const firstCutoverInfo = getStorageInfo();
+assert(firstCutoverInfo.dataProfile.cutover.status === "copied-from-legacy", "Expected Productive cutover to copy legacy data");
+assert(fs.existsSync(legacyDatabasePath), "Expected legacy prototype database to remain untouched after cutover");
+assert(
+  listCategories().some((category) => category.name === "Legacy Copied"),
+  "Expected legacy category to exist in Productive after cutover"
+);
+assert(
+  listTabs("work").some((tab) => tab.title === "Legacy Cutover Tab"),
+  "Expected legacy saved tab to exist in Productive after cutover"
+);
+createCategory({ name: "Productive After Cutover", description: "Must survive later legacy changes." });
+
+await initializeStorage(cutoverDir, { profile: "development", disallowProductive: true });
+createCategory({ name: "Legacy Later", description: "Must not copy after Productive exists." });
+fs.copyFileSync(getStorageInfo().databasePath, legacyDatabasePath);
+
+await initializeStorage(cutoverDir, { profile: "productive", disallowProductive: false });
+assert(
+  listCategories().some((category) => category.name === "Productive After Cutover"),
+  "Expected existing Productive data not to be overwritten by later legacy changes"
+);
+assert(
+  !listCategories().some((category) => category.name === "Legacy Later"),
+  "Expected legacy changes after cutover not to be imported automatically"
+);
+assert(
+  getStorageInfo().dataProfile.cutover.status === "copied-from-legacy",
+  "Expected Productive cutover state to remain one-time"
+);
+
 const extensionInfo = getExtensionInstallInfo(process.cwd());
 assert(extensionInfo.manifestPresent, "Expected browser extension manifest to be present");
 assert(extensionInfo.extensionPath.endsWith("browser-extension"), "Expected extension path to point at browser-extension");
@@ -576,4 +811,43 @@ function assertThrows(operation, message) {
   }
 
   throw new Error(message);
+}
+
+async function assertRejects(operation, message) {
+  try {
+    await operation();
+  } catch {
+    return;
+  }
+
+  throw new Error(message);
+}
+
+function assertTabOrder(tabs, expectedTitles, message) {
+  const titles = tabs.map((tab) => tab.title);
+  const positions = tabs.map((tab) => tab.position);
+  const expectedPositions = expectedTitles.map((_, index) => index);
+
+  assert(
+    JSON.stringify(titles) === JSON.stringify(expectedTitles),
+    `${message}: expected titles ${JSON.stringify(expectedTitles)}, got ${JSON.stringify(titles)}`
+  );
+  assert(
+    JSON.stringify(positions) === JSON.stringify(expectedPositions),
+    `${message}: expected positions ${JSON.stringify(expectedPositions)}, got ${JSON.stringify(positions)}`
+  );
+}
+
+async function rewriteSqliteDatabase(filePath, operation) {
+  const SQL = await initSqlJs({
+    locateFile: (file) => path.join(process.cwd(), "node_modules", "sql.js", "dist", file)
+  });
+  const database = new SQL.Database(fs.readFileSync(filePath));
+
+  try {
+    operation(database);
+    fs.writeFileSync(filePath, Buffer.from(database.export()));
+  } finally {
+    database.close();
+  }
 }

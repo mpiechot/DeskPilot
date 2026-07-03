@@ -1,5 +1,35 @@
 # Roadmap
 
+## v1.0 - Productive MVP
+
+Goal:
+Make DeskPilot safe and useful as the user's real local browser-session system while development continues separately.
+
+Status:
+Started. The planned Productive MVP implementation slices are now on the working PR branch. The next step is real productive trial, quality-gate feedback and any stabilization that falls out of that trial before calling 1.0 complete.
+
+Expected features:
+1. Hard separation between Productive and Development data profiles - done.
+2. One-time automatic Productive cutover that copies existing prototype data without deleting the source - done.
+3. Visible profile and cutover status in the app - done.
+4. Tests and prototype runs must not touch productive data - initial guard done.
+5. Session Board with saved tabs shown under each category - done.
+6. App-only drag-and-drop moving of saved tabs between categories - done.
+7. App-only drag-and-drop reordering of saved tabs within a category - done.
+8. Mouse-first drag-and-drop for v1.0, with deeper touch polish after productive use is safe - done.
+9. Category restore opens tabs in the user-defined order - done.
+10. Evaluate whether per-tab open icons replace or complement `Open Selected` - done, compact per-tab open icons complement `Open Selected`.
+
+Tracking issues:
+- #11 Productive MVP: add isolated data profiles and visible profile status - done
+- #12 Productive MVP: copy existing prototype data during productive cutover - done
+- #13 Productive MVP: make tests and prototype tooling unable to touch productive data - done
+- #14 Productive MVP: persist saved tab order and restore categories in that order - done
+- #15 Productive MVP: show saved tabs under each category in the Session Board - done
+- #16 Productive MVP: move saved tabs between categories with app drag and drop - done
+- #17 Productive MVP: reorder saved tabs within a category with app drag and drop - done
+- #18 Productive MVP: evaluate and implement per-tab open controls on the Session Board - done
+
 ## v0.1 - Control Panel Skeleton
 
 Goal:

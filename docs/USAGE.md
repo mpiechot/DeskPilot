@@ -10,10 +10,17 @@ Working today:
 - Electron desktop shell
 - React control-panel UI
 - default browser-session categories loaded from local SQLite storage: Work, Research, Entertainment, Projects, Later / Inbox
+- isolated Development and Productive data profiles
+- visible active profile and Productive cutover status in the control panel
+- one-time Productive cutover from the old prototype database when Productive storage is first created
 - create, rename and remove active categories
 - restore removed categories
 - save http/https URLs into a selected category
-- open saved URLs from the selected category together in a new Chrome/Edge browser window
+- open saved URLs from the selected category together in saved order in a new Chrome/Edge browser window
+- view saved tabs under each category on the Session Board
+- move saved tabs between categories with mouse-first drag and drop
+- reorder saved tabs within a category with mouse-first drag and drop
+- open individual saved tabs from the Session Board
 - view and remove saved URLs in the selected category
 - restore removed URLs from the selected category
 - remember the desktop window size and position between app runs
@@ -55,6 +62,14 @@ For the full desktop shell:
 
 ```bash
 npm run dev:electron
+```
+
+`npm run dev:electron` uses the Development data profile by default.
+
+For an explicit Productive profile run:
+
+```bash
+npm run dev:electron:productive
 ```
 
 For renderer-only UI work in a browser:
@@ -102,7 +117,26 @@ dist-prototype/DeskPilot/start-deskpilot.vbs
 
 `start-deskpilot.vbs` opens the Electron desktop app without a visible console window. `start-deskpilot.cmd` is kept as a compatibility launcher and starts Electron detached so the console closes immediately. If startup fails, run `start-deskpilot-debug.cmd` to keep a diagnostic console open.
 
-This is not a signed installer. It is a local development prototype that uses the repository's installed Electron runtime and keeps user data in Electron's normal DeskPilot user-data folder.
+This is not a signed installer. It is a local development prototype that uses the repository's installed Electron runtime. The generated launchers force the Development data profile and refuse the Productive profile.
+
+## Data Profiles
+
+DeskPilot uses explicit local data profiles under Electron's DeskPilot user-data folder:
+
+```text
+profiles/development/storage/
+profiles/productive/storage/
+```
+
+Development is the default for normal development and prototype launchers. Productive must be selected deliberately with `npm run dev:electron:productive` or `DESKPILOT_DATA_PROFILE=productive`.
+
+When the Productive profile is created for the first time, DeskPilot looks for the old prototype database at:
+
+```text
+storage/deskpilot.sqlite
+```
+
+If that legacy database exists, DeskPilot copies it once into the Productive profile and records the cutover in `profiles/productive/profile-state.json`. The source database is left untouched. Later changes to the old prototype database are not imported automatically.
 
 ## Touch Display Assumption
 
@@ -146,12 +180,14 @@ The control panel's Extension mode shows the current load-unpacked folder and wh
 
 ## Data Safety
 
-DeskPilot creates its first local SQLite database in Electron's user-data folder.
+DeskPilot creates local SQLite databases inside the active data profile.
 
 At this stage, SQLite stores categories and manually saved URLs.
 If a default category is added in a later build, DeskPilot seeds the missing category on the next start without deleting existing data.
+Saved URLs keep a persisted position inside their category. Existing databases with missing or duplicated tab positions are normalized deterministically on startup, and backup restore/import preserves the stored order.
+Moving or reordering a saved tab updates the existing saved-tab row instead of deleting and recreating it.
 
-The Safety mode can create manual SQLite snapshots in the app storage folder under `storage/manual-backups/`. DeskPilot also keeps a rolling `deskpilot.sqlite.bak` file beside the active database after writes.
+The Safety mode can create manual SQLite snapshots in the active profile storage folder under `manual-backups/`. DeskPilot also keeps a rolling `deskpilot.sqlite.bak` file beside the active database after writes.
 
 Restoring or importing a backup creates a new safety backup before replacing the active database. Invalid imports are rejected before the active database is touched.
 

@@ -507,3 +507,92 @@ Current status:
 
 Next recommended step:
 - Manually retest `Open Selected` from the regenerated prototype with a category containing multiple saved URLs.
+
+### Productive MVP planning session
+
+Completed:
+- Reframed DeskPilot 1.0 as the Productive MVP: safe, reliable productive use of the existing browser-session workflow.
+- Moved larger enhancements such as sleep lists, bookmarks, notifications and deeper touch polish after 1.0.
+- Defined Productive Use, Development Use, Productive MVP, Data Profile, Productive Cutover, Saved Tab, Tab Order and Session Board in `CONTEXT.md`.
+- Recorded ADRs for Productive MVP scope, productive/development data separation, automatic prototype-to-productive migration and Session Board drag-and-drop organization.
+- Decided that Productive and Development data must be hard-separated before further feature work.
+- Decided that existing prototype data should be copied into the Productive data profile once, immediately when Productive storage is created.
+- Chose Session Board drag-and-drop as the Productive MVP workflow feature.
+- Scoped Session Board drag-and-drop to app-only and mouse-first for 1.0.
+- Created GitHub issues #11 through #18 for the Productive MVP plan.
+- Added `Blocked by` and `Blocks` issue references to represent dependencies because the available GitHub connector did not expose a native issue-relationship mutation.
+
+Current status:
+- The Productive MVP plan is clear and tracked in GitHub: implement data profile isolation and cutover first, then build the Session Board.
+
+Next recommended step:
+- Start with GitHub issue #11: implement Productive and Development data profiles with visible profile status.
+
+### Data profile isolation and productive cutover session
+
+Completed:
+- Confirmed PR #4 was already merged and created a new working branch from updated `origin/main`.
+- Carried forward the Productive MVP planning commit onto the new branch.
+- Implemented GitHub issues #11, #12 and #13 locally.
+- Added explicit Development and Productive data profiles under Electron user-data.
+- Kept normal development and prototype launchers on the Development profile.
+- Added an explicit `npm run dev:electron:productive` command for Productive startup.
+- Added visible profile and cutover status to the Electron UI.
+- Added one-time non-destructive Productive cutover from the old prototype database at `storage/deskpilot.sqlite`.
+- Hardened storage and prototype smoke tests so Productive cannot be selected unintentionally.
+- Updated README, usage notes, roadmap, technical decisions and grumble log.
+- Verified `npm run build`, `npm run lint`, `npm run test:storage`, `npm run test:prototype` and `npm audit`.
+- Pushed `codex/productive-mvp-data-profiles` and opened draft working pull request #19 against `main`.
+- Checked PR #19 comments, review threads, commit statuses and workflow runs through the connector; none were reported yet.
+- Closed completed GitHub issues #5 through #10 because their implementations are already merged through PR #4.
+
+Current status:
+- Development and Productive browser-session data are isolated.
+- Productive startup copies existing prototype data once if the legacy prototype database exists, then records that later prototype changes are not imported automatically.
+- The next Productive MVP dependency is saved-tab order.
+
+Next recommended step:
+- Implement GitHub issue #14: persist saved tab order and restore categories in that order.
+
+### Saved tab order session
+
+Completed:
+- Confirmed PR #19 is the single open DeskPilot working pull request and has no comments, review threads, commit statuses or workflow runs reported yet.
+- Implemented GitHub issue #14 locally.
+- Returned saved-tab `position` values through the shared API.
+- Listed saved URLs by persisted tab position with deterministic fallback ordering.
+- Restored selected categories through the existing new-window launch path in persisted tab order.
+- Hardened startup migration so existing databases with missing or duplicate tab positions are normalized deterministically.
+- Made soft-deleted URL restore-on-save and Recovery restore assign a fresh active tab position.
+- Extended storage smoke coverage for stable saved-tab positions, restart persistence, legacy duplicate-position normalization and backup restore preserving tab order.
+- Updated README, usage notes, roadmap and technical decisions for the saved-tab order foundation.
+- Verified `npm run build`, `npm run test:storage`, `npm run lint`, `npm run test:prototype` and `npm audit`.
+
+Current status:
+- Saved URLs now have a stable stored order inside their category, and `Open Selected` uses that order when restoring a browser session.
+- The Productive MVP storage foundation for Session Board ordering is ready on the working PR branch.
+
+Next recommended step:
+- Implement GitHub issue #15: show saved tabs under each category in the Session Board.
+
+### Session Board completion session
+
+Completed:
+- Confirmed PR #19 is still the single open DeskPilot working pull request and has no comments, review threads, commit statuses or workflow runs reported yet.
+- Implemented GitHub issues #15 through #18 locally.
+- Added Session Board saved-tab lists inside each category card.
+- Added a storage/API `moveTab` operation that moves existing saved-tab rows between categories and reorders rows inside a category without deleting and recreating user data.
+- Added mouse-first drag and drop for cross-category saved-tab moves.
+- Added mouse-first drag and drop for same-category saved-tab reordering.
+- Added compact per-tab open icons on Session Board rows while keeping `Open Selected` as the category-level restore action.
+- Extended storage smoke coverage for cross-category moves, same-category reorder, restart persistence and restore order after reorder.
+- Extended packaged renderer smoke coverage for Session Board rendering, drag/drop moves, drag/drop reorder, per-tab open controls and low-height layout safety.
+- Updated README, usage notes, roadmap and technical decisions for the completed Session Board block.
+- Verified `npm run build`, `npm run test:storage` and `npm run test:prototype` during implementation.
+
+Current status:
+- The planned Productive MVP implementation issues #11 through #18 are implemented on PR #19.
+- DeskPilot can now show, open, move and reorder saved tabs in the app, with storage preserving the resulting order.
+
+Next recommended step:
+- Run final lint/audit verification, push PR #19, then use the regenerated prototype for a real productive browser-session trial and fix any quality-gate or daily-use issues before declaring 1.0 complete.

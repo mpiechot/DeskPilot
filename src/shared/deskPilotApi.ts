@@ -20,6 +20,8 @@ export type DeskPilotApi = {
   listTabs: (categoryId: string) => Promise<SessionTab[]>;
   addTab: (input: SessionTabInput) => Promise<SessionMutationResult>;
   deleteTab: (id: string) => Promise<SessionMutationResult>;
+  moveTab: (id: string, input: MoveTabInput) => Promise<SessionMutationResult>;
+  openTab: (id: string) => Promise<SessionTab | null>;
   listDeletedTabs: (categoryId: string) => Promise<SessionTab[]>;
   restoreTab: (id: string) => Promise<SessionMutationResult>;
   openCategory: (categoryId: string) => Promise<SessionTab[]>;
@@ -46,10 +48,40 @@ export type ExtensionInstallInfo = {
 };
 
 export type StorageBackupInfo = {
+  dataProfile: DataProfileInfo;
   databasePath: string;
   rollingBackupPath: string;
   manualBackupDirectory: string;
   manualBackups: StorageBackupSnapshot[];
+};
+
+export type DataProfileId = "development" | "productive";
+
+export type DataProfileCutoverStatus =
+  | "not-applicable"
+  | "copied-from-legacy"
+  | "no-legacy-source"
+  | "already-created";
+
+export type DataProfileCutoverInfo = {
+  status: DataProfileCutoverStatus;
+  automaticMigrationComplete: boolean;
+  message: string;
+  completedAt?: string;
+  sourceDatabasePath?: string;
+};
+
+export type DataProfileInfo = {
+  id: DataProfileId;
+  label: string;
+  description: string;
+  storageDirectory: string;
+  databasePath: string;
+  legacyDatabasePath: string;
+  developmentDatabasePath: string;
+  productiveDatabasePath: string;
+  profileStatePath: string;
+  cutover: DataProfileCutoverInfo;
 };
 
 export type StorageBackupSnapshot = {
@@ -96,6 +128,7 @@ export type SessionTab = {
   categoryId: string;
   url: string;
   title: string;
+  position: number;
   savedAt: string;
 };
 
@@ -103,6 +136,11 @@ export type SessionTabInput = {
   categoryId: string;
   url: string;
   title: string;
+};
+
+export type MoveTabInput = {
+  targetCategoryId: string;
+  targetPosition: number;
 };
 
 export type SessionMutationResult = {
@@ -133,5 +171,6 @@ export type SessionTabRow = {
   category_id: string;
   url: string;
   title: string;
+  position: number;
   saved_at: string;
 };
