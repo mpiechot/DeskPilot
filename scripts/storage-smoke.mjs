@@ -30,9 +30,11 @@ import {
 } from "../dist-electron/main/storage.js";
 import { loadWindowBounds, saveWindowBounds } from "../dist-electron/main/windowSettings.js";
 import {
+  developmentBridgePort,
   extensionClientHeaderName,
   extensionClientHeaderValue,
   getBrowserBridgeStatus,
+  productiveBridgePort,
   startBrowserBridge
 } from "../dist-electron/main/browserBridge.js";
 import {
@@ -356,6 +358,8 @@ assert(
   restoreBrowserCandidates.some((candidate) => candidate.endsWith("Edge\\Application\\msedge.exe")),
   "Expected saved category restore to support Edge"
 );
+assert(productiveBridgePort === 17383, "Expected Productive extension bridge to keep the browser-extension port");
+assert(developmentBridgePort !== productiveBridgePort, "Expected Development bridge not to share Productive's extension port");
 
 const bridgeServer = startBrowserBridge({ port: 0 });
 await new Promise((resolve) => bridgeServer.once("listening", resolve));
@@ -774,6 +778,8 @@ for (const size of ["16", "32", "48", "128"]) {
 }
 
 assert(!extensionPopupScript.includes("/capture"), "Expected extension popup not to call legacy /capture route");
+assert(extensionPopupScript.includes(String(productiveBridgePort)), "Expected extension popup to try the Productive bridge port");
+assert(extensionPopupScript.includes(String(developmentBridgePort)), "Expected extension popup to fall back to the Development bridge port");
 assert(extensionPopupScript.includes("/tabs/current/save"), "Expected extension popup to call current-tab route");
 assert(extensionPopupScript.includes("/windows/current/save"), "Expected extension popup to call current-window route");
 assert(extensionPopupScript.includes("/app/show"), "Expected extension popup to call app-show route");

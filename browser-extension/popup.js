@@ -1,4 +1,5 @@
-const bridgeUrl = "http://127.0.0.1:17383";
+const bridgeHost = "127.0.0.1";
+const bridgePorts = [17383, 17384];
 const bridgeClientHeaders = { "x-deskpilot-client": "deskpilot-browser-extension" };
 const categorySelect = document.querySelector("#categorySelect");
 const closeAfterSave = document.querySelector("#closeAfterSave");
@@ -8,6 +9,8 @@ const saveCurrentWindowButton = document.querySelector("#saveCurrentWindowButton
 const openDeskPilotButton = document.querySelector("#openDeskPilotButton");
 const retryButton = document.querySelector("#retryButton");
 const statusText = document.querySelector("#statusText");
+let activeBridgeUrl = "";
+let activeDataProfile = null;
 
 loadCategories();
 saveCurrentTabButton.addEventListener("click", saveCurrentTab);
@@ -21,15 +24,8 @@ async function loadCategories() {
   statusText.textContent = "Connecting to DeskPilot.";
 
   try {
-    const response = await fetch(`${bridgeUrl}/categories`, {
-      headers: bridgeClientHeaders
-    });
-    const payload = await response.json();
+    const payload = await fetchCategories();
     const categories = Array.isArray(payload.categories) ? payload.categories : [];
-
-    if (!response.ok) {
-      throw new Error(payload.error || "DeskPilot rejected the request.");
-    }
 
     if (categories.length === 0) {
       categorySelect.replaceChildren();
@@ -54,7 +50,7 @@ async function loadCategories() {
 
     setSaveActionsDisabled(false);
     openDeskPilotButton.disabled = false;
-    statusText.textContent = "";
+    statusText.textContent = `Connected to ${profileLabel()}.`;
   } catch (error) {
     setSaveActionsDisabled(true);
     statusText.textContent = error instanceof Error ? error.message : "DeskPilot is not reachable.";
@@ -169,6 +165,7 @@ async function postCurrentWindow(tabs, allowCrossCategoryDuplicates) {
 }
 
 async function postJson(path, body) {
+  const bridgeUrl = activeBridgeUrl || `http://${bridgeHost}:${bridgePorts[0]}`;
   const response = await fetch(`${bridgeUrl}${path}`, {
     method: "POST",
     headers: {
@@ -184,6 +181,33 @@ async function postJson(path, body) {
   }
 
   return payload;
+}
+
+async function fetchCategories() {
+  let lastError = null;
+
+  for (const port of bridgePorts) {
+    const bridgeUrl = `http://${bridgeHost}:${port}`;
+
+    try {
+      const response = await fetch(`${bridgeUrl}/categories`, {
+        headers: bridgeClientHeaders
+      });
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload.error || "DeskPilot rejected the request.");
+      }
+
+      activeBridgeUrl = bridgeUrl;
+      activeDataProfile = payload.dataProfile || null;
+      return payload;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error("DeskPilot is not reachable.");
 }
 
 async function openDeskPilot() {
@@ -215,6 +239,14 @@ function isSaveableUrl(url) {
 
 function selectedCategoryName() {
   return categorySelect.selectedOptions[0]?.textContent || "DeskPilot";
+}
+
+function profileLabel() {
+  if (activeDataProfile?.label) {
+    return activeDataProfile.label;
+  }
+
+  return activeBridgeUrl.endsWith(":17384") ? "Development" : "Productive";
 }
 
 function crossCategoryPrompt(payload) {

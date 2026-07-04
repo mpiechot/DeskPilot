@@ -33,6 +33,7 @@ Working today:
 - guided Extension mode with bridge, manifest and load-unpacked status
 - unpacked browser-extension prototype for saving the current browser window
 - one-click current-tab save from the browser extension into the active DeskPilot category
+- profile-aware extension bridge ports so Productive saves are not silently intercepted by a hidden Development instance
 - automatic Electron UI refresh after browser-extension saves
 - append or replace mode when capturing a browser window
 - local prototype package command for a double-click launcher
@@ -164,13 +165,14 @@ To try it during development:
 - choose `Replace` to soft-delete existing active URLs in the selected category before saving the captured tabs
 - enable `Close saved tabs` in the popup only when the current tabs should be closed after a successful save
 
-The control panel shows whether the local browser bridge is running. The prototype bridge listens on:
+The control panel shows whether the local browser bridge is running. Productive and Development use separate bridge ports:
 
 ```text
-127.0.0.1:17383
+Productive:  127.0.0.1:17383
+Development: 127.0.0.1:17384
 ```
 
-That bridge URL is not the DeskPilot app UI. Opening it in a normal browser tab only shows a diagnostic message, while protected bridge endpoints still accept requests only from Chrome/Edge extension origins. Browser tabs without `http` or `https` URLs are skipped during window saves and are not closed by the optional close-after-save action.
+The browser extension tries Productive first and falls back to Development only when Productive is not running. These bridge URLs are not the DeskPilot app UI. Opening one in a normal browser tab only shows a diagnostic message, while protected bridge endpoints still accept requests only from Chrome/Edge extension origins. Browser tabs without `http` or `https` URLs are skipped during window saves and are not closed by the optional close-after-save action.
 
 The extension uses DeskPilot's active desktop category as the default `Save to` value. Changing the popup dropdown only affects that browser action; it does not change the desktop app selection. The bridge exposes explicit save routes for the current tab and current window, and the older `/capture` route is intentionally not kept as a compatibility alias.
 

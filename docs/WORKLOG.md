@@ -596,3 +596,22 @@ Current status:
 
 Next recommended step:
 - Run final lint/audit verification, push PR #19, then use the regenerated prototype for a real productive browser-session trial and fix any quality-gate or daily-use issues before declaring 1.0 complete.
+
+### Productive extension bridge profile fix
+
+Completed:
+- Investigated a data-profile mix-up where a hidden Development instance kept the browser-extension bridge while the user expected Productive saves.
+- Split extension bridge defaults by profile: Productive keeps `127.0.0.1:17383`, Development now uses `127.0.0.1:17384`.
+- Updated the browser extension to try Productive first and fall back to Development only when Productive is not running.
+- Added storage smoke coverage so Development and Productive cannot regress to the same bridge port.
+- Appended 19 active tabs from `deskpilot-prototype/profiles/development` into the Productive database without replacing existing Productive data.
+- Created a Productive safety backup before the append migration.
+- Regenerated and verified the local prototype package.
+- Verified `npm run lint`, `npm run build`, `npm run test:storage`, `npm run test:prototype` and `npm audit`.
+
+Current status:
+- Productive contains 6 active categories, 40 active saved tabs and 3 soft-deleted tabs.
+- Development still retains its source rows; the recovery migration did not delete the Development data.
+
+Next recommended step:
+- Reload the unpacked browser extension and verify the popup reports the intended profile before saving tabs.

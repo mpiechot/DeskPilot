@@ -48,7 +48,8 @@ Current state:
 - Manual SQLite backup snapshots can be created, restored, exported and imported from the Safety mode.
 - A Chrome/Edge unpacked extension prototype can capture the current browser window through the local bridge in append or replace mode.
 - The extension can save the current tab into the active DeskPilot category with duplicate protection.
-- The local browser bridge is origin-restricted to browser-extension origins and visible in the app status area.
+- The local browser bridge is origin-restricted to browser-extension origins, visible in the app status area and profile-aware.
+- Productive and Development use separate bridge ports so a hidden Development instance cannot silently receive Productive extension saves.
 - A local prototype package can be generated for double-click launch during development.
 - Starting DeskPilot again while it is already running focuses the existing instance instead of opening a second bridge.
 - Browser-extension saves refresh the visible category counts in the Electron UI.

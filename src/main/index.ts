@@ -22,6 +22,7 @@ import {
   exportStorageBackup,
   getActiveCategoryId,
   getActiveTab,
+  getDataProfileInfo,
   getStorageInfo,
   importStorageBackup,
   initializeStorage,
@@ -158,8 +159,13 @@ if (!hasSingleInstanceLock) {
 
   app.whenReady().then(async () => {
     await initializeStorage(app.getPath("userData"));
-    bridgeServer = startBrowserBridge({ showApp: showMainWindow, onSessionsChanged: notifySessionsChanged });
-    ipcMain.handle("bridge:status", () => getBrowserBridgeStatus(bridgeServer));
+    const activeDataProfile = getDataProfileInfo();
+    bridgeServer = startBrowserBridge({
+      dataProfile: activeDataProfile,
+      showApp: showMainWindow,
+      onSessionsChanged: notifySessionsChanged
+    });
+    ipcMain.handle("bridge:status", () => getBrowserBridgeStatus(bridgeServer, activeDataProfile));
     ipcMain.handle("extension:install-info", () => getExtensionInstallInfo(projectRoot));
     ipcMain.handle("storage:info", () => getStorageInfo());
     ipcMain.handle("storage:create-backup", () => createManualBackup());

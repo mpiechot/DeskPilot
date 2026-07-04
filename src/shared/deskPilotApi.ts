@@ -38,6 +38,7 @@ export type BridgeStatus = {
   host: string;
   port: number;
   allowedOrigins: string[];
+  dataProfile?: DataProfileInfo;
 };
 
 export type ExtensionInstallInfo = {

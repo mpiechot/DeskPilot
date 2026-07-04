@@ -51,3 +51,6 @@ A resident tray app must be single-instance from the beginning. Otherwise a norm
 
 Data profile note:
 Separating Productive and Development storage is necessary, but it makes launch paths matter. Every prototype launcher and smoke test must keep forcing Development, and any future installer must make Productive startup explicit instead of inheriting a random developer environment variable.
+
+Extension bridge profile note:
+Sharing one localhost bridge port between Productive and Development is unsafe for a tray app. A hidden Development instance can keep accepting extension writes even after Productive is opened. Keep Productive on the stable extension port and move Development to a separate fallback port.
