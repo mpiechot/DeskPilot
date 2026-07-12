@@ -42,6 +42,7 @@ import { getBrowserBridgeStatus, startBrowserBridge } from "./browserBridge.js";
 import { openUrlsInNewBrowserWindow } from "./browserLauncher.js";
 import { getExtensionInstallInfo } from "./extensionInstall.js";
 import { loadWindowBounds, saveWindowBounds } from "./windowSettings.js";
+import { createStorageStartupFailurePrompt } from "./storageStartupFailure.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, "../..");
@@ -49,6 +50,7 @@ const projectRoot = path.resolve(__dirname, "../..");
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let isQuitting = false;
+let isStorageInitialized = false;
 let bridgeServer: ReturnType<typeof startBrowserBridge> | null = null;
 const hasSingleInstanceLock = app.requestSingleInstanceLock();
 
@@ -61,6 +63,10 @@ function notifySessionsChanged(): void {
 }
 
 function showMainWindow(): void {
+  if (!isStorageInitialized) {
+    return;
+  }
+
   if (!mainWindow) {
     createMainWindow();
     return;
@@ -151,6 +157,18 @@ function showOpenDialog(options: OpenDialogOptions) {
   return mainWindow ? dialog.showOpenDialog(mainWindow, options) : dialog.showOpenDialog(options);
 }
 
+async function showStorageStartupFailure(error: unknown): Promise<void> {
+  const prompt = createStorageStartupFailurePrompt(error, app.getPath("userData"));
+  const result = await dialog.showMessageBox(prompt.options);
+
+  if (result.response === 0) {
+    await shell.openPath(prompt.storageDirectory);
+  }
+
+  isQuitting = true;
+  app.quit();
+}
+
 if (!hasSingleInstanceLock) {
   app.quit();
 } else {
@@ -159,7 +177,13 @@ if (!hasSingleInstanceLock) {
   });
 
   app.whenReady().then(async () => {
-    await initializeStorage(app.getPath("userData"));
+    try {
+      await initializeStorage(app.getPath("userData"));
+    } catch (error) {
+      await showStorageStartupFailure(error);
+      return;
+    }
+
     const activeDataProfile = getDataProfileInfo();
     bridgeServer = startBrowserBridge({
       dataProfile: activeDataProfile,
@@ -233,6 +257,7 @@ if (!hasSingleInstanceLock) {
       return tabs;
     });
 
+    isStorageInitialized = true;
     createMainWindow();
 
     try {

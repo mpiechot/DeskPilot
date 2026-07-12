@@ -32,6 +32,24 @@ type StoragePaths = {
   temporaryPath: string;
 };
 
+export class StorageStartupError extends Error {
+  readonly activeDatabasePath: string;
+  readonly rollingBackupPath: string;
+  readonly storageDirectory: string;
+  readonly activeDatabaseError: string;
+  readonly rollingBackupError: string;
+
+  constructor(storagePaths: StoragePaths, activeDatabaseError: unknown, rollingBackupError: unknown) {
+    super("DeskPilot could not open the active database or the automatic rolling backup.");
+    this.name = "StorageStartupError";
+    this.activeDatabasePath = storagePaths.databasePath;
+    this.rollingBackupPath = storagePaths.backupPath;
+    this.storageDirectory = path.dirname(storagePaths.databasePath);
+    this.activeDatabaseError = describeError(activeDatabaseError);
+    this.rollingBackupError = describeError(rollingBackupError);
+  }
+}
+
 type SaveTabOptions = {
   crossCategoryDuplicatePolicy: CrossCategoryDuplicatePolicy;
 };
@@ -616,7 +634,7 @@ function recoverStartupDatabase(
   activeDatabaseError: unknown
 ): { database: Database; info: StorageStartupRecoveryInfo } {
   if (!fs.existsSync(storagePaths.backupPath)) {
-    throw activeDatabaseError;
+    throw new StorageStartupError(storagePaths, activeDatabaseError, "Automatic rolling backup does not exist.");
   }
 
   let recoveredDatabase: Database | null = null;
@@ -626,9 +644,9 @@ function recoverStartupDatabase(
     assertDeskPilotTables(recoveredDatabase);
     migrate(recoveredDatabase);
     seedDefaultCategories(recoveredDatabase);
-  } catch {
+  } catch (rollingBackupError) {
     recoveredDatabase?.close();
-    throw activeDatabaseError;
+    throw new StorageStartupError(storagePaths, activeDatabaseError, rollingBackupError);
   }
 
   fs.mkdirSync(storagePaths.manualBackupDirectory, { recursive: true });
@@ -651,6 +669,10 @@ function recoverStartupDatabase(
       corruptDatabaseBackupPath
     }
   };
+}
+
+function describeError(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 function createCorruptDatabaseBackupPath(manualBackupDirectory: string, date: Date): string {

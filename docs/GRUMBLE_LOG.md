@@ -60,3 +60,6 @@ Creating the required pre-restore safety snapshot normally updates the rolling b
 
 Corrupted startup note:
 Preserving a broken database with a normal `.sqlite` name makes it look restorable even though validation must reject it. Mark preserved evidence as `.sqlite.corrupt`, keep it out of the backup picker and show its path in the recovery report instead.
+
+Double-failure note:
+An unhandled startup promise is not a recovery experience. When neither database copy works, the app must stop before creating its normal window, name both files, offer the storage folder and quit deliberately instead of leaving a hidden or half-started tray process.

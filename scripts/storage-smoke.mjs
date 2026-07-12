@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import initSqlJs from "sql.js";
 import {
+  StorageStartupError,
   createCategory,
   createManualBackup,
   addTab,
@@ -43,6 +44,7 @@ import {
   getSupportedBrowserExecutableCandidates
 } from "../dist-electron/main/browserLauncher.js";
 import { getExtensionInstallInfo } from "../dist-electron/main/extensionInstall.js";
+import { createStorageStartupFailurePrompt } from "../dist-electron/main/storageStartupFailure.js";
 
 process.env.DESKPILOT_DATA_PROFILE = "development";
 process.env.DESKPILOT_DISALLOW_PRODUCTIVE_PROFILE = "1";
@@ -824,6 +826,41 @@ assert(
 assert(
   fs.existsSync(getStorageInfo().rollingBackupPath),
   "Expected startup recovery to preserve the valid rolling backup instead of overwriting it with corruption"
+);
+
+const startupFailureDir = fs.mkdtempSync(path.join(os.tmpdir(), "deskpilot-startup-failure-"));
+await initializeStorage(startupFailureDir, { profile: "development", disallowProductive: true });
+createCategory({ name: "Failure Baseline", description: "Creates the rolling backup for the failure test." });
+const failedStorageInfo = getStorageInfo();
+fs.writeFileSync(failedStorageInfo.databasePath, "corrupted active database");
+fs.writeFileSync(failedStorageInfo.rollingBackupPath, "corrupted rolling backup");
+let startupFailure = null;
+
+try {
+  await initializeStorage(startupFailureDir, { profile: "development", disallowProductive: true });
+} catch (error) {
+  startupFailure = error;
+}
+
+assert(startupFailure instanceof StorageStartupError, "Expected unusable active and rolling databases to produce a startup error");
+assert(startupFailure.activeDatabasePath === failedStorageInfo.databasePath, "Expected startup error to expose active database path");
+assert(startupFailure.rollingBackupPath === failedStorageInfo.rollingBackupPath, "Expected startup error to expose rolling backup path");
+assert(startupFailure.storageDirectory === path.dirname(failedStorageInfo.databasePath), "Expected startup error to expose storage directory");
+const startupFailurePrompt = createStorageStartupFailurePrompt(startupFailure);
+assert(startupFailurePrompt.storageDirectory === startupFailure.storageDirectory, "Expected startup dialog to open the affected storage directory");
+assert(
+  startupFailurePrompt.options.detail.includes(startupFailure.activeDatabasePath) &&
+    startupFailurePrompt.options.detail.includes(startupFailure.rollingBackupPath),
+  "Expected startup dialog to show both unusable database paths"
+);
+assert(
+  JSON.stringify(startupFailurePrompt.options.buttons) === JSON.stringify(["Open Storage Folder", "Quit"]),
+  "Expected startup dialog to offer storage folder access and controlled quit"
+);
+assert(
+  fs.readFileSync(failedStorageInfo.databasePath, "utf-8") === "corrupted active database" &&
+    fs.readFileSync(failedStorageInfo.rollingBackupPath, "utf-8") === "corrupted rolling backup",
+  "Expected startup failure to leave both unusable files untouched"
 );
 
 const extensionInfo = getExtensionInstallInfo(process.cwd());

@@ -59,6 +59,12 @@ assert(!rendererIndex.includes('src="/assets/'), "Expected renderer script path 
 assert(!rendererIndex.includes('href="/assets/'), "Expected renderer stylesheet path to be relative for Electron loadFile");
 assert(mainProcess.includes("requestSingleInstanceLock"), "Expected DeskPilot to prevent parallel app instances");
 assert(mainProcess.includes("second-instance"), "Expected DeskPilot to focus the existing window when started twice");
+assert(mainProcess.includes("isStorageInitialized"), "Expected DeskPilot not to create its normal window before storage initializes");
+assert(
+  mainProcess.includes("createStorageStartupFailurePrompt") && mainProcess.includes("dialog.showMessageBox"),
+  "Expected packaged DeskPilot to show a native storage startup failure dialog"
+);
+assert(mainProcess.includes("shell.openPath"), "Expected storage startup failure dialog to open the affected storage folder");
 assert(
   categoryOpenHandler.includes("openUrlsInNewBrowserWindow"),
   "Expected Open Selected to restore saved URLs in a new browser window"

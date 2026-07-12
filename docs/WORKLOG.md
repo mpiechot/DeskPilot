@@ -681,3 +681,20 @@ Current status:
 
 Next recommended step:
 - Add a dedicated startup failure dialog for the case where both the active database and rolling backup are unusable, with paths and manual recovery guidance.
+
+### Native double-database startup failure dialog
+
+Completed:
+- Added a structured `StorageStartupError` when neither the active database nor the automatic rolling backup can be opened.
+- Exposed both file paths, storage directory and underlying validation errors without changing either file.
+- Added a native Electron error dialog before the normal DeskPilot window and tray are created.
+- Added `Open Storage Folder` and controlled `Quit` actions with explicit manual recovery guidance.
+- Added storage coverage proving both corrupt files remain byte-for-byte unchanged.
+- Added prompt coverage for both paths and available user actions.
+- Extended packaged-main smoke coverage for the native dialog and folder-opening path.
+
+Current status:
+- DeskPilot now handles successful startup, automatic rolling recovery and unrecoverable double-database failure as explicit user-visible states.
+
+Next recommended step:
+- Add a read-only recovery launch option that starts without mutating storage and allows exporting preserved files from inside DeskPilot.
