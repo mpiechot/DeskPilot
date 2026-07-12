@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import initSqlJs, { type Database, type SqlJsStatic } from "sql.js";
 import { defaultCategories, type SessionCategory } from "../shared/sessions.js";
 import type {
@@ -24,6 +25,8 @@ import type {
   StorageStartupRecoveryInfo
 } from "../shared/deskPilotApi.js";
 import { prepareDataProfile } from "./dataProfile.js";
+
+const storageModuleDirectory = path.dirname(fileURLToPath(import.meta.url));
 
 type StoragePaths = {
   databasePath: string;
@@ -104,7 +107,7 @@ export async function initializeStorage(userDataPath: string, options: Initializ
   const SQL =
     sqlite ??
     (await initSqlJs({
-      locateFile: (file) => path.join(process.cwd(), "node_modules", "sql.js", "dist", file)
+      locateFile: (file) => path.resolve(storageModuleDirectory, "../../node_modules/sql.js/dist", file)
     }));
   sqlite = SQL;
 
@@ -670,6 +673,27 @@ export function unarchiveTab(id: string): SessionMutationResult {
     }
   );
 
+  saveDatabase();
+  return {
+    categories: listCategories(),
+    tabs: listTabs(categoryId)
+  };
+}
+
+export function deleteArchivedTabPermanently(id: string): SessionMutationResult {
+  const db = getDatabase();
+  const safeId = normalizeRequiredString(id, "Tab id is required.");
+  const categoryId = getArchivedTabCategoryId(db, safeId);
+
+  if (!categoryId) {
+    throw new Error("Only an archived tab can be permanently deleted.");
+  }
+
+  db.run(
+    "DELETE FROM session_tabs WHERE id = $id AND deleted_at IS NULL AND archived_at IS NOT NULL",
+    { $id: safeId }
+  );
+  normalizeTabPositions(db);
   saveDatabase();
   return {
     categories: listCategories(),

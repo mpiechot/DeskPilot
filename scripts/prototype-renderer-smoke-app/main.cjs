@@ -38,6 +38,7 @@ async function runElectronSmoke() {
   const archivedTabsByCategory = new Map();
   const categories = defaultCategories.map((category) => ({ ...category }));
   let activeCategoryId = categories[0]?.id ?? "";
+  let displayPreferences = { layoutMode: "standard", displayId: null, kiosk: false };
 
   function getActiveTabs(categoryId) {
     return tabsByCategory.get(categoryId) ?? [];
@@ -108,6 +109,23 @@ async function runElectronSmoke() {
     manualBackupDirectory: path.join(prototypeRoot, "profiles", "development", "storage", "manual-backups"),
     manualBackups: []
   }));
+  ipcMain.handle("display:settings", () => ({
+    preferences: displayPreferences,
+    displays: [
+      { id: "primary", label: "Display 1 (Primary)", primary: true, width: 1920, height: 1080 },
+      { id: "secondary", label: "Display 2", primary: false, width: 1280, height: 720 }
+    ]
+  }));
+  ipcMain.handle("display:update-preferences", (_event, preferences) => {
+    displayPreferences = preferences;
+    return {
+      preferences: displayPreferences,
+      displays: [
+        { id: "primary", label: "Display 1 (Primary)", primary: true, width: 1920, height: 1080 },
+        { id: "secondary", label: "Display 2", primary: false, width: 1280, height: 720 }
+      ]
+    };
+  });
   ipcMain.handle("storage:restore-rolling-backup", () => ({
     storageInfo: {
       dataProfile: smokeDataProfile,
@@ -409,6 +427,10 @@ async function runElectronSmoke() {
       const longWorkTitle =
         "WorkTitleWithEnoughDetailToOverflowTheRecoveryPanelWhenRenderedInsideTheNarrowControlRail";
       let archiveRoundTripWorked = false;
+      let removeConfirmationWorked = false;
+      let displaySettingsWorked = false;
+      let sessionBoardOpenWorked = false;
+      let permanentDeleteConfirmationWorked = false;
 
       const getControlRailOverflow = () => {
         const controlRail = document.querySelector(".controlRail");
@@ -470,17 +492,35 @@ async function runElectronSmoke() {
           waitForText("Saved URL archived.", () => {
             findButtonByText("Archive").click();
 
-            waitForText("Return " + longWorkTitle + " to Session", () => {
-              findButtonByText("Return " + longWorkTitle + " to Session").click();
+            waitForText(longWorkTitle, () => {
+              const archivedItem = Array.from(document.querySelectorAll(".archivedTabItem")).find((item) =>
+                item.textContent.includes(longWorkTitle)
+              );
+              window.confirm = (message) => {
+                permanentDeleteConfirmationWorked = message.includes(longWorkTitle) && message.includes("cannot be recovered");
+                return false;
+              };
+              archivedItem.querySelector(".permanentDeleteAction").click();
+
+              waitForText("Permanent deletion canceled.", () => {
+              archivedItem.querySelector(".restoreAction").click();
 
               waitForText("Archived URL returned to the active Session.", () => {
                 archiveRoundTripWorked = true;
                 findButtonByText("Session").click();
 
                 waitForText("Target: Work", () => {
+                  window.confirm = (message) => {
+                    removeConfirmationWorked = message.includes(longWorkTitle) && message.includes("Recovery");
+                    return false;
+                  };
                   document.querySelector('.savedUrlManagerItem button[title="Remove URL"]').click();
 
-                  waitForText("Saved URL removed safely.", () => {
+                  waitForText("Removal canceled.", () => {
+                    window.confirm = () => true;
+                    document.querySelector('.savedUrlManagerItem button[title="Remove URL"]').click();
+
+                    waitForText("Saved URL removed safely.", () => {
             clickCategory("Projects");
 
             waitForText("Target: Projects", () => {
@@ -542,12 +582,31 @@ async function runElectronSmoke() {
                   getBoardTab("Work", "Work second").querySelector('button[title="Open saved tab"]').click();
 
                   waitForText("Opened Work second.", () => {
+                  sessionBoardOpenWorked = true;
+                  findButtonByText("Display").click();
+
+                  waitForText("Apply Display Settings", () => {
+                  const layoutSelect = document.querySelector('select[aria-label="DeskPilot layout"]');
+                  const displaySelect = document.querySelector('select[aria-label="DeskPilot launch display"]');
+                  const kioskCheckbox = document.querySelector('.displayCheckbox input[type="checkbox"]');
+                  layoutSelect.value = "touch";
+                  layoutSelect.dispatchEvent(new Event("change", { bubbles: true }));
+                  displaySelect.value = "secondary";
+                  displaySelect.dispatchEvent(new Event("change", { bubbles: true }));
+                  kioskCheckbox.click();
+                  findButtonByText("Apply Display Settings").click();
+
+                  waitForText("Display settings applied.", () => {
+                  displaySettingsWorked =
+                    document.querySelector(".shell").classList.contains("shell-touch") &&
+                    layoutSelect.value === "touch" &&
+                    displaySelect.value === "secondary" &&
+                    kioskCheckbox.checked;
                   findButtonByText("Recovery").click();
 
                   waitForText("Restore " + longWorkTitle, () => {
                   const recoveryOverflow = getControlRailOverflow();
                   const workBoardTitles = getBoardTitles("Work");
-                  const sessionBoardOpenWorked = getRenderedText().includes("Opened Work second.");
 
                   findButtonByText("Safety").click();
                   waitForText("Automatic rolling backup", () => {
@@ -567,6 +626,9 @@ async function runElectronSmoke() {
                     workBoardTitles.indexOf("Work second") < workBoardTitles.indexOf("Project title"),
                   sessionBoardOpenWorked,
                   archiveRoundTripWorked,
+                  removeConfirmationWorked,
+                  displaySettingsWorked,
+                  permanentDeleteConfirmationWorked,
                   workBoardTitles,
                   entertainmentCardText: getCategoryCardText("Entertainment"),
                   titleInputAcceptsText,
@@ -594,6 +656,9 @@ async function runElectronSmoke() {
                   startupRecoveryVisible: getRenderedText().includes("Recovered at startup"),
                   bodyText: getRenderedText()
                 });
+                    });
+                  });
+                  });
                   });
                   });
                   });
@@ -607,6 +672,7 @@ async function runElectronSmoke() {
             });
                   });
                 });
+              });
               });
             });
           });
@@ -633,6 +699,9 @@ async function runElectronSmoke() {
   assert(result.sessionBoardReorderWorked, "Expected Session Board drag/drop to reorder saved tabs within a category");
   assert(result.sessionBoardOpenWorked, "Expected Session Board per-tab open control to open a saved tab");
   assert(result.archiveRoundTripWorked, "Expected a saved URL to archive and return to the active Session");
+  assert(result.removeConfirmationWorked, "Expected removing a saved URL to require a Recovery-aware confirmation");
+  assert(result.displaySettingsWorked, "Expected touch layout, display selection and kiosk preference to apply together");
+  assert(result.permanentDeleteConfirmationWorked, "Expected permanent archive deletion to require an irreversible warning");
   assert(
     !result.bodyText.includes("Saving URLs requires the Electron app."),
     "Expected Save URL not to report a missing Electron app"

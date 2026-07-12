@@ -43,16 +43,20 @@ Working today:
 - append or replace mode when capturing a browser window
 - local prototype package command for a double-click launcher
 - explicit Productive no-console launcher package
+- standalone Productive package with its own Electron runtime
+- configurable Standard/Touch layout, launch monitor and optional kiosk-like fullscreen mode
+- guarded NSIS installer and certificate-driven signing commands
 - local development, lint and build commands
 
 Not implemented yet:
 - packaged extension installation flow
-- signed installer or portable standalone executable
+- Authenticode-signed installer artifact; signing infrastructure exists but requires a certificate
+- a separately defined Sleep List state beyond the implemented Archive workflow
 
 ## Requirements
 
 - Windows
-- Node.js 20.16 or newer in the Node 20 line
+- Node.js 22.12 or newer for development and installer packaging
 - npm
 
 ## Install
@@ -151,7 +155,35 @@ dist-productive/DeskPilot Productive/start-deskpilot-productive.vbs
 
 The filename, folder name and generated package all identify this as Productive. The launcher explicitly selects the Productive data profile and clears the development-only guard. If startup fails, run `start-deskpilot-productive-debug.cmd` in the same folder to keep a diagnostic console open.
 
-This local package is not a signed installer and still uses the repository's installed Electron runtime. Re-run `npm run package:productive` after application builds change so the packaged renderer and Electron files stay current.
+This local package is not an installer, but it contains its own Electron runtime and can be moved outside the repository. Re-run `npm run package:productive` after application builds change so the packaged renderer and runtime stay current.
+
+## Build The Windows Installer
+
+Create an unsigned local NSIS test installer with:
+
+```bash
+npm run package:windows
+```
+
+The installer and unpacked inspection build are written to `dist-installer/`. Installed builds default deliberately to the Productive data profile.
+
+For a digitally signed installer, provide a Windows code-signing certificate and password through `CSC_LINK` and `CSC_KEY_PASSWORD`, then run:
+
+```bash
+npm run package:windows:signed
+```
+
+The signed command fails closed when either value is missing. A successful unsigned test build must never be described as digitally signed.
+
+## Display And Touch Settings
+
+Open `Display` in the control rail to select:
+
+- Standard or larger Touch controls
+- the monitor DeskPilot should use when its window is created
+- optional kiosk-like fullscreen mode
+
+Apply saves all three preferences atomically. Kiosk mode can still be exited by quitting DeskPilot from its tray menu.
 
 ## Data Profiles
 

@@ -123,12 +123,15 @@ Expected features:
 Goal:
 Make DeskPilot pleasant on a small touch display.
 
+Status:
+Started. Standard/Touch layout, persisted monitor selection, launch-on-selected-display and optional kiosk-like fullscreen are implemented.
+
 Expected features:
 - touch-sized buttons
-- configurable layout
-- monitor selection
-- launch on selected display
-- kiosk-like mode if useful
+- configurable layout - Standard and Touch modes done
+- monitor selection - done
+- launch on selected display - done with safe work-area placement
+- kiosk-like mode if useful - optional persisted mode done
 
 ## v0.7 - Prototype Packaging
 
@@ -142,5 +145,6 @@ Expected features:
 - local prototype folder - initial pass done
 - double-click launcher - initial pass done
 - explicit Productive no-console launcher - done
-- signed installer
-- standalone runtime bundle
+- signed installer - signing workflow ready; certificate still required for a real signature
+- standalone runtime bundle - Productive package now includes Electron runtime
+- unsigned NSIS test installer - done

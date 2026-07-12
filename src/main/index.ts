@@ -5,6 +5,7 @@ import {
   ipcMain,
   nativeImage,
   nativeTheme,
+  screen,
   shell,
   Tray,
   Menu,
@@ -19,6 +20,7 @@ import {
   createManualBackup,
   createCategory,
   deleteCategory,
+  deleteArchivedTabPermanently,
   deleteTab,
   exportStorageBackup,
   getActiveCategoryId,
@@ -44,7 +46,14 @@ import {
 import { getBrowserBridgeStatus, startBrowserBridge } from "./browserBridge.js";
 import { openUrlsInNewBrowserWindow } from "./browserLauncher.js";
 import { getExtensionInstallInfo } from "./extensionInstall.js";
-import { loadWindowBounds, saveWindowBounds } from "./windowSettings.js";
+import {
+  loadWindowBounds,
+  loadWindowPreferences,
+  resolveWindowBounds,
+  saveWindowBounds,
+  saveWindowPreferences
+} from "./windowSettings.js";
+import type { DisplaySettingsInfo, WindowPreferences } from "../shared/deskPilotApi.js";
 import {
   createStorageStartupFailurePrompt,
   exportStorageRecoveryFile,
@@ -88,7 +97,13 @@ function showMainWindow(): void {
 }
 
 function createMainWindow(): void {
-  const bounds = loadWindowBounds(app.getPath("userData"));
+  const userDataPath = app.getPath("userData");
+  const preferences = loadWindowPreferences(userDataPath);
+  const bounds = resolveWindowBounds(
+    loadWindowBounds(userDataPath),
+    preferences,
+    screen.getAllDisplays().map((display) => ({ id: String(display.id), workArea: display.workArea }))
+  );
 
   mainWindow = new BrowserWindow({
     x: bounds.x,
@@ -97,6 +112,7 @@ function createMainWindow(): void {
     height: bounds.height,
     minWidth: 860,
     minHeight: 320,
+    kiosk: preferences.kiosk,
     title: "DeskPilot",
     backgroundColor: nativeTheme.shouldUseDarkColors ? "#181a1f" : "#f7f5ef",
     autoHideMenuBar: true,
@@ -162,6 +178,38 @@ function showSaveDialog(options: SaveDialogOptions) {
 
 function showOpenDialog(options: OpenDialogOptions) {
   return mainWindow ? dialog.showOpenDialog(mainWindow, options) : dialog.showOpenDialog(options);
+}
+
+function getDisplaySettingsInfo(): DisplaySettingsInfo {
+  const primaryDisplayId = String(screen.getPrimaryDisplay().id);
+
+  return {
+    preferences: loadWindowPreferences(app.getPath("userData")),
+    displays: screen.getAllDisplays().map((display, index) => ({
+      id: String(display.id),
+      label: `Display ${index + 1}${String(display.id) === primaryDisplayId ? " (Primary)" : ""}`,
+      primary: String(display.id) === primaryDisplayId,
+      width: display.workArea.width,
+      height: display.workArea.height
+    }))
+  };
+}
+
+function updateDisplayPreferences(preferences: WindowPreferences): DisplaySettingsInfo {
+  const userDataPath = app.getPath("userData");
+  saveWindowPreferences(userDataPath, preferences);
+
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.setKiosk(preferences.kiosk);
+    const nextBounds = resolveWindowBounds(
+      mainWindow.getBounds(),
+      preferences,
+      screen.getAllDisplays().map((display) => ({ id: String(display.id), workArea: display.workArea }))
+    );
+    mainWindow.setBounds(nextBounds);
+  }
+
+  return getDisplaySettingsInfo();
 }
 
 async function showStorageStartupFailure(error: unknown): Promise<void> {
@@ -244,7 +292,7 @@ if (!hasSingleInstanceLock) {
 
   app.whenReady().then(async () => {
     try {
-      await initializeStorage(app.getPath("userData"));
+      await initializeStorage(app.getPath("userData"), app.isPackaged ? { profile: "productive" } : {});
     } catch (error) {
       await showStorageStartupFailure(error);
       return;
@@ -259,6 +307,8 @@ if (!hasSingleInstanceLock) {
     ipcMain.handle("bridge:status", () => getBrowserBridgeStatus(bridgeServer, activeDataProfile));
     ipcMain.handle("extension:install-info", () => getExtensionInstallInfo(projectRoot));
     ipcMain.handle("storage:info", () => getStorageInfo());
+    ipcMain.handle("display:settings", () => getDisplaySettingsInfo());
+    ipcMain.handle("display:update-preferences", (_event, preferences) => updateDisplayPreferences(preferences));
     ipcMain.handle("storage:create-backup", () => createManualBackup());
     ipcMain.handle("storage:restore-backup", (_event, fileName) => restoreManualBackup(fileName));
     ipcMain.handle("storage:restore-rolling-backup", () => restoreRollingBackup());
@@ -302,6 +352,7 @@ if (!hasSingleInstanceLock) {
     ipcMain.handle("tabs:add", (_event, input) => addTab(input));
     ipcMain.handle("tabs:archive", (_event, id) => archiveTab(id));
     ipcMain.handle("tabs:delete", (_event, id) => deleteTab(id));
+    ipcMain.handle("tabs:delete-archived-permanently", (_event, id) => deleteArchivedTabPermanently(id));
     ipcMain.handle("tabs:move", (_event, id, input) => moveTab(id, input));
     ipcMain.handle("tabs:open", async (_event, id) => {
       const tab = getActiveTab(id);

@@ -23,13 +23,15 @@ import type {
   BridgeStatus,
   CategoryInput,
   CategoryRecoveryResult,
+  DisplaySettingsInfo,
   ExtensionInstallInfo,
   SessionMutationResult,
   SessionTab,
   SessionTabInput,
   StorageExportResult,
   StorageBackupInfo,
-  StorageRestoreResult
+  StorageRestoreResult,
+  WindowPreferences
 } from "../shared/deskPilotApi";
 import { defaultCategories, type SessionCategory } from "../shared/sessions";
 import "./styles.css";
@@ -83,12 +85,18 @@ function App() {
   const [boardTabsByCategory, setBoardTabsByCategory] = useState<Record<string, SessionTab[]>>({});
   const [tabDraft, setTabDraft] = useState<SessionTabInput>({ categoryId: selectedCategoryId, url: "", title: "" });
   const [controlMode, setControlMode] = useState<
-    "session" | "categories" | "archive" | "recovery" | "extension" | "safety"
+    "session" | "categories" | "archive" | "recovery" | "extension" | "display" | "safety"
   >("session");
   const [operationMessage, setOperationMessage] = useState("");
   const [bridgeStatus, setBridgeStatus] = useState<BridgeStatus | null>(null);
   const [extensionInfo, setExtensionInfo] = useState<ExtensionInstallInfo | null>(null);
   const [storageInfo, setStorageInfo] = useState<StorageBackupInfo | null>(null);
+  const [displaySettings, setDisplaySettings] = useState<DisplaySettingsInfo | null>(null);
+  const [displayDraft, setDisplayDraft] = useState<WindowPreferences>({
+    layoutMode: "standard",
+    displayId: null,
+    kiosk: false
+  });
   const [draggedTab, setDraggedTab] = useState<{ id: string; categoryId: string } | null>(null);
 
   useEffect(() => {
@@ -124,6 +132,16 @@ function App() {
       .then((info: StorageBackupInfo) => {
         if (isMounted) {
           setStorageInfo(info);
+        }
+      })
+      .catch(() => undefined);
+
+    window.deskPilot
+      .displaySettings()
+      .then((info: DisplaySettingsInfo) => {
+        if (isMounted) {
+          setDisplaySettings(info);
+          setDisplayDraft(info.preferences);
         }
       })
       .catch(() => undefined);
@@ -607,14 +625,19 @@ function App() {
       .catch(() => setOperationMessage("Could not import backup. Existing data was left untouched."));
   }
 
-  function removeTab(id: string): void {
+  function removeTab(tab: SessionTab): void {
     if (!isStorageWritable) {
       setOperationMessage("Removing URLs requires the Electron app.");
       return;
     }
 
+    if (!window.confirm(`Remove "${tab.title}" from the active Session? It will remain available in Recovery.`)) {
+      setOperationMessage("Removal canceled.");
+      return;
+    }
+
     window.deskPilot
-      ?.deleteTab(id)
+      ?.deleteTab(tab.id)
       .then((result: SessionMutationResult) => {
         updateSessionResult(result);
         refreshDeletedTabs();
@@ -658,6 +681,43 @@ function App() {
         setOperationMessage("Archived URL returned to the active Session.");
       })
       .catch(handleStorageError);
+  }
+
+  function permanentlyDeleteArchivedTab(tab: SessionTab): void {
+    if (!isStorageWritable) {
+      setOperationMessage("Permanent deletion requires the Electron app.");
+      return;
+    }
+
+    if (!window.confirm(`Permanently delete "${tab.title}"? This cannot be recovered.`)) {
+      setOperationMessage("Permanent deletion canceled.");
+      return;
+    }
+
+    window.deskPilot
+      ?.deleteArchivedTabPermanently(tab.id)
+      .then((result: SessionMutationResult) => {
+        updateSessionResult(result);
+        refreshArchivedTabs();
+        setOperationMessage("Archived URL permanently deleted.");
+      })
+      .catch(handleStorageError);
+  }
+
+  function handleSaveDisplayPreferences(): void {
+    if (!window.deskPilot) {
+      setOperationMessage("Display settings require the Electron app.");
+      return;
+    }
+
+    window.deskPilot
+      .updateDisplayPreferences(displayDraft)
+      .then((info: DisplaySettingsInfo) => {
+        setDisplaySettings(info);
+        setDisplayDraft(info.preferences);
+        setOperationMessage("Display settings applied.");
+      })
+      .catch(() => setOperationMessage("Could not apply display settings."));
   }
 
   function restoreDeletedTab(id: string): void {
@@ -774,7 +834,7 @@ function App() {
   }
 
   return (
-    <main className="shell">
+    <main className={displaySettings?.preferences.layoutMode === "touch" ? "shell shell-touch" : "shell"}>
       <aside className="controlRail" aria-label="DeskPilot controls">
         <header className="appHeader">
           <div>
@@ -848,6 +908,13 @@ function App() {
           >
             Safety
           </button>
+          <button
+            type="button"
+            className={controlMode === "display" ? "modeButton modeButton-active" : "modeButton"}
+            onClick={() => setControlMode("display")}
+          >
+            Display
+          </button>
         </div>
 
         {controlMode === "session" ? (
@@ -892,7 +959,7 @@ function App() {
                         >
                           <Archive aria-hidden="true" />
                         </button>
-                        <button type="button" className="miniDangerAction" onClick={() => removeTab(tab.id)} title="Remove URL">
+                        <button type="button" className="miniDangerAction" onClick={() => removeTab(tab)} title="Remove URL">
                           <X aria-hidden="true" />
                         </button>
                       </div>
@@ -930,15 +997,20 @@ function App() {
             <p>Archived URLs in {selectedCategoryName()}</p>
             {archivedTabs.length === 0 ? <span className="emptyRecoveryText">None</span> : null}
             {archivedTabs.map((tab) => (
-              <button
-                type="button"
-                className="restoreAction"
-                key={tab.id}
-                onClick={() => restoreArchivedTab(tab.id)}
-              >
-                <RotateCcw aria-hidden="true" />
-                Return {tab.title} to Session
-              </button>
+              <div className="archivedTabItem" key={tab.id}>
+                <span>{tab.title}</span>
+                <small>{getUrlHost(tab.url)}</small>
+                <div className="archivedTabActions">
+                  <button type="button" className="restoreAction" onClick={() => restoreArchivedTab(tab.id)}>
+                    <RotateCcw aria-hidden="true" />
+                    Return to Session
+                  </button>
+                  <button type="button" className="permanentDeleteAction" onClick={() => permanentlyDeleteArchivedTab(tab)}>
+                    <Trash2 aria-hidden="true" />
+                    Delete Permanently
+                  </button>
+                </div>
+              </div>
             ))}
           </section>
         ) : controlMode === "recovery" ? (
@@ -967,6 +1039,49 @@ function App() {
                 Restore {tab.title}
               </button>
             ))}
+          </section>
+        ) : controlMode === "display" ? (
+          <section className="displayPanel" aria-label="Display settings">
+            <label>
+              Layout
+              <select
+                aria-label="DeskPilot layout"
+                value={displayDraft.layoutMode}
+                onChange={(event) =>
+                  setDisplayDraft({ ...displayDraft, layoutMode: event.target.value as WindowPreferences["layoutMode"] })
+                }
+              >
+                <option value="standard">Standard</option>
+                <option value="touch">Touch</option>
+              </select>
+            </label>
+            <label>
+              Launch display
+              <select
+                aria-label="DeskPilot launch display"
+                value={displayDraft.displayId ?? ""}
+                onChange={(event) => setDisplayDraft({ ...displayDraft, displayId: event.target.value || null })}
+              >
+                <option value="">Current / system default</option>
+                {displaySettings?.displays.map((display) => (
+                  <option value={display.id} key={display.id}>
+                    {display.label} · {display.width}×{display.height}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="displayCheckbox">
+              <input
+                type="checkbox"
+                checked={displayDraft.kiosk}
+                onChange={(event) => setDisplayDraft({ ...displayDraft, kiosk: event.target.checked })}
+              />
+              Kiosk-like fullscreen mode
+            </label>
+            <small>Kiosk mode can always be left by quitting DeskPilot from the tray menu.</small>
+            <button type="button" className="addCategoryAction" onClick={handleSaveDisplayPreferences}>
+              Apply Display Settings
+            </button>
           </section>
         ) : controlMode === "extension" ? (
           <section className="extensionPanel" aria-label="Browser extension">

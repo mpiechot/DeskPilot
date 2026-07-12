@@ -6,11 +6,16 @@ const launcherPath = path.join(productiveRoot, "start-deskpilot-productive.cmd")
 const debugLauncherPath = path.join(productiveRoot, "start-deskpilot-productive-debug.cmd");
 const silentLauncherPath = path.join(productiveRoot, "start-deskpilot-productive.vbs");
 const packagePath = path.join(productiveRoot, "package.json");
+const bundledElectronPath = path.join(productiveRoot, "runtime", "electron.exe");
+const bundledResourcesPath = path.join(productiveRoot, "runtime", "resources");
 
 assert(fs.existsSync(launcherPath), "Expected Productive compatibility launcher to exist");
 assert(fs.existsSync(debugLauncherPath), "Expected Productive debug launcher to exist");
 assert(fs.existsSync(silentLauncherPath), "Expected Productive no-console launcher to exist");
 assert(fs.existsSync(packagePath), "Expected Productive package.json to exist");
+assert(fs.existsSync(bundledElectronPath), "Expected Productive package to contain its own Electron executable");
+assert(fs.statSync(bundledElectronPath).size > 0, "Expected bundled Electron executable not to be empty");
+assert(fs.existsSync(bundledResourcesPath), "Expected Productive package to contain Electron runtime resources");
 
 const launcher = fs.readFileSync(launcherPath, "utf-8");
 const debugLauncher = fs.readFileSync(debugLauncherPath, "utf-8");
@@ -19,6 +24,9 @@ const productivePackage = JSON.parse(fs.readFileSync(packagePath, "utf-8"));
 
 assert(productivePackage.name === "deskpilot-productive", "Expected package to be clearly identified as Productive");
 assert(launcher.includes("start \"DeskPilot Productive\""), "Expected launcher to use a Productive window label");
+assert(launcher.includes("%APP_DIR%runtime\\electron.exe"), "Expected launcher to use the bundled relative Electron runtime");
+assert(!launcher.includes("node_modules"), "Expected Productive launcher not to depend on repository node_modules");
+assert(!silentLauncher.includes("node_modules"), "Expected Productive VBS launcher not to depend on repository node_modules");
 assert(launcher.includes("DESKPILOT_DATA_PROFILE=productive"), "Expected launcher to force the Productive data profile");
 assert(
   launcher.includes("DESKPILOT_DISALLOW_PRODUCTIVE_PROFILE=0"),

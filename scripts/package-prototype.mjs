@@ -16,7 +16,12 @@ const prototypeRoot = isProductive
 const launcherBaseName = isProductive ? "start-deskpilot-productive" : "start-deskpilot";
 const launcherTitle = isProductive ? "DeskPilot Productive" : "DeskPilot";
 const productiveGuard = isProductive ? "0" : "1";
+const electronRuntimeDirectory = path.join(projectRoot, "node_modules", "electron", "dist");
 const electronExecutable = path.join(projectRoot, "node_modules", "electron", "dist", "electron.exe");
+const commandElectronExecutable = isProductive ? "%APP_DIR%runtime\\electron.exe" : electronExecutable;
+const runtimeRecoveryMessage = isProductive
+  ? "Rebuild or reinstall the DeskPilot Productive package."
+  : "Run npm install in the DeskPilot repository, then package the prototype again.";
 const packageJson = JSON.parse(fs.readFileSync(path.join(projectRoot, "package.json"), "utf-8"));
 
 assertInsideProject(prototypeRoot);
@@ -44,6 +49,13 @@ copyDirectory("dist-electron", "dist-electron");
 copyDirectory("browser-extension", "browser-extension");
 copyDirectory(path.join("node_modules", "sql.js"), path.join("node_modules", "sql.js"));
 
+if (isProductive) {
+  fs.cpSync(electronRuntimeDirectory, path.join(prototypeRoot, "runtime"), {
+    recursive: true,
+    force: true
+  });
+}
+
 fs.writeFileSync(
   path.join(prototypeRoot, "package.json"),
   JSON.stringify(
@@ -65,11 +77,11 @@ fs.writeFileSync(
     "@echo off",
     "setlocal",
     "set \"APP_DIR=%~dp0\"",
-    `set "ELECTRON_EXE=${electronExecutable}"`,
+    `set "ELECTRON_EXE=${commandElectronExecutable}"`,
     "if not exist \"%ELECTRON_EXE%\" (",
     "  echo DeskPilot could not find the Electron runtime.",
     "  echo Expected: %ELECTRON_EXE%",
-    "  echo Run npm install in the DeskPilot repository, then package the prototype again.",
+    `  echo ${runtimeRecoveryMessage}`,
     "  pause",
     "  exit /b 1",
     ")",
@@ -90,11 +102,11 @@ fs.writeFileSync(
     "@echo off",
     "setlocal",
     "set \"APP_DIR=%~dp0\"",
-    `set "ELECTRON_EXE=${electronExecutable}"`,
+    `set "ELECTRON_EXE=${commandElectronExecutable}"`,
     "if not exist \"%ELECTRON_EXE%\" (",
     "  echo DeskPilot could not find the Electron runtime.",
     "  echo Expected: %ELECTRON_EXE%",
-    "  echo Run npm install in the DeskPilot repository, then package the prototype again.",
+    `  echo ${runtimeRecoveryMessage}`,
     "  pause",
     "  exit /b 1",
     ")",
@@ -115,9 +127,11 @@ fs.writeFileSync(
     "Set shell = CreateObject(\"WScript.Shell\")",
     "Set fso = CreateObject(\"Scripting.FileSystemObject\")",
     "appDir = fso.GetParentFolderName(WScript.ScriptFullName)",
-    `electronExe = "${electronExecutable}"`,
+    isProductive
+      ? "electronExe = fso.BuildPath(appDir, \"runtime\\electron.exe\")"
+      : `electronExe = "${electronExecutable}"`,
     "If Not fso.FileExists(electronExe) Then",
-    "  MsgBox \"DeskPilot could not find the Electron runtime. Run npm install in the DeskPilot repository, then package the prototype again.\", 16, \"DeskPilot\"",
+    `  MsgBox "DeskPilot could not find the Electron runtime. ${runtimeRecoveryMessage}", 16, "DeskPilot"`,
     "  WScript.Quit 1",
     "End If",
     `shell.Environment("PROCESS")("DESKPILOT_DATA_PROFILE") = "${dataProfile}"`,
@@ -146,7 +160,9 @@ fs.writeFileSync(
     isProductive
       ? "- This is the explicit local Productive launcher, not a signed installer."
       : "- This is a local development prototype, not a signed installer.",
-    "- It uses the repository's installed Electron runtime.",
+    isProductive
+      ? "- It contains its own Electron runtime and can be moved outside the repository."
+      : "- It uses the repository's installed Electron runtime.",
     isProductive
       ? "- It always starts in the Productive data profile. Treat the stored sessions as real user data."
       : "- It starts in the Development data profile and cannot touch Productive data."

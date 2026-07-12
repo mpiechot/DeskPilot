@@ -69,3 +69,9 @@ Opening the storage folder is useful but still asks the user to copy unfamiliar 
 
 Recovery export target note:
 A save dialog does not make an export automatically safe. Explicitly reject both active and rolling database paths as destinations, or a well-intentioned export can overwrite the other recovery source.
+
+Installer signing note:
+An installer generator can call `signtool.exe` without producing a real Authenticode signature when no certificate is available. Keep unsigned test packaging and signed packaging as separate commands, make the signed command fail closed without `CSC_LINK` and `CSC_KEY_PASSWORD`, and verify the resulting signature rather than trusting build-log wording.
+
+Installer archive note:
+The current installer intentionally leaves app files unpacked because the browser extension must remain a real load-unpacked directory and sql.js must locate its WASM file reliably. electron-builder warns about disabled ASAR; enabling it later requires explicit unpack paths and end-to-end verification of both extension discovery and SQLite startup.

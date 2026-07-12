@@ -10,6 +10,7 @@ import {
   createManualBackup,
   addTab,
   deleteCategory,
+  deleteArchivedTabPermanently,
   deleteTab,
   exportStorageBackup,
   getActiveCategoryId,
@@ -33,7 +34,13 @@ import {
   unarchiveTab,
   updateCategory
 } from "../dist-electron/main/storage.js";
-import { loadWindowBounds, saveWindowBounds } from "../dist-electron/main/windowSettings.js";
+import {
+  loadWindowBounds,
+  loadWindowPreferences,
+  resolveWindowBounds,
+  saveWindowBounds,
+  saveWindowPreferences
+} from "../dist-electron/main/windowSettings.js";
 import {
   developmentBridgePort,
   extensionClientHeaderName,
@@ -161,6 +168,18 @@ await initializeStorage(dir, { profile: "development", disallowProductive: true 
 assert(listTabs(recreatedWriting.id).length === 0, "Expected archived tab to stay out of the active Session after restart");
 assert(listArchivedTabs(recreatedWriting.id).length === 1, "Expected archived tab to survive storage restart");
 unarchiveTab(archivedTabId);
+const permanentDeleteTab = addTab({
+  categoryId: recreatedWriting.id,
+  url: "https://example.com/permanent-delete",
+  title: "Permanent Delete Test"
+}).tabs.find((item) => item.title === "Permanent Delete Test");
+assert(permanentDeleteTab, "Expected permanent-delete fixture tab");
+archiveTab(permanentDeleteTab.id);
+deleteArchivedTabPermanently(permanentDeleteTab.id);
+assert(
+  !listArchivedTabs(recreatedWriting.id).some((item) => item.id === permanentDeleteTab.id),
+  "Expected explicit permanent delete to remove only the archived tab"
+);
 
 const databasePath = path.join(dir, "profiles", "development", "storage", "deskpilot.sqlite");
 const backupPath = path.join(dir, "profiles", "development", "storage", "deskpilot.sqlite.bak");
@@ -370,6 +389,21 @@ assert(
     loadedBounds.height === customBounds.height,
   "Expected window bounds to round-trip through settings storage"
 );
+saveWindowPreferences(dir, {
+  layoutMode: "touch",
+  displayId: "secondary",
+  kiosk: true
+});
+const loadedWindowPreferences = loadWindowPreferences(dir);
+assert(loadedWindowPreferences.layoutMode === "touch", "Expected touch layout preference to persist");
+assert(loadedWindowPreferences.displayId === "secondary", "Expected selected display to persist");
+assert(loadedWindowPreferences.kiosk, "Expected kiosk preference to persist");
+const selectedDisplayBounds = resolveWindowBounds(loadedBounds, loadedWindowPreferences, [
+  { id: "primary", workArea: { x: 0, y: 0, width: 1920, height: 1080 } },
+  { id: "secondary", workArea: { x: 1920, y: 0, width: 1280, height: 720 } }
+]);
+assert(selectedDisplayBounds.x === 1952 && selectedDisplayBounds.y === 32, "Expected window to launch on selected display");
+assert(selectedDisplayBounds.width === 1180 && selectedDisplayBounds.height === 390, "Expected selected display to preserve valid size");
 
 const restoreLaunchPlan = createBrowserWindowLaunchPlan(
   ["https://example.com/one", "https://example.com/two"],

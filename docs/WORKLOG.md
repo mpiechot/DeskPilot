@@ -750,3 +750,29 @@ Current status:
 
 Next recommended step:
 - Add archive age and saved-time visibility, then use it as the foundation for stale-tab detection and review reminders.
+
+### Runtime, display and Windows distribution expansion
+
+Completed:
+- Rejected an invented time-based stale-tab threshold; no expiry or automatic time behavior was added.
+- Bundled the complete Electron runtime into the Productive launcher folder and changed every Productive launcher to use only its relative local runtime.
+- Added a Recovery-aware confirmation before soft-removing active URLs.
+- Added irreversible permanent deletion for Archived Tabs with an explicit warning and cancel path.
+- Extended recoverable window settings with Standard/Touch layout, selected display and optional kiosk preferences.
+- Added safe selected-display placement that preserves valid saved bounds and otherwise moves the window inside the selected work area.
+- Added a Display panel for applying layout, monitor and kiosk preferences together.
+- Added electron-builder NSIS configuration, an unpacked inspection build and an unsigned local installer command.
+- Added a separate signed-installer command that requires `CSC_LINK` and `CSC_KEY_PASSWORD` and fails closed without them.
+- Built `dist-installer/DeskPilot-Setup-0.1.0.exe` successfully with the bundled Node 24 runtime and verified it is currently `NotSigned`.
+- Raised the documented development/installer toolchain to Node 22.12+ and aligned Node type definitions.
+- Added smoke coverage for the standalone runtime, installer configuration, selected-display bounds, touch/kiosk preferences and both deletion warnings.
+- Verified `npm run lint`, `npm run test:storage`, `npm run test:prototype`, `npm run test:installer` and `npm audit` with zero reported vulnerabilities.
+- Rebuilt the final unsigned installer at 105,573,049 bytes and verified its Authenticode status is `NotSigned` rather than assuming build-log signing messages implied a certificate signature.
+
+Current status:
+- Standalone Productive packaging, the unsigned NSIS test installer, Touch layout, monitor selection, launch placement and optional kiosk mode are implemented.
+- A real Authenticode signature is externally blocked only by the absence of a code-signing certificate.
+- Sleep Lists remain intentionally unimplemented as a separate state because their product meaning relative to Archive has not been defined.
+
+Next recommended step:
+- Decide whether Sleep List is a renamed Archive view, a temporary state with different restore behavior, or a distinct workflow; implement only after that product distinction is explicit.

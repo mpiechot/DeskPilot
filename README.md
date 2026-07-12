@@ -17,7 +17,7 @@ This project is intended to be developed autonomously by Codex.
 ## Development
 
 Requirements:
-- Node.js 20.16 or newer in the Node 20 line
+- Node.js 22.12 or newer for development and Windows installer packaging
 - npm
 
 Commands:
@@ -30,6 +30,8 @@ Commands:
 - `npm run test:extension` loads the real extension popup in an isolated Electron smoke app and verifies a Productive current-tab save.
 - `npm run package:prototype` creates a local Windows prototype folder under `dist-prototype/DeskPilot`.
 - `npm run package:productive` creates an explicit Productive launcher folder under `dist-productive/DeskPilot Productive`.
+- `npm run package:windows` creates an unsigned local NSIS test installer under `dist-installer`.
+- `npm run package:windows:signed` requires `CSC_LINK` and `CSC_KEY_PASSWORD` and refuses to produce a falsely labeled signed build.
 - `npm run test:prototype` regenerates the local prototype and verifies the desktop launchers, renderer workflow and extension popup.
 
 More detailed run and verification notes live in `docs/USAGE.md`.
@@ -56,5 +58,7 @@ Current state:
 - The local browser bridge is origin-restricted to browser-extension origins, visible in the app status area and profile-aware.
 - Productive and Development use separate bridge ports so a hidden Development instance cannot silently receive Productive extension saves.
 - A local prototype package can be generated for double-click launch during development.
+- The Productive package includes its own Electron runtime and can run outside the repository.
+- Display settings can select Standard or Touch layout, a launch monitor and optional kiosk-like fullscreen mode.
 - Starting DeskPilot again while it is already running focuses the existing instance instead of opening a second bridge.
 - Browser-extension saves refresh the visible category counts in the Electron UI.

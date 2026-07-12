@@ -3,6 +3,7 @@ dist/
 dist-electron/
 dist-prototype/
 dist-productive/
+dist-installer/
 coverage/
 *.log
 .env

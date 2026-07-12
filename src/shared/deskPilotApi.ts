@@ -5,6 +5,8 @@ export type DeskPilotApi = {
   bridgeStatus: () => Promise<BridgeStatus>;
   extensionInstallInfo: () => Promise<ExtensionInstallInfo>;
   storageInfo: () => Promise<StorageBackupInfo>;
+  displaySettings: () => Promise<DisplaySettingsInfo>;
+  updateDisplayPreferences: (preferences: WindowPreferences) => Promise<DisplaySettingsInfo>;
   createStorageBackup: () => Promise<StorageBackupInfo>;
   restoreStorageBackup: (fileName: string) => Promise<StorageRestoreResult>;
   restoreRollingStorageBackup: () => Promise<StorageRestoreResult>;
@@ -22,6 +24,7 @@ export type DeskPilotApi = {
   addTab: (input: SessionTabInput) => Promise<SessionMutationResult>;
   archiveTab: (id: string) => Promise<SessionMutationResult>;
   deleteTab: (id: string) => Promise<SessionMutationResult>;
+  deleteArchivedTabPermanently: (id: string) => Promise<SessionMutationResult>;
   moveTab: (id: string, input: MoveTabInput) => Promise<SessionMutationResult>;
   openTab: (id: string) => Promise<SessionTab | null>;
   listDeletedTabs: (categoryId: string) => Promise<SessionTab[]>;
@@ -60,6 +63,27 @@ export type StorageBackupInfo = {
   rollingBackup: StorageBackupSnapshot | null;
   manualBackupDirectory: string;
   manualBackups: StorageBackupSnapshot[];
+};
+
+export type WindowLayoutMode = "standard" | "touch";
+
+export type WindowPreferences = {
+  layoutMode: WindowLayoutMode;
+  displayId: string | null;
+  kiosk: boolean;
+};
+
+export type DisplayDescriptor = {
+  id: string;
+  label: string;
+  primary: boolean;
+  width: number;
+  height: number;
+};
+
+export type DisplaySettingsInfo = {
+  preferences: WindowPreferences;
+  displays: DisplayDescriptor[];
 };
 
 export type StorageStartupRecoveryStatus = "not-needed" | "recovered-from-rolling";

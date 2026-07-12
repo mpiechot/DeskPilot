@@ -108,6 +108,7 @@ DeskPilot should later support:
 - sleep lists
 
 Initial progress: manual per-category archived tabs and return-to-Session controls are implemented.
+Archived tabs can also be permanently deleted only through an explicit irreversible confirmation.
 
 The user should later:
 

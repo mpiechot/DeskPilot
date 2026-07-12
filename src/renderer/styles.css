@@ -200,7 +200,7 @@ h1 {
 
 .modeSwitch {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 6px;
 }
 
@@ -262,7 +262,8 @@ h1 {
 }
 
 .extensionPanel,
-.safetyPanel {
+.safetyPanel,
+.displayPanel {
   display: grid;
   align-content: start;
   gap: 7px;
@@ -367,6 +368,130 @@ h1 {
   overflow-y: auto;
   padding-right: 2px;
   scrollbar-width: thin;
+}
+
+.archivedTabItem {
+  display: grid;
+  gap: 3px;
+  border: 1px solid #d7d0c2;
+  border-radius: 8px;
+  background: rgba(255, 250, 240, 0.76);
+  padding: 8px;
+  min-width: 0;
+}
+
+.archivedTabItem > span,
+.archivedTabItem > small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.archivedTabItem > span {
+  color: #27312d;
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.archivedTabItem > small {
+  color: #6d726c;
+  font-size: 0.7rem;
+}
+
+.archivedTabActions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+  margin-top: 4px;
+}
+
+.archivedTabActions button {
+  min-width: 0;
+  min-height: 38px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.permanentDeleteAction {
+  border: 1px solid #c67f77;
+  background: #f8dfda;
+  color: #7c2f27;
+}
+
+.archivedTabActions svg {
+  width: 13px;
+  height: 13px;
+  margin-right: 4px;
+  vertical-align: text-bottom;
+}
+
+.displayPanel label {
+  display: grid;
+  gap: 5px;
+  color: #5c625d;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.displayPanel select {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid #c9c0b2;
+  border-radius: 8px;
+  background: #fffaf0;
+  color: #27312d;
+  padding: 0 9px;
+}
+
+.displayPanel .displayCheckbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.displayCheckbox input {
+  width: 18px;
+  height: 18px;
+}
+
+.displayPanel > small {
+  color: #6d726c;
+  font-size: 0.7rem;
+  line-height: 1.35;
+}
+
+.shell-touch {
+  grid-template-columns: minmax(300px, 360px) 1fr;
+}
+
+.shell-touch button,
+.shell-touch input,
+.shell-touch select {
+  min-height: 46px;
+}
+
+.shell-touch .modeButton {
+  min-height: 44px;
+}
+
+.shell-touch .sessionBoardTab {
+  grid-template-columns: 16px minmax(0, 1fr) 72px;
+  min-height: 50px;
+}
+
+.shell-touch .savedUrlManagerItem {
+  grid-template-columns: minmax(0, 1fr) 72px;
+}
+
+.shell-touch .sessionBoardOpenAction,
+.shell-touch .miniArchiveAction,
+.shell-touch .miniDangerAction,
+.shell-touch .iconAction {
+  width: 34px;
+  min-height: 34px;
+  height: 34px;
 }
 
 .startupRecoveryNotice {
