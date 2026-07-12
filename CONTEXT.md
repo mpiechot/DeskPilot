@@ -12,6 +12,10 @@ _Avoid_: Tab dump, bookmark folder
 A saved browser tab represented by its URL, title, category, and position inside a browser session.
 _Avoid_: Bookmark, live tab
 
+**Archived Tab**:
+A saved tab deliberately removed from the active Browser Session while remaining recoverable inside its original Category.
+_Avoid_: Deleted tab, bookmark, sleeping tab
+
 **Category**:
 A user-facing container for one browser session, such as Work, Research, Entertainment, Projects, or Later / Inbox.
 _Avoid_: Folder, workspace, project

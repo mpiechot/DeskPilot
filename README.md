@@ -46,6 +46,7 @@ Current state:
 - Saved tabs can be moved between categories and reordered with mouse-first drag and drop.
 - Individual saved tabs can be opened from the Session Board.
 - Saved URLs can be viewed and removed from the selected category.
+- Saved tabs can be archived without deletion and returned to the active Session from the selected category's Archive view.
 - Saved URLs from a selected category open together in a new Chrome/Edge browser window.
 - Manual SQLite backup snapshots can be created, restored, exported and imported from the Safety mode, and the latest automatic rolling backup can be restored safely.
 - A corrupted active database is recovered automatically from the valid rolling backup at startup, while the corrupted source file is preserved for diagnosis.

@@ -20,11 +20,14 @@ export type DeskPilotApi = {
   restoreCategory: (id: string) => Promise<CategoryRecoveryResult>;
   listTabs: (categoryId: string) => Promise<SessionTab[]>;
   addTab: (input: SessionTabInput) => Promise<SessionMutationResult>;
+  archiveTab: (id: string) => Promise<SessionMutationResult>;
   deleteTab: (id: string) => Promise<SessionMutationResult>;
   moveTab: (id: string, input: MoveTabInput) => Promise<SessionMutationResult>;
   openTab: (id: string) => Promise<SessionTab | null>;
   listDeletedTabs: (categoryId: string) => Promise<SessionTab[]>;
+  listArchivedTabs: (categoryId: string) => Promise<SessionTab[]>;
   restoreTab: (id: string) => Promise<SessionMutationResult>;
+  unarchiveTab: (id: string) => Promise<SessionMutationResult>;
   openCategory: (categoryId: string) => Promise<SessionTab[]>;
   onSessionsChanged: (callback: () => void) => () => void;
 };
@@ -112,6 +115,7 @@ export type StorageRestoreResult = {
   selectedCategoryId: string;
   tabs: SessionTab[];
   deletedTabs: SessionTab[];
+  archivedTabs: SessionTab[];
   restoredFrom: string;
   safetyBackupFileName: string;
 };

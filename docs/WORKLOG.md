@@ -732,3 +732,21 @@ Current status:
 
 Next recommended step:
 - Use the new launcher for the real Productive browser-session trial, then prioritize any daily-use friction found there over additional speculative recovery polish.
+
+### Post-MVP manual tab archive
+
+Completed:
+- Added a non-destructive Archived Tab state that remains separate from active Sessions and soft-deleted Recovery data.
+- Migrated existing SQLite databases in place with an optional `archived_at` column while preserving all existing rows.
+- Added storage, IPC and preload interfaces for listing, archiving and returning tabs to the active Session.
+- Excluded archived tabs from category counts, browser restore, drag-and-drop order and active duplicate checks.
+- Reactivated an archived same-category URL automatically when the user or browser extension saves it again.
+- Added archive controls to the Session Board and selected-category URL list plus a dedicated Archive view.
+- Added storage coverage and a packaged-renderer round trip through Archive and back to the active Session.
+- Verified `npm run lint`, `npm run test:storage`, `npm run test:prototype` and `npm audit` with zero reported vulnerabilities.
+
+Current status:
+- The first v0.5 Cleanup Workflow slice is usable without deleting data: active Sessions can be trimmed and archived tabs remain recoverable per Category.
+
+Next recommended step:
+- Add archive age and saved-time visibility, then use it as the foundation for stale-tab detection and review reminders.

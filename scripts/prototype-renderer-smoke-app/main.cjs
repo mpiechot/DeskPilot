@@ -35,6 +35,7 @@ async function runElectronSmoke() {
 
   const tabsByCategory = new Map();
   const deletedTabsByCategory = new Map();
+  const archivedTabsByCategory = new Map();
   const categories = defaultCategories.map((category) => ({ ...category }));
   let activeCategoryId = categories[0]?.id ?? "";
 
@@ -67,6 +68,10 @@ async function runElectronSmoke() {
 
   function getDeletedTabs(categoryId) {
     return deletedTabsByCategory.get(categoryId) ?? [];
+  }
+
+  function getArchivedTabs(categoryId) {
+    return archivedTabsByCategory.get(categoryId) ?? [];
   }
 
   ipcMain.handle("bridge:status", () => ({ running: true, host: "127.0.0.1", port: 17383 }));
@@ -136,6 +141,7 @@ async function runElectronSmoke() {
     selectedCategoryId: activeCategoryId,
     tabs: getActiveTabs(activeCategoryId),
     deletedTabs: getDeletedTabs(activeCategoryId),
+    archivedTabs: getArchivedTabs(activeCategoryId),
     restoredFrom: "smoke-deskpilot.sqlite.bak",
     safetyBackupFileName: "deskpilot-pre-restore-smoke.sqlite"
   }));
@@ -151,6 +157,7 @@ async function runElectronSmoke() {
   ipcMain.handle("categories:deleted", () => []);
   ipcMain.handle("tabs:list", (_event, categoryId) => getActiveTabs(categoryId));
   ipcMain.handle("tabs:deleted", (_event, categoryId) => getDeletedTabs(categoryId));
+  ipcMain.handle("tabs:archived", (_event, categoryId) => getArchivedTabs(categoryId));
   ipcMain.handle("tabs:add", (_event, input) => {
     const tab = {
       id: `smoke-tab-${input.categoryId}-${Date.now()}`,
@@ -181,6 +188,50 @@ async function runElectronSmoke() {
           tabs.filter((tab) => tab.id !== id)
         );
         deletedTabsByCategory.set(categoryId, [...getDeletedTabs(categoryId), deletedTab]);
+        break;
+      }
+    }
+
+    return {
+      categories,
+      tabs: affectedCategoryId ? getActiveTabs(affectedCategoryId) : []
+    };
+  });
+  ipcMain.handle("tabs:archive", (_event, id) => {
+    let affectedCategoryId = "";
+
+    for (const [categoryId, tabs] of tabsByCategory.entries()) {
+      const archivedTab = tabs.find((tab) => tab.id === id);
+
+      if (archivedTab) {
+        affectedCategoryId = categoryId;
+        setActiveTabs(
+          categoryId,
+          tabs.filter((tab) => tab.id !== id)
+        );
+        archivedTabsByCategory.set(categoryId, [...getArchivedTabs(categoryId), archivedTab]);
+        break;
+      }
+    }
+
+    return {
+      categories,
+      tabs: affectedCategoryId ? getActiveTabs(affectedCategoryId) : []
+    };
+  });
+  ipcMain.handle("tabs:unarchive", (_event, id) => {
+    let affectedCategoryId = "";
+
+    for (const [categoryId, tabs] of archivedTabsByCategory.entries()) {
+      const restoredTab = tabs.find((tab) => tab.id === id);
+
+      if (restoredTab) {
+        affectedCategoryId = categoryId;
+        archivedTabsByCategory.set(
+          categoryId,
+          tabs.filter((tab) => tab.id !== id)
+        );
+        setActiveTabs(categoryId, [...getActiveTabs(categoryId), restoredTab]);
         break;
       }
     }
@@ -357,6 +408,7 @@ async function runElectronSmoke() {
       };
       const longWorkTitle =
         "WorkTitleWithEnoughDetailToOverflowTheRecoveryPanelWhenRenderedInsideTheNarrowControlRail";
+      let archiveRoundTripWorked = false;
 
       const getControlRailOverflow = () => {
         const controlRail = document.querySelector(".controlRail");
@@ -413,9 +465,22 @@ async function runElectronSmoke() {
         saveButton.click();
 
         waitForText("Saved URL to Work.", () => {
-          document.querySelector('.savedUrlManagerItem button[title="Remove URL"]').click();
+          document.querySelector('.savedUrlManagerItem button[title="Archive URL"]').click();
 
-          waitForText("Saved URL removed safely.", () => {
+          waitForText("Saved URL archived.", () => {
+            findButtonByText("Archive").click();
+
+            waitForText("Return " + longWorkTitle + " to Session", () => {
+              findButtonByText("Return " + longWorkTitle + " to Session").click();
+
+              waitForText("Archived URL returned to the active Session.", () => {
+                archiveRoundTripWorked = true;
+                findButtonByText("Session").click();
+
+                waitForText("Target: Work", () => {
+                  document.querySelector('.savedUrlManagerItem button[title="Remove URL"]').click();
+
+                  waitForText("Saved URL removed safely.", () => {
             clickCategory("Projects");
 
             waitForText("Target: Projects", () => {
@@ -501,6 +566,7 @@ async function runElectronSmoke() {
                     workBoardTitles.includes("Project title") &&
                     workBoardTitles.indexOf("Work second") < workBoardTitles.indexOf("Project title"),
                   sessionBoardOpenWorked,
+                  archiveRoundTripWorked,
                   workBoardTitles,
                   entertainmentCardText: getCategoryCardText("Entertainment"),
                   titleInputAcceptsText,
@@ -539,6 +605,10 @@ async function runElectronSmoke() {
                 );
               });
             });
+                  });
+                });
+              });
+            });
           });
         });
       });
@@ -562,6 +632,7 @@ async function runElectronSmoke() {
   }
   assert(result.sessionBoardReorderWorked, "Expected Session Board drag/drop to reorder saved tabs within a category");
   assert(result.sessionBoardOpenWorked, "Expected Session Board per-tab open control to open a saved tab");
+  assert(result.archiveRoundTripWorked, "Expected a saved URL to archive and return to the active Session");
   assert(
     !result.bodyText.includes("Saving URLs requires the Electron app."),
     "Expected Save URL not to report a missing Electron app"

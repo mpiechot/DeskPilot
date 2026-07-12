@@ -107,6 +107,8 @@ DeskPilot should later support:
 - archived tabs
 - sleep lists
 
+Initial progress: manual per-category archived tabs and return-to-Session controls are implemented.
+
 The user should later:
 
 - review sleeping tabs

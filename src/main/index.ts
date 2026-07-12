@@ -15,6 +15,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   addTab,
+  archiveTab,
   createManualBackup,
   createCategory,
   deleteCategory,
@@ -28,6 +29,7 @@ import {
   initializeStorage,
   listDeletedCategories,
   listDeletedTabs,
+  listArchivedTabs,
   listCategories,
   listTabs,
   moveTab,
@@ -36,6 +38,7 @@ import {
   restoreRollingBackup,
   restoreTab,
   setActiveCategoryId,
+  unarchiveTab,
   updateCategory
 } from "./storage.js";
 import { getBrowserBridgeStatus, startBrowserBridge } from "./browserBridge.js";
@@ -297,6 +300,7 @@ if (!hasSingleInstanceLock) {
     ipcMain.handle("categories:restore", (_event, id) => restoreCategory(id));
     ipcMain.handle("tabs:list", (_event, categoryId) => listTabs(categoryId));
     ipcMain.handle("tabs:add", (_event, input) => addTab(input));
+    ipcMain.handle("tabs:archive", (_event, id) => archiveTab(id));
     ipcMain.handle("tabs:delete", (_event, id) => deleteTab(id));
     ipcMain.handle("tabs:move", (_event, id, input) => moveTab(id, input));
     ipcMain.handle("tabs:open", async (_event, id) => {
@@ -309,7 +313,9 @@ if (!hasSingleInstanceLock) {
       return tab;
     });
     ipcMain.handle("tabs:deleted", (_event, categoryId) => listDeletedTabs(categoryId));
+    ipcMain.handle("tabs:archived", (_event, categoryId) => listArchivedTabs(categoryId));
     ipcMain.handle("tabs:restore", (_event, id) => restoreTab(id));
+    ipcMain.handle("tabs:unarchive", (_event, id) => unarchiveTab(id));
     ipcMain.handle("categories:open", async (_event, categoryId) => {
       const tabs = listTabs(categoryId);
       await openUrlsInNewBrowserWindow(

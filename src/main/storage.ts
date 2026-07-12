@@ -74,6 +74,7 @@ type TabOrderRow = {
   id: string;
   category_id: string;
   deleted_at: string | null;
+  archived_at: string | null;
   position: number;
   saved_at: string;
 };
@@ -345,11 +346,15 @@ export function restoreCategory(id: string): CategoryRecoveryResult {
 }
 
 export function listTabs(categoryId: string): SessionTab[] {
-  return listTabsByDeletedState(categoryId, false);
+  return listTabsByState(categoryId, "active");
 }
 
 export function listDeletedTabs(categoryId: string): SessionTab[] {
-  return listTabsByDeletedState(categoryId, true);
+  return listTabsByState(categoryId, "deleted");
+}
+
+export function listArchivedTabs(categoryId: string): SessionTab[] {
+  return listTabsByState(categoryId, "archived");
 }
 
 export function getActiveTab(id: string): SessionTab | null {
@@ -359,7 +364,7 @@ export function getActiveTab(id: string): SessionTab | null {
     `
       SELECT id, category_id, url, title, position, saved_at
       FROM session_tabs
-      WHERE id = $id AND deleted_at IS NULL
+      WHERE id = $id AND deleted_at IS NULL AND archived_at IS NULL
       LIMIT 1
     `,
     {
@@ -376,14 +381,20 @@ export function getActiveTab(id: string): SessionTab | null {
   return mapSessionTabRow(row);
 }
 
-function listTabsByDeletedState(categoryId: string, deleted: boolean): SessionTab[] {
+function listTabsByState(categoryId: string, state: "active" | "archived" | "deleted"): SessionTab[] {
   const db = getDatabase();
   const safeCategoryId = normalizeCategoryId(categoryId);
+  const stateClause =
+    state === "deleted"
+      ? "deleted_at IS NOT NULL"
+      : state === "archived"
+        ? "deleted_at IS NULL AND archived_at IS NOT NULL"
+        : "deleted_at IS NULL AND archived_at IS NULL";
   const result = db.exec(
     `
       SELECT id, category_id, url, title, position, saved_at
       FROM session_tabs
-      WHERE category_id = $categoryId AND deleted_at IS ${deleted ? "NOT NULL" : "NULL"}
+      WHERE category_id = $categoryId AND ${stateClause}
       ORDER BY position ASC, saved_at ASC, id ASC
     `,
     {
@@ -459,7 +470,7 @@ export function saveCapturedTabs(
       `
         UPDATE session_tabs
         SET deleted_at = CURRENT_TIMESTAMP
-        WHERE category_id = $categoryId AND deleted_at IS NULL
+        WHERE category_id = $categoryId AND deleted_at IS NULL AND archived_at IS NULL
       `,
       {
         $categoryId: safeCategoryId
@@ -490,7 +501,7 @@ export function deleteTab(id: string): SessionMutationResult {
     `
       UPDATE session_tabs
       SET deleted_at = CURRENT_TIMESTAMP
-      WHERE id = $id AND deleted_at IS NULL
+      WHERE id = $id AND deleted_at IS NULL AND archived_at IS NULL
     `,
     {
       $id: safeId
@@ -532,7 +543,7 @@ export function moveTab(id: string, input: MoveTabInput): SessionMutationResult 
         `
           UPDATE session_tabs
           SET category_id = $targetCategoryId
-          WHERE id = $id AND deleted_at IS NULL
+          WHERE id = $id AND deleted_at IS NULL AND archived_at IS NULL
         `,
         {
           $id: safeId,
@@ -604,6 +615,66 @@ function listManualBackups(manualBackupDirectory: string): StorageBackupSnapshot
     .map((entry) => getBackupSnapshot(path.join(manualBackupDirectory, entry.name)))
     .filter((backup): backup is StorageBackupSnapshot => backup !== null)
     .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+}
+
+export function archiveTab(id: string): SessionMutationResult {
+  const db = getDatabase();
+  const safeId = normalizeRequiredString(id, "Tab id is required.");
+  const placement = getActiveTabPlacement(db, safeId);
+
+  if (!placement) {
+    throw new Error("Saved tab is not active.");
+  }
+
+  db.run(
+    `
+      UPDATE session_tabs
+      SET archived_at = CURRENT_TIMESTAMP,
+          position = $position
+      WHERE id = $id AND deleted_at IS NULL AND archived_at IS NULL
+    `,
+    {
+      $id: safeId,
+      $position: getNextArchivedTabPosition(db, placement.category_id)
+    }
+  );
+
+  rewriteTabPositions(db, placement.category_id, getActiveTabIds(db, placement.category_id));
+  saveDatabase();
+  return {
+    categories: listCategories(),
+    tabs: listTabs(placement.category_id)
+  };
+}
+
+export function unarchiveTab(id: string): SessionMutationResult {
+  const db = getDatabase();
+  const safeId = normalizeRequiredString(id, "Tab id is required.");
+  const categoryId = getArchivedTabCategoryId(db, safeId);
+
+  if (!categoryId) {
+    throw new Error("Archived tab does not exist.");
+  }
+
+  db.run(
+    `
+      UPDATE session_tabs
+      SET archived_at = NULL,
+          position = $position,
+          saved_at = CURRENT_TIMESTAMP
+      WHERE id = $id AND deleted_at IS NULL AND archived_at IS NOT NULL
+    `,
+    {
+      $id: safeId,
+      $position: getNextTabPosition(db, categoryId)
+    }
+  );
+
+  saveDatabase();
+  return {
+    categories: listCategories(),
+    tabs: listTabs(categoryId)
+  };
 }
 
 function getBackupSnapshot(backupPath: string): StorageBackupSnapshot | null {
@@ -806,6 +877,7 @@ function createStorageRestoreResult(sourcePath: string, safetyBackupPath: string
     selectedCategoryId,
     tabs: selectedCategoryId ? listTabs(selectedCategoryId) : [],
     deletedTabs: selectedCategoryId ? listDeletedTabs(selectedCategoryId) : [],
+    archivedTabs: selectedCategoryId ? listArchivedTabs(selectedCategoryId) : [],
     restoredFrom: sourcePath,
     safetyBackupFileName: path.basename(safetyBackupPath)
   };
@@ -823,7 +895,7 @@ function listCategoryRows(whereClause: string): SessionCategory[] {
       COUNT(t.id) AS tab_count,
       MAX(t.saved_at) AS last_saved_at
     FROM categories c
-    LEFT JOIN session_tabs t ON t.category_id = c.id AND t.deleted_at IS NULL
+    LEFT JOIN session_tabs t ON t.category_id = c.id AND t.deleted_at IS NULL AND t.archived_at IS NULL
     WHERE ${whereClause}
     GROUP BY c.id
     ORDER BY c.position ASC, c.name ASC
@@ -865,6 +937,7 @@ function migrate(db: Database): void {
       position INTEGER NOT NULL DEFAULT 0,
       saved_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       deleted_at TEXT,
+      archived_at TEXT,
       FOREIGN KEY (category_id) REFERENCES categories(id)
     );
   `);
@@ -879,6 +952,7 @@ function migrate(db: Database): void {
 
   ensureColumn(db, "categories", "position", "INTEGER NOT NULL DEFAULT 0");
   ensureColumn(db, "session_tabs", "position", "INTEGER NOT NULL DEFAULT 0");
+  ensureColumn(db, "session_tabs", "archived_at", "TEXT");
   normalizeTabPositions(db);
 }
 
@@ -893,10 +967,11 @@ function ensureColumn(db: Database, tableName: "categories" | "session_tabs", co
 
 function normalizeTabPositions(db: Database): void {
   const result = db.exec(`
-    SELECT id, category_id, deleted_at, position, saved_at
+    SELECT id, category_id, deleted_at, archived_at, position, saved_at
     FROM session_tabs
     ORDER BY category_id ASC,
              deleted_at IS NOT NULL ASC,
+             archived_at IS NOT NULL ASC,
              position ASC,
              saved_at ASC,
              id ASC
@@ -912,7 +987,8 @@ function normalizeTabPositions(db: Database): void {
 
   for (const value of result[0].values) {
     const row = Object.fromEntries(columns.map((column, index) => [column, value[index]])) as TabOrderRow;
-    const groupKey = `${row.category_id}:${row.deleted_at ? "deleted" : "active"}`;
+    const state = row.deleted_at ? "deleted" : row.archived_at ? "archived" : "active";
+    const groupKey = `${row.category_id}:${state}`;
     const nextPosition = nextPositionByGroup.get(groupKey) ?? 0;
 
     if (Number(row.position) !== nextPosition) {
@@ -1179,7 +1255,7 @@ function getActiveTabPlacement(db: Database, id: string): ActiveTabPlacementRow 
     `
       SELECT category_id, position, url
       FROM session_tabs
-      WHERE id = $id AND deleted_at IS NULL
+      WHERE id = $id AND deleted_at IS NULL AND archived_at IS NULL
       LIMIT 1
     `,
     {
@@ -1204,6 +1280,7 @@ function hasActiveTabUrlInCategoryExcept(db: Database, categoryId: string, url: 
         AND url = $url
         AND id != $excludedTabId
         AND deleted_at IS NULL
+        AND archived_at IS NULL
       LIMIT 1
     `,
     {
@@ -1221,7 +1298,7 @@ function getActiveTabIds(db: Database, categoryId: string): string[] {
     `
       SELECT id
       FROM session_tabs
-      WHERE category_id = $categoryId AND deleted_at IS NULL
+      WHERE category_id = $categoryId AND deleted_at IS NULL AND archived_at IS NULL
       ORDER BY position ASC, saved_at ASC, id ASC
     `,
     {
@@ -1241,7 +1318,7 @@ function rewriteTabPositions(db: Database, categoryId: string, tabIds: string[])
     UPDATE session_tabs
     SET category_id = $categoryId,
         position = $position
-    WHERE id = $id AND deleted_at IS NULL
+    WHERE id = $id AND deleted_at IS NULL AND archived_at IS NULL
   `);
 
   try {
@@ -1262,7 +1339,7 @@ function getNextTabPosition(db: Database, categoryId: string): number {
     `
       SELECT COALESCE(MAX(position), -1) + 1 AS next_position
       FROM session_tabs
-      WHERE category_id = $categoryId AND deleted_at IS NULL
+      WHERE category_id = $categoryId AND deleted_at IS NULL AND archived_at IS NULL
     `,
     {
       $categoryId: categoryId
@@ -1276,10 +1353,41 @@ function getNextTabPosition(db: Database, categoryId: string): number {
   return Number(result[0].values[0][0]);
 }
 
+function getArchivedTabCategoryId(db: Database, id: string): string | null {
+  const result = db.exec(
+    `
+      SELECT category_id
+      FROM session_tabs
+      WHERE id = $id AND deleted_at IS NULL AND archived_at IS NOT NULL
+      LIMIT 1
+    `,
+    {
+      $id: id
+    }
+  );
+
+  return result.length > 0 && result[0].values.length > 0 ? String(result[0].values[0][0]) : null;
+}
+
+function getNextArchivedTabPosition(db: Database, categoryId: string): number {
+  const result = db.exec(
+    `
+      SELECT COALESCE(MAX(position), -1) + 1 AS next_position
+      FROM session_tabs
+      WHERE category_id = $categoryId AND deleted_at IS NULL AND archived_at IS NOT NULL
+    `,
+    {
+      $categoryId: categoryId
+    }
+  );
+
+  return result.length === 0 ? 0 : Number(result[0].values[0][0]);
+}
+
 function saveTab(db: Database, input: SessionTabInput, options: SaveTabOptions): SaveTabOutcome {
   assertActiveCategoryExists(db, input.categoryId);
 
-  const activeSameCategoryTab = findTabByUrl(db, input.categoryId, input.url, false);
+  const activeSameCategoryTab = findTabByUrl(db, input.categoryId, input.url, "active");
 
   if (activeSameCategoryTab) {
     return {
@@ -1294,7 +1402,24 @@ function saveTab(db: Database, input: SessionTabInput, options: SaveTabOptions):
     };
   }
 
-  const deletedSameCategoryTab = findTabByUrl(db, input.categoryId, input.url, true);
+  const archivedSameCategoryTab = findTabByUrl(db, input.categoryId, input.url, "archived");
+
+  if (archivedSameCategoryTab) {
+    restoreTabRow(db, archivedSameCategoryTab.id, input);
+
+    return {
+      status: "restored",
+      savedCount: 1,
+      restoredCount: 1,
+      skippedSameCategoryDuplicateCount: 0,
+      skippedCrossCategoryDuplicateCount: 0,
+      confirmationRequired: false,
+      duplicateCategoryNames: [],
+      savedUrls: [input.url]
+    };
+  }
+
+  const deletedSameCategoryTab = findTabByUrl(db, input.categoryId, input.url, "deleted");
 
   if (deletedSameCategoryTab) {
     restoreTabRow(db, deletedSameCategoryTab.id, input);
@@ -1355,12 +1480,23 @@ function saveTab(db: Database, input: SessionTabInput, options: SaveTabOptions):
   };
 }
 
-function findTabByUrl(db: Database, categoryId: string, url: string, deleted: boolean): SessionTab | null {
+function findTabByUrl(
+  db: Database,
+  categoryId: string,
+  url: string,
+  state: "active" | "archived" | "deleted"
+): SessionTab | null {
+  const stateClause =
+    state === "deleted"
+      ? "deleted_at IS NOT NULL"
+      : state === "archived"
+        ? "deleted_at IS NULL AND archived_at IS NOT NULL"
+        : "deleted_at IS NULL AND archived_at IS NULL";
   const result = db.exec(
     `
       SELECT id, category_id, url, title, position, saved_at
       FROM session_tabs
-      WHERE category_id = $categoryId AND url = $url AND deleted_at IS ${deleted ? "NOT NULL" : "NULL"}
+      WHERE category_id = $categoryId AND url = $url AND ${stateClause}
       ORDER BY position DESC, saved_at DESC, id DESC
       LIMIT 1
     `,
@@ -1386,7 +1522,8 @@ function restoreTabRow(db: Database, tabId: string, input: SessionTabInput): voi
       SET title = $title,
           position = $position,
           saved_at = CURRENT_TIMESTAMP,
-          deleted_at = NULL
+          deleted_at = NULL,
+          archived_at = NULL
       WHERE id = $id
     `,
     {
@@ -1406,6 +1543,7 @@ function findCrossCategoryDuplicateNames(db: Database, categoryId: string, url: 
       WHERE t.url = $url
         AND t.category_id != $categoryId
         AND t.deleted_at IS NULL
+        AND t.archived_at IS NULL
         AND c.deleted_at IS NULL
       ORDER BY c.position ASC, c.name ASC
     `,
@@ -1426,7 +1564,7 @@ function getCrossCategoryDuplicateNamesForTabs(db: Database, categoryId: string,
   const names = new Set<string>();
 
   for (const tab of tabs) {
-    if (findTabByUrl(db, categoryId, tab.url, false)) {
+    if (findTabByUrl(db, categoryId, tab.url, "active")) {
       continue;
     }
 

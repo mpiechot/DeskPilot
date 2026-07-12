@@ -108,9 +108,12 @@ Expected features:
 Goal:
 Prevent categories from becoming huge tab graveyards.
 
+Status:
+Started. Manual per-category archiving is available from the Session Board and selected-category URL list, with a dedicated Archive view for returning tabs to the active Session.
+
 Expected features:
 - sleep lists per category
-- manual archive
+- manual archive - initial per-category archive and restore flow done
 - stale-tab detection
 - review reminders
 - deletion only after warning

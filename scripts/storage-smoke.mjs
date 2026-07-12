@@ -5,6 +5,7 @@ import path from "node:path";
 import initSqlJs from "sql.js";
 import {
   StorageStartupError,
+  archiveTab,
   createCategory,
   createManualBackup,
   addTab,
@@ -16,6 +17,7 @@ import {
   getStorageInfo,
   importStorageBackup,
   initializeStorage,
+  listArchivedTabs,
   listDeletedCategories,
   listDeletedTabs,
   listCategories,
@@ -28,6 +30,7 @@ import {
   saveCapturedTab,
   saveCapturedTabs,
   setActiveCategoryId,
+  unarchiveTab,
   updateCategory
 } from "../dist-electron/main/storage.js";
 import { loadWindowBounds, saveWindowBounds } from "../dist-electron/main/windowSettings.js";
@@ -129,6 +132,35 @@ result = deleteTab(manualRestore.tabs[0].id);
 assert(result.tabs.length === 0, "Expected restored tab to be removable again");
 result = restoreTab(manualRestore.tabs[0].id);
 assert(result.tabs.length === 1, "Expected restored tab to return to active list");
+
+const archivedTabId = result.tabs[0].id;
+result = archiveTab(archivedTabId);
+assert(result.tabs.length === 0, "Expected archived tab to leave the active Session");
+assert(listArchivedTabs(recreatedWriting.id).length === 1, "Expected archived tab to remain available in its category");
+assert(listDeletedTabs(recreatedWriting.id).length === 0, "Expected archiving not to soft-delete the tab");
+assert(
+  result.categories.some((category) => category.id === recreatedWriting.id && category.tabCount === 0),
+  "Expected archived tabs not to count as active Session tabs"
+);
+result = unarchiveTab(archivedTabId);
+assert(result.tabs.length === 1, "Expected unarchived tab to return to the active Session");
+archiveTab(archivedTabId);
+const resavedArchivedTab = addTab({
+  categoryId: recreatedWriting.id,
+  url: "https://example.com/notes",
+  title: "Example Notes Reactivated From Archive"
+});
+assert(resavedArchivedTab.saveStatus === "restored", "Expected saving an archived URL to reactivate it");
+assert(listArchivedTabs(recreatedWriting.id).length === 0, "Expected reactivated URL to leave the archive");
+assert(
+  resavedArchivedTab.tabs[0].title === "Example Notes Reactivated From Archive",
+  "Expected reactivated archived URL title to update"
+);
+archiveTab(archivedTabId);
+await initializeStorage(dir, { profile: "development", disallowProductive: true });
+assert(listTabs(recreatedWriting.id).length === 0, "Expected archived tab to stay out of the active Session after restart");
+assert(listArchivedTabs(recreatedWriting.id).length === 1, "Expected archived tab to survive storage restart");
+unarchiveTab(archivedTabId);
 
 const databasePath = path.join(dir, "profiles", "development", "storage", "deskpilot.sqlite");
 const backupPath = path.join(dir, "profiles", "development", "storage", "deskpilot.sqlite.bak");

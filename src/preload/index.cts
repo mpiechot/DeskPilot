@@ -21,11 +21,14 @@ const deskPilot: DeskPilotApi = {
   restoreCategory: (id) => ipcRenderer.invoke("categories:restore", id),
   listTabs: (categoryId) => ipcRenderer.invoke("tabs:list", categoryId),
   addTab: (input) => ipcRenderer.invoke("tabs:add", input),
+  archiveTab: (id) => ipcRenderer.invoke("tabs:archive", id),
   deleteTab: (id) => ipcRenderer.invoke("tabs:delete", id),
   moveTab: (id, input) => ipcRenderer.invoke("tabs:move", id, input),
   openTab: (id) => ipcRenderer.invoke("tabs:open", id),
   listDeletedTabs: (categoryId) => ipcRenderer.invoke("tabs:deleted", categoryId),
+  listArchivedTabs: (categoryId) => ipcRenderer.invoke("tabs:archived", categoryId),
   restoreTab: (id) => ipcRenderer.invoke("tabs:restore", id),
+  unarchiveTab: (id) => ipcRenderer.invoke("tabs:unarchive", id),
   openCategory: (categoryId) => ipcRenderer.invoke("categories:open", categoryId),
   onSessionsChanged: (callback) => {
     const listener = () => callback();

@@ -4,7 +4,7 @@ This document explains how to run the current DeskPilot development build.
 
 ## Current State
 
-DeskPilot is currently an early desktop skeleton.
+DeskPilot is a functional Productive MVP moving into post-MVP cleanup workflows.
 
 Working today:
 - Electron desktop shell
@@ -22,6 +22,7 @@ Working today:
 - reorder saved tabs within a category with mouse-first drag and drop
 - open individual saved tabs from the Session Board
 - view and remove saved URLs in the selected category
+- archive saved URLs without deleting them and return them to the active Session later
 - restore removed URLs from the selected category
 - remember the desktop window size and position between app runs
 - close the window to the system tray and quit explicitly from the tray menu
@@ -41,6 +42,7 @@ Working today:
 - automatic Electron UI refresh after browser-extension saves
 - append or replace mode when capturing a browser window
 - local prototype package command for a double-click launcher
+- explicit Productive no-console launcher package
 - local development, lint and build commands
 
 Not implemented yet:

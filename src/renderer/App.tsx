@@ -1,5 +1,6 @@
 import {
   AlertTriangle,
+  Archive,
   CheckCircle2,
   DatabaseBackup,
   Download,
@@ -77,10 +78,13 @@ function App() {
   const [selectedCategoryId, setSelectedCategoryId] = useState(defaultCategories[0]?.id ?? "");
   const [deletedCategories, setDeletedCategories] = useState<SessionCategory[]>([]);
   const [deletedTabs, setDeletedTabs] = useState<SessionTab[]>([]);
+  const [archivedTabs, setArchivedTabs] = useState<SessionTab[]>([]);
   const [tabs, setTabs] = useState<SessionTab[]>([]);
   const [boardTabsByCategory, setBoardTabsByCategory] = useState<Record<string, SessionTab[]>>({});
   const [tabDraft, setTabDraft] = useState<SessionTabInput>({ categoryId: selectedCategoryId, url: "", title: "" });
-  const [controlMode, setControlMode] = useState<"session" | "categories" | "recovery" | "extension" | "safety">("session");
+  const [controlMode, setControlMode] = useState<
+    "session" | "categories" | "archive" | "recovery" | "extension" | "safety"
+  >("session");
   const [operationMessage, setOperationMessage] = useState("");
   const [bridgeStatus, setBridgeStatus] = useState<BridgeStatus | null>(null);
   const [extensionInfo, setExtensionInfo] = useState<ExtensionInstallInfo | null>(null);
@@ -165,6 +169,8 @@ function App() {
 
     if (!window.deskPilot || !selectedCategoryId) {
       setTabs([]);
+      setDeletedTabs([]);
+      setArchivedTabs([]);
       return;
     }
 
@@ -176,6 +182,11 @@ function App() {
     window.deskPilot
       .listDeletedTabs(selectedCategoryId)
       .then((storedTabs: SessionTab[]) => setDeletedTabs(storedTabs))
+      .catch(() => undefined);
+
+    window.deskPilot
+      .listArchivedTabs(selectedCategoryId)
+      .then((storedTabs: SessionTab[]) => setArchivedTabs(storedTabs))
       .catch(() => undefined);
   }, [selectedCategoryId]);
 
@@ -230,10 +241,11 @@ function App() {
       const currentCategoryId = selectedCategoryId;
       const tabsPromise = currentCategoryId ? window.deskPilot?.listTabs(currentCategoryId) : Promise.resolve([]);
       const deletedTabsPromise = currentCategoryId ? window.deskPilot?.listDeletedTabs(currentCategoryId) : Promise.resolve([]);
+      const archivedTabsPromise = currentCategoryId ? window.deskPilot?.listArchivedTabs(currentCategoryId) : Promise.resolve([]);
 
-      Promise.all([window.deskPilot?.listCategories(), tabsPromise, deletedTabsPromise])
-        .then(([nextCategories, nextTabs, nextDeletedTabs]) => {
-          if (!isMounted || !nextCategories || !nextTabs || !nextDeletedTabs) {
+      Promise.all([window.deskPilot?.listCategories(), tabsPromise, deletedTabsPromise, archivedTabsPromise])
+        .then(([nextCategories, nextTabs, nextDeletedTabs, nextArchivedTabs]) => {
+          if (!isMounted || !nextCategories || !nextTabs || !nextDeletedTabs || !nextArchivedTabs) {
             return;
           }
 
@@ -247,6 +259,7 @@ function App() {
           });
           setTabs(nextTabs);
           setDeletedTabs(nextDeletedTabs);
+          setArchivedTabs(nextArchivedTabs);
           setStorageStatus("ready");
         })
         .catch(() => {
@@ -319,6 +332,18 @@ function App() {
       .catch(() => undefined);
   }
 
+  function refreshArchivedTabs(): void {
+    if (!window.deskPilot || !selectedCategoryId) {
+      setArchivedTabs([]);
+      return;
+    }
+
+    window.deskPilot
+      .listArchivedTabs(selectedCategoryId)
+      .then((storedTabs: SessionTab[]) => setArchivedTabs(storedTabs))
+      .catch(() => undefined);
+  }
+
   function updateRecoveryResult(result: CategoryRecoveryResult): void {
     updateCategories(result.categories);
     setDeletedCategories(result.deletedCategories);
@@ -331,6 +356,7 @@ function App() {
     setSelectedCategoryId(result.selectedCategoryId);
     setTabs(result.tabs);
     setDeletedTabs(result.deletedTabs);
+    setArchivedTabs(result.archivedTabs);
     setStorageStatus("ready");
   }
 
@@ -597,6 +623,43 @@ function App() {
       .catch(handleStorageError);
   }
 
+  function archiveSavedTab(id: string, categoryId = selectedCategoryId): void {
+    if (!isStorageWritable) {
+      setOperationMessage("Archiving URLs requires the Electron app.");
+      return;
+    }
+
+    window.deskPilot
+      ?.archiveTab(id)
+      .then((result: SessionMutationResult) => {
+        updateCategories(result.categories);
+
+        if (categoryId === selectedCategoryId) {
+          setTabs(result.tabs);
+          refreshArchivedTabs();
+        }
+
+        setOperationMessage("Saved URL archived.");
+      })
+      .catch(handleStorageError);
+  }
+
+  function restoreArchivedTab(id: string): void {
+    if (!isStorageWritable) {
+      setOperationMessage("Archive restore requires the Electron app.");
+      return;
+    }
+
+    window.deskPilot
+      ?.unarchiveTab(id)
+      .then((result: SessionMutationResult) => {
+        updateSessionResult(result);
+        refreshArchivedTabs();
+        setOperationMessage("Archived URL returned to the active Session.");
+      })
+      .catch(handleStorageError);
+  }
+
   function restoreDeletedTab(id: string): void {
     if (!isStorageWritable) {
       setOperationMessage("URL recovery requires the Electron app.");
@@ -766,6 +829,13 @@ function App() {
           </button>
           <button
             type="button"
+            className={controlMode === "archive" ? "modeButton modeButton-active" : "modeButton"}
+            onClick={() => setControlMode("archive")}
+          >
+            Archive
+          </button>
+          <button
+            type="button"
             className={controlMode === "extension" ? "modeButton modeButton-active" : "modeButton"}
             onClick={() => setControlMode("extension")}
           >
@@ -813,9 +883,19 @@ function App() {
                         <span>{tab.title}</span>
                         <small>{getUrlHost(tab.url)}</small>
                       </div>
-                      <button type="button" className="miniDangerAction" onClick={() => removeTab(tab.id)} title="Remove URL">
-                        <X aria-hidden="true" />
-                      </button>
+                      <div className="savedUrlActions">
+                        <button
+                          type="button"
+                          className="miniArchiveAction"
+                          onClick={() => archiveSavedTab(tab.id)}
+                          title="Archive URL"
+                        >
+                          <Archive aria-hidden="true" />
+                        </button>
+                        <button type="button" className="miniDangerAction" onClick={() => removeTab(tab.id)} title="Remove URL">
+                          <X aria-hidden="true" />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -845,6 +925,22 @@ function App() {
               Add Category
             </button>
           </form>
+        ) : controlMode === "archive" ? (
+          <section className="recoveryList" aria-label={`Archived URLs in ${selectedCategoryName()}`}>
+            <p>Archived URLs in {selectedCategoryName()}</p>
+            {archivedTabs.length === 0 ? <span className="emptyRecoveryText">None</span> : null}
+            {archivedTabs.map((tab) => (
+              <button
+                type="button"
+                className="restoreAction"
+                key={tab.id}
+                onClick={() => restoreArchivedTab(tab.id)}
+              >
+                <RotateCcw aria-hidden="true" />
+                Return {tab.title} to Session
+              </button>
+            ))}
+          </section>
         ) : controlMode === "recovery" ? (
           <section className="recoveryList" aria-label="Recover categories">
             <p>Removed categories</p>
@@ -1106,18 +1202,32 @@ function App() {
                           <span>{tab.title}</span>
                           <small>{getUrlHost(tab.url)}</small>
                         </div>
-                        <button
-                          type="button"
-                          className="sessionBoardOpenAction"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            handleOpenTab(tab);
-                          }}
-                          title="Open saved tab"
-                          aria-label={`Open ${tab.title}`}
-                        >
-                          <ExternalLink aria-hidden="true" />
-                        </button>
+                        <div className="sessionBoardTabActions">
+                          <button
+                            type="button"
+                            className="sessionBoardOpenAction"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              archiveSavedTab(tab.id, category.id);
+                            }}
+                            title="Archive saved tab"
+                            aria-label={`Archive ${tab.title}`}
+                          >
+                            <Archive aria-hidden="true" />
+                          </button>
+                          <button
+                            type="button"
+                            className="sessionBoardOpenAction"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              handleOpenTab(tab);
+                            }}
+                            title="Open saved tab"
+                            aria-label={`Open ${tab.title}`}
+                          >
+                            <ExternalLink aria-hidden="true" />
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>

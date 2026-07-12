@@ -636,7 +636,7 @@ h2 {
 
 .sessionBoardTab {
   display: grid;
-  grid-template-columns: 16px minmax(0, 1fr) 24px;
+  grid-template-columns: 16px minmax(0, 1fr) 54px;
   gap: 6px;
   align-items: center;
   min-height: 38px;
@@ -646,6 +646,12 @@ h2 {
   color: #27312d;
   cursor: grab;
   padding: 6px 7px 6px 5px;
+}
+
+.sessionBoardTabActions,
+.savedUrlActions {
+  display: flex;
+  gap: 4px;
 }
 
 .sessionBoardTab:active {
@@ -790,7 +796,7 @@ h2 {
 
 .savedUrlManagerItem {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 26px;
+  grid-template-columns: minmax(0, 1fr) 56px;
   gap: 8px;
   align-items: center;
   border: 1px solid #d7d0c2;
@@ -820,7 +826,8 @@ h2 {
   font-weight: 700;
 }
 
-.miniDangerAction {
+.miniDangerAction,
+.miniArchiveAction {
   display: grid;
   width: 26px;
   height: 26px;
@@ -832,7 +839,14 @@ h2 {
   cursor: pointer;
 }
 
-.miniDangerAction svg {
+.miniArchiveAction {
+  border-color: #b9c9b8;
+  background: #e7efe5;
+  color: #243d32;
+}
+
+.miniDangerAction svg,
+.miniArchiveAction svg {
   width: 14px;
   height: 14px;
 }
