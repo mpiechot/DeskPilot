@@ -265,9 +265,13 @@ function App() {
   const isStorageWritable = storageStatus === "ready" && Boolean(window.deskPilot);
   const latestManualBackup = storageInfo?.manualBackups[0] ?? null;
   const activeDataProfile = storageInfo?.dataProfile ?? null;
-  const storageReadyMessage = activeDataProfile
-    ? `${activeDataProfile.label} data profile is active.`
-    : "Local SQLite storage is active.";
+  const startupRecovery = storageInfo?.startupRecovery ?? null;
+  const storageReadyMessage =
+    startupRecovery?.status === "recovered-from-rolling"
+      ? "Database recovered from the automatic rolling backup. Review Safety for details."
+      : activeDataProfile
+        ? `${activeDataProfile.label} data profile is active.`
+        : "Local SQLite storage is active.";
   const storageMessage = operationMessage
     ? operationMessage
     : storageStatus === "ready"
@@ -908,6 +912,18 @@ function App() {
               <span>{activeDataProfile?.description ?? "Profile status unavailable."}</span>
               <small>{activeDataProfile?.cutover.message ?? "Cutover status unavailable."}</small>
             </div>
+            {startupRecovery?.status === "recovered-from-rolling" ? (
+              <div className="startupRecoveryNotice" role="status">
+                <AlertTriangle aria-hidden="true" />
+                <div>
+                  <strong>Recovered at startup</strong>
+                  <span>{startupRecovery.message}</span>
+                  <small>
+                    Preserved corrupted file: <code>{startupRecovery.corruptDatabaseBackupPath}</code>
+                  </small>
+                </div>
+              </div>
+            ) : null}
             <div className="backupActionGrid">
               <button type="button" className="backupAction" onClick={handleCreateStorageBackup}>
                 <DatabaseBackup aria-hidden="true" />

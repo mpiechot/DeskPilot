@@ -101,7 +101,7 @@ Expected features:
 - export/import - initial local file-dialog pass done
 - restore history - manual snapshot list started
 - no silent data loss
-- recovery after app crash
+- recovery after app crash - initial automatic corrupted-database recovery from rolling backup done
 
 ## v0.5 - Cleanup Workflow
 

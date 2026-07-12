@@ -29,6 +29,7 @@ Working today:
 - create manual local SQLite backup snapshots from Safety mode
 - restore, export and import local SQLite backup snapshots from Safety mode
 - inspect and restore the latest automatic rolling backup from Safety mode
+- automatically recover a corrupted active database from a valid rolling backup at startup
 - wide, low touch-display layout
 - visible browser-bridge status in the control panel
 - guided Extension mode with bridge, manifest and load-unpacked status
@@ -199,6 +200,8 @@ Moving or reordering a saved tab updates the existing saved-tab row instead of d
 The Safety mode can create manual SQLite snapshots in the active profile storage folder under `manual-backups/`. DeskPilot also keeps a rolling `deskpilot.sqlite.bak` file beside the active database after writes.
 
 When the rolling backup exists, Safety mode shows its timestamp and size and offers an explicit restore action. Restoring it first reads and validates the backup, then creates a manual `pre-restore` safety snapshot of the current database before replacing active data. This preserves the state being replaced and avoids overwriting the rolling source while preparing the restore.
+
+If the active database cannot be opened during startup, DeskPilot validates the rolling backup and recovers from it automatically. The unreadable source file is copied into `manual-backups/` with a `.sqlite.corrupt` suffix before active storage is replaced. It is deliberately excluded from the manual restore list, but its full path remains visible in Safety mode. DeskPilot also keeps the valid rolling backup intact during recovery.
 
 Restoring or importing a backup creates a new safety backup before replacing the active database. Invalid imports are rejected before the active database is touched.
 

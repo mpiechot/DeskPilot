@@ -51,11 +51,22 @@ export type ExtensionInstallInfo = {
 
 export type StorageBackupInfo = {
   dataProfile: DataProfileInfo;
+  startupRecovery: StorageStartupRecoveryInfo;
   databasePath: string;
   rollingBackupPath: string;
   rollingBackup: StorageBackupSnapshot | null;
   manualBackupDirectory: string;
   manualBackups: StorageBackupSnapshot[];
+};
+
+export type StorageStartupRecoveryStatus = "not-needed" | "recovered-from-rolling";
+
+export type StorageStartupRecoveryInfo = {
+  status: StorageStartupRecoveryStatus;
+  message: string;
+  recoveredAt?: string;
+  rollingBackupPath?: string;
+  corruptDatabaseBackupPath?: string;
 };
 
 export type DataProfileId = "development" | "productive";

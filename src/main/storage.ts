@@ -20,7 +20,8 @@ import type {
   StorageExportResult,
   StorageBackupInfo,
   StorageBackupSnapshot,
-  StorageRestoreResult
+  StorageRestoreResult,
+  StorageStartupRecoveryInfo
 } from "../shared/deskPilotApi.js";
 import { prepareDataProfile } from "./dataProfile.js";
 
@@ -69,6 +70,7 @@ let sqlite: SqlJsStatic | null = null;
 let database: Database | null = null;
 let paths: StoragePaths | null = null;
 let dataProfile: DataProfileInfo | null = null;
+let startupRecovery: StorageStartupRecoveryInfo = createNoStartupRecoveryInfo();
 
 type InitializeStorageOptions = {
   profile?: DataProfileId;
@@ -87,18 +89,34 @@ export async function initializeStorage(userDataPath: string, options: Initializ
     }));
   sqlite = SQL;
 
-  const nextDatabase = fs.existsSync(nextPaths.databasePath)
-    ? new SQL.Database(fs.readFileSync(nextPaths.databasePath))
-    : new SQL.Database();
+  const activeDatabaseExists = fs.existsSync(nextPaths.databasePath);
+  let nextDatabase: Database | null = null;
+  let nextStartupRecovery = createNoStartupRecoveryInfo();
 
-  migrate(nextDatabase);
-  seedDefaultCategories(nextDatabase);
+  try {
+    nextDatabase = activeDatabaseExists
+      ? new SQL.Database(fs.readFileSync(nextPaths.databasePath))
+      : new SQL.Database();
+    migrate(nextDatabase);
+    seedDefaultCategories(nextDatabase);
+  } catch (error) {
+    nextDatabase?.close();
+
+    if (!activeDatabaseExists) {
+      throw error;
+    }
+
+    const recovered = recoverStartupDatabase(SQL, nextPaths, error);
+    nextDatabase = recovered.database;
+    nextStartupRecovery = recovered.info;
+  }
 
   database?.close();
   database = nextDatabase;
   paths = nextPaths;
   dataProfile = nextDataProfile;
-  saveDatabase();
+  startupRecovery = nextStartupRecovery;
+  saveDatabase({ preserveRollingBackup: nextStartupRecovery.status === "recovered-from-rolling" });
 }
 
 export function getDataProfileInfo(): DataProfileInfo {
@@ -123,6 +141,7 @@ export function getStorageInfo(): StorageBackupInfo {
 
   return {
     dataProfile: getDataProfileInfo(),
+    startupRecovery,
     databasePath: storagePaths.databasePath,
     rollingBackupPath: storagePaths.backupPath,
     rollingBackup: getBackupSnapshot(storagePaths.backupPath),
@@ -582,6 +601,70 @@ function getBackupSnapshot(backupPath: string): StorageBackupSnapshot | null {
     createdAt: stats.mtime.toISOString(),
     sizeBytes: stats.size
   };
+}
+
+function createNoStartupRecoveryInfo(): StorageStartupRecoveryInfo {
+  return {
+    status: "not-needed",
+    message: "Active database opened normally. No startup recovery was needed."
+  };
+}
+
+function recoverStartupDatabase(
+  SQL: SqlJsStatic,
+  storagePaths: StoragePaths,
+  activeDatabaseError: unknown
+): { database: Database; info: StorageStartupRecoveryInfo } {
+  if (!fs.existsSync(storagePaths.backupPath)) {
+    throw activeDatabaseError;
+  }
+
+  let recoveredDatabase: Database | null = null;
+
+  try {
+    recoveredDatabase = new SQL.Database(fs.readFileSync(storagePaths.backupPath));
+    assertDeskPilotTables(recoveredDatabase);
+    migrate(recoveredDatabase);
+    seedDefaultCategories(recoveredDatabase);
+  } catch {
+    recoveredDatabase?.close();
+    throw activeDatabaseError;
+  }
+
+  fs.mkdirSync(storagePaths.manualBackupDirectory, { recursive: true });
+  const corruptDatabaseBackupPath = createCorruptDatabaseBackupPath(storagePaths.manualBackupDirectory, new Date());
+
+  try {
+    fs.copyFileSync(storagePaths.databasePath, corruptDatabaseBackupPath);
+  } catch (error) {
+    recoveredDatabase.close();
+    throw error;
+  }
+
+  return {
+    database: recoveredDatabase,
+    info: {
+      status: "recovered-from-rolling",
+      message: "DeskPilot recovered the active database from the automatic rolling backup and preserved the corrupted file.",
+      recoveredAt: new Date().toISOString(),
+      rollingBackupPath: storagePaths.backupPath,
+      corruptDatabaseBackupPath
+    }
+  };
+}
+
+function createCorruptDatabaseBackupPath(manualBackupDirectory: string, date: Date): string {
+  const timestamp = date.toISOString().replace(/[:.]/g, "-");
+  const baseName = `deskpilot-corrupt-startup-${timestamp}`;
+  let suffix = 1;
+  let candidate = path.join(manualBackupDirectory, `${baseName}.sqlite.corrupt`);
+
+  while (fs.existsSync(candidate)) {
+    suffix += 1;
+    candidate = path.join(manualBackupDirectory, `${baseName}-${suffix}.sqlite.corrupt`);
+  }
+
+  return candidate;
 }
 
 function createManualBackupPath(manualBackupDirectory: string, date: Date, prefix: string): string {
@@ -1437,12 +1520,12 @@ function mapSessionTabRow(row: SessionTabRow): SessionTab {
   };
 }
 
-function saveDatabase(): void {
+function saveDatabase(options: { preserveRollingBackup?: boolean } = {}): void {
   const db = getDatabase();
   const storagePaths = getPaths();
   const exported = Buffer.from(db.export());
 
-  if (fs.existsSync(storagePaths.databasePath)) {
+  if (!options.preserveRollingBackup && fs.existsSync(storagePaths.databasePath)) {
     fs.copyFileSync(storagePaths.databasePath, storagePaths.backupPath);
   }
 

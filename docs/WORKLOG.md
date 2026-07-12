@@ -663,3 +663,21 @@ Current status:
 
 Next recommended step:
 - Add automatic startup recovery for a corrupted active database, using the same validated rolling-backup path and a visible recovery report.
+
+### Corrupted database startup recovery
+
+Completed:
+- Added automatic startup fallback when the active SQLite database cannot be opened or migrated.
+- Required the rolling backup to pass DeskPilot table validation before it can become active.
+- Preserved the unreadable active file under `manual-backups/` with a `.sqlite.corrupt` suffix before replacement.
+- Kept corrupted evidence out of the normal manual restore list while exposing its exact path in Safety mode.
+- Prevented startup recovery from copying the corrupted active file over the valid rolling backup.
+- Added a persistent footer warning and a detailed Safety-mode recovery report.
+- Added storage coverage that corrupts a real database file, restarts storage, verifies recovered Session data and verifies byte-for-byte preservation of the corrupted source.
+- Extended packaged renderer coverage for the visible startup recovery report.
+
+Current status:
+- DeskPilot can start successfully from its last valid automatic backup after active-database corruption without silently discarding the damaged source.
+
+Next recommended step:
+- Add a dedicated startup failure dialog for the case where both the active database and rolling backup are unusable, with paths and manual recovery guidance.

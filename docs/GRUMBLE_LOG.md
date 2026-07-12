@@ -57,3 +57,6 @@ Sharing one localhost bridge port between Productive and Development is unsafe f
 
 Rolling backup restore note:
 Creating the required pre-restore safety snapshot normally updates the rolling backup file. A rolling restore must therefore read and validate its source before creating that snapshot, or it will quietly replace the recovery source with the current database and restore nothing.
+
+Corrupted startup note:
+Preserving a broken database with a normal `.sqlite` name makes it look restorable even though validation must reject it. Mark preserved evidence as `.sqlite.corrupt`, keep it out of the backup picker and show its path in the recovery report instead.

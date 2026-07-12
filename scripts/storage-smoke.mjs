@@ -790,6 +790,42 @@ assert(
   "Expected rolling backup restore safety snapshot to remain available"
 );
 
+const startupRecoveryDir = fs.mkdtempSync(path.join(os.tmpdir(), "deskpilot-startup-recovery-"));
+await initializeStorage(startupRecoveryDir, { profile: "development", disallowProductive: true });
+createCategory({ name: "Startup Recovery Baseline", description: "Must survive active database corruption." });
+createCategory({ name: "Startup Recovery Newer", description: "Exists only after the rolling backup state." });
+const corruptedDatabasePath = getStorageInfo().databasePath;
+fs.writeFileSync(corruptedDatabasePath, "corrupted DeskPilot database");
+
+await initializeStorage(startupRecoveryDir, { profile: "development", disallowProductive: true });
+const startupRecoveryInfo = getStorageInfo().startupRecovery;
+assert(startupRecoveryInfo.status === "recovered-from-rolling", "Expected startup to recover a corrupted database");
+assert(
+  listCategories().some((category) => category.name === "Startup Recovery Baseline"),
+  "Expected startup recovery to load the valid rolling backup state"
+);
+assert(
+  !listCategories().some((category) => category.name === "Startup Recovery Newer"),
+  "Expected startup recovery not to keep data newer than the rolling backup"
+);
+assert(startupRecoveryInfo.corruptDatabaseBackupPath, "Expected startup recovery to preserve the corrupted database file");
+assert(
+  startupRecoveryInfo.corruptDatabaseBackupPath.endsWith(".sqlite.corrupt"),
+  "Expected the corrupted file not to appear as a restorable manual backup"
+);
+assert(
+  fs.readFileSync(startupRecoveryInfo.corruptDatabaseBackupPath, "utf-8") === "corrupted DeskPilot database",
+  "Expected preserved startup recovery file to contain the original corrupted data"
+);
+assert(
+  !getStorageInfo().manualBackups.some((backup) => backup.path === startupRecoveryInfo.corruptDatabaseBackupPath),
+  "Expected the corrupted file to stay out of the manual restore list"
+);
+assert(
+  fs.existsSync(getStorageInfo().rollingBackupPath),
+  "Expected startup recovery to preserve the valid rolling backup instead of overwriting it with corruption"
+);
+
 const extensionInfo = getExtensionInstallInfo(process.cwd());
 assert(extensionInfo.manifestPresent, "Expected browser extension manifest to be present");
 assert(extensionInfo.extensionPath.endsWith("browser-extension"), "Expected extension path to point at browser-extension");

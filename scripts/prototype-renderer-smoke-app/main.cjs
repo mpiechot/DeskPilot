@@ -78,6 +78,20 @@ async function runElectronSmoke() {
   }));
   ipcMain.handle("storage:info", () => ({
     dataProfile: smokeDataProfile,
+    startupRecovery: {
+      status: "recovered-from-rolling",
+      message: "DeskPilot recovered the active database from the automatic rolling backup and preserved the corrupted file.",
+      recoveredAt: "2026-07-12T12:00:00.000Z",
+      rollingBackupPath: path.join(prototypeRoot, "profiles", "development", "storage", "smoke-deskpilot.sqlite.bak"),
+      corruptDatabaseBackupPath: path.join(
+        prototypeRoot,
+        "profiles",
+        "development",
+        "storage",
+        "manual-backups",
+        "deskpilot-corrupt-startup-smoke.sqlite.corrupt"
+      )
+    },
     databasePath: smokeDataProfile.databasePath,
     rollingBackupPath: path.join(prototypeRoot, "profiles", "development", "storage", "smoke-deskpilot.sqlite.bak"),
     rollingBackup: {
@@ -92,6 +106,20 @@ async function runElectronSmoke() {
   ipcMain.handle("storage:restore-rolling-backup", () => ({
     storageInfo: {
       dataProfile: smokeDataProfile,
+      startupRecovery: {
+        status: "recovered-from-rolling",
+        message: "DeskPilot recovered the active database from the automatic rolling backup and preserved the corrupted file.",
+        recoveredAt: "2026-07-12T12:00:00.000Z",
+        rollingBackupPath: path.join(prototypeRoot, "profiles", "development", "storage", "smoke-deskpilot.sqlite.bak"),
+        corruptDatabaseBackupPath: path.join(
+          prototypeRoot,
+          "profiles",
+          "development",
+          "storage",
+          "manual-backups",
+          "deskpilot-corrupt-startup-smoke.sqlite.corrupt"
+        )
+      },
       databasePath: smokeDataProfile.databasePath,
       rollingBackupPath: path.join(prototypeRoot, "profiles", "development", "storage", "smoke-deskpilot.sqlite.bak"),
       rollingBackup: {
@@ -369,7 +397,7 @@ async function runElectronSmoke() {
         };
       };
 
-      waitForText("Development data profile is active.", () => {
+      waitForText("Database recovered from the automatic rolling backup. Review Safety for details.", () => {
         waitForCondition(
           () =>
             getCategoryCardText("Entertainment").includes("1 tabs") &&
@@ -497,6 +525,7 @@ async function runElectronSmoke() {
                     recoveryOverflow.controlRailScrollWidth <= recoveryOverflow.controlRailClientWidth + 1,
                   recoveryOverflow,
                   rollingBackupRestoreWorked: getRenderedText().includes("Restored automatic backup."),
+                  startupRecoveryVisible: getRenderedText().includes("Recovered at startup"),
                   bodyText: getRenderedText()
                 });
                   });
@@ -547,6 +576,7 @@ async function runElectronSmoke() {
   }
   assert(result.recoveryStaysInsideRail, "Expected Recovery mode controls not to overlap the category list");
   assert(result.rollingBackupRestoreWorked, "Expected Safety mode to restore the automatic rolling backup");
+  assert(result.startupRecoveryVisible, "Expected Safety mode to report automatic startup recovery");
   if (!result.bodyText.includes("Saved URL to Projects.") && !result.projectTitleSavedBeforeRecovery) {
     console.error(result.bodyText);
   }

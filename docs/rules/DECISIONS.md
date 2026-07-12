@@ -106,3 +106,11 @@ Keep `Open Selected` as the category-level restore action and add compact per-ta
 
 Reason:
 The low control-panel layout has room for a small icon without hiding tab titles or hosts. This gives precise single-tab access while preserving the safer full-session restore workflow.
+
+## 2026-07-12 - Corrupted Database Startup Recovery
+
+Decision:
+When the active SQLite database cannot be opened, recover automatically only from a rolling backup that passes DeskPilot schema validation. Preserve the unreadable active file with a `.sqlite.corrupt` suffix, keep it out of normal restore choices and report the recovery visibly in Safety mode.
+
+Reason:
+A damaged database must not leave the resident control panel unusable when a valid local backup exists. Automatic recovery is safe only when the source is validated, the damaged evidence remains available and the user is told exactly what happened.
