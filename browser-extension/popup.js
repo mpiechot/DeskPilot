@@ -8,6 +8,7 @@ const saveCurrentTabButton = document.querySelector("#saveCurrentTabButton");
 const saveCurrentWindowButton = document.querySelector("#saveCurrentWindowButton");
 const openDeskPilotButton = document.querySelector("#openDeskPilotButton");
 const retryButton = document.querySelector("#retryButton");
+const profileBadge = document.querySelector("#profileBadge");
 const statusText = document.querySelector("#statusText");
 let activeBridgeUrl = "";
 let activeDataProfile = null;
@@ -21,11 +22,14 @@ retryButton.addEventListener("click", loadCategories);
 async function loadCategories() {
   setSaveActionsDisabled(true);
   openDeskPilotButton.disabled = true;
+  profileBadge.dataset.profile = "connecting";
+  profileBadge.textContent = "Checking profile";
   statusText.textContent = "Connecting to DeskPilot.";
 
   try {
     const payload = await fetchCategories();
     const categories = Array.isArray(payload.categories) ? payload.categories : [];
+    updateProfileBadge();
 
     if (categories.length === 0) {
       categorySelect.replaceChildren();
@@ -53,6 +57,8 @@ async function loadCategories() {
     statusText.textContent = `Connected to ${profileLabel()}.`;
   } catch (error) {
     setSaveActionsDisabled(true);
+    profileBadge.dataset.profile = "unavailable";
+    profileBadge.textContent = "Not connected";
     statusText.textContent = error instanceof Error ? error.message : "DeskPilot is not reachable.";
   }
 }
@@ -247,6 +253,12 @@ function profileLabel() {
   }
 
   return activeBridgeUrl.endsWith(":17384") ? "Development" : "Productive";
+}
+
+function updateProfileBadge() {
+  const profileId = activeDataProfile?.id === "development" || activeBridgeUrl.endsWith(":17384") ? "development" : "productive";
+  profileBadge.dataset.profile = profileId;
+  profileBadge.textContent = profileLabel();
 }
 
 function crossCategoryPrompt(payload) {

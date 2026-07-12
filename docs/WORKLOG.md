@@ -615,3 +615,19 @@ Current status:
 
 Next recommended step:
 - Reload the unpacked browser extension and verify the popup reports the intended profile before saving tabs.
+
+## 2026-07-12
+
+### Persistent extension profile indicator
+
+Completed:
+- Added a dedicated profile badge to the browser-extension popup so the connected Productive or Development profile remains visible after save status messages change.
+- Gave Productive, Development and disconnected states distinct visual treatments.
+- Kept the bridge categories response covered as the source of truth for the connected data profile.
+- Added extension smoke checks that protect the persistent profile indicator from disappearing.
+
+Current status:
+- The extension popup now keeps the data destination visible throughout current-tab and current-window saves.
+
+Next recommended step:
+- Reload the unpacked extension and run a real Productive save trial while checking the persistent profile badge before each save.

@@ -400,6 +400,7 @@ try {
   const categoryId = categoriesPayload.categories[0].id;
   const otherCategoryId = categoriesPayload.categories.find((category) => category.id !== categoryId).id;
   assert(categoriesPayload.activeCategoryId === getActiveCategoryId(), "Expected bridge categories to expose active category");
+  assert(categoriesPayload.dataProfile?.id === "development", "Expected bridge categories to expose the connected data profile");
 
   const currentTabResponse = await fetch(`${bridgeUrl}/tabs/current/save`, {
     method: "POST",
@@ -766,6 +767,7 @@ const extensionInfo = getExtensionInstallInfo(process.cwd());
 assert(extensionInfo.manifestPresent, "Expected browser extension manifest to be present");
 assert(extensionInfo.extensionPath.endsWith("browser-extension"), "Expected extension path to point at browser-extension");
 const extensionManifest = JSON.parse(fs.readFileSync(path.join(extensionInfo.extensionPath, "manifest.json"), "utf-8"));
+const extensionPopupHtml = fs.readFileSync(path.join(extensionInfo.extensionPath, "popup.html"), "utf-8");
 const extensionPopupScript = fs.readFileSync(path.join(extensionInfo.extensionPath, "popup.js"), "utf-8");
 
 for (const size of ["16", "32", "48", "128"]) {
@@ -780,6 +782,11 @@ for (const size of ["16", "32", "48", "128"]) {
 assert(!extensionPopupScript.includes("/capture"), "Expected extension popup not to call legacy /capture route");
 assert(extensionPopupScript.includes(String(productiveBridgePort)), "Expected extension popup to try the Productive bridge port");
 assert(extensionPopupScript.includes(String(developmentBridgePort)), "Expected extension popup to fall back to the Development bridge port");
+assert(extensionPopupHtml.includes('id="profileBadge"'), "Expected extension popup to keep the connected data profile visible");
+assert(
+  extensionPopupScript.includes("profileBadge.dataset.profile"),
+  "Expected extension popup to style the persistent profile badge from the connected profile"
+);
 assert(extensionPopupScript.includes("/tabs/current/save"), "Expected extension popup to call current-tab route");
 assert(extensionPopupScript.includes("/windows/current/save"), "Expected extension popup to call current-window route");
 assert(extensionPopupScript.includes("/app/show"), "Expected extension popup to call app-show route");
