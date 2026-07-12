@@ -631,3 +631,18 @@ Current status:
 
 Next recommended step:
 - Reload the unpacked extension and run a real Productive save trial while checking the persistent profile badge before each save.
+
+### Productive extension popup smoke coverage
+
+Completed:
+- Added an isolated Electron smoke app that loads the real browser-extension popup rather than checking only source strings.
+- Simulated a Productive bridge, active Work category and current browser tab through a test-only preload.
+- Verified the popup selects the active category, enables saving, posts the current tab and reports `Saved to Work.`.
+- Verified the Productive profile badge remains visible after the save status changes.
+- Added `npm run test:extension` and included it in the full prototype verification command.
+
+Current status:
+- The highest-risk Productive popup path now has an executable end-to-end smoke check without touching Productive user data.
+
+Next recommended step:
+- Reload the unpacked extension and run the remaining real Productive save trial against the local DeskPilot instance.

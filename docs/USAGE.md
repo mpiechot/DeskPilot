@@ -94,8 +94,11 @@ Before ending a work session, run:
 npm run lint
 npm run build
 npm run test:storage
+npm run test:extension
 npm audit
 ```
+
+`npm run test:extension` opens the real unpacked-extension popup in an isolated Electron smoke app. It supplies a fake Productive bridge and browser tab, saves that tab through the popup, and verifies that the Productive badge remains visible after the save result replaces the general status message.
 
 ## Package A Local Prototype
 

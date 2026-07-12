@@ -6,7 +6,7 @@ Goal:
 Make DeskPilot safe and useful as the user's real local browser-session system while development continues separately.
 
 Status:
-Started. The planned Productive MVP implementation slices are now on the working PR branch. The next step is real productive trial, quality-gate feedback and any stabilization that falls out of that trial before calling 1.0 complete.
+Started. The planned Productive MVP implementation slices are now on the working PR branch. Daily Trial Hardening now includes an automated Productive extension-popup save check; the next step remains a real productive trial, quality-gate feedback and any stabilization that falls out of that trial before calling 1.0 complete.
 
 Expected features:
 1. Hard separation between Productive and Development data profiles - done.

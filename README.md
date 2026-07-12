@@ -27,8 +27,9 @@ Commands:
 - `npm run dev:electron:productive` starts the Electron shell in the Productive data profile.
 - `npm run lint` checks TypeScript and React source files.
 - `npm run build` builds the Electron main/preload code and renderer.
+- `npm run test:extension` loads the real extension popup in an isolated Electron smoke app and verifies a Productive current-tab save.
 - `npm run package:prototype` creates a local Windows prototype folder under `dist-prototype/DeskPilot`.
-- `npm run test:prototype` regenerates the local prototype and verifies the desktop launchers do not fall back to the browser dev server.
+- `npm run test:prototype` regenerates the local prototype and verifies the desktop launchers, renderer workflow and extension popup.
 
 More detailed run and verification notes live in `docs/USAGE.md`.
 
