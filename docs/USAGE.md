@@ -30,7 +30,7 @@ Working today:
 - restore, export and import local SQLite backup snapshots from Safety mode
 - inspect and restore the latest automatic rolling backup from Safety mode
 - automatically recover a corrupted active database from a valid rolling backup at startup
-- show a native recovery dialog when neither active nor rolling database can be opened
+- show a native read-only recovery menu when neither active nor rolling database can be opened
 - wide, low touch-display layout
 - visible browser-bridge status in the control panel
 - guided Extension mode with bridge, manifest and load-unpacked status
@@ -204,7 +204,7 @@ When the rolling backup exists, Safety mode shows its timestamp and size and off
 
 If the active database cannot be opened during startup, DeskPilot validates the rolling backup and recovers from it automatically. The unreadable source file is copied into `manual-backups/` with a `.sqlite.corrupt` suffix before active storage is replaced. It is deliberately excluded from the manual restore list, but its full path remains visible in Safety mode. DeskPilot also keeps the valid rolling backup intact during recovery.
 
-If both the active database and rolling backup are unusable, DeskPilot leaves both files untouched and shows a native startup dialog. The dialog includes both paths and underlying errors, can open the affected storage folder and then exits cleanly. Preserve those files before moving them aside or importing a known valid DeskPilot backup.
+If both the active database and rolling backup are unusable, DeskPilot leaves both files untouched and shows a native startup recovery menu. It includes both paths and underlying errors, can export either source byte-for-byte to a chosen destination, can open the affected storage folder and exits only when `Quit` is selected. Export destinations are forbidden from overwriting either DeskPilot source file. Preserve those files before moving them aside or importing a known valid DeskPilot backup.
 
 Restoring or importing a backup creates a new safety backup before replacing the active database. Invalid imports are rejected before the active database is touched.
 

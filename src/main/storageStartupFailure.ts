@@ -1,10 +1,19 @@
 import path from "node:path";
+import fs from "node:fs";
 import type { MessageBoxOptions } from "electron";
 import { StorageStartupError } from "./storage.js";
 
 export type StorageStartupFailurePrompt = {
   storageDirectory: string;
+  activeDatabasePath: string;
+  rollingBackupPath: string;
   options: MessageBoxOptions;
+};
+
+export type StorageRecoveryExportResult = {
+  sourcePath: string;
+  targetPath: string;
+  sizeBytes: number;
 };
 
 export function createStorageStartupFailurePrompt(
@@ -20,6 +29,8 @@ export function createStorageStartupFailurePrompt(
 
   return {
     storageDirectory,
+    activeDatabasePath,
+    rollingBackupPath,
     options: {
       type: "error",
       title: "DeskPilot storage recovery required",
@@ -33,13 +44,34 @@ export function createStorageStartupFailurePrompt(
         `Rolling backup: ${rollingBackupPath}`,
         `Backup error: ${rollingError}`,
         "",
-        "Open the storage folder and preserve both files. To continue, import a known valid DeskPilot backup or move both unusable files aside before restarting."
+        "Export either file for safekeeping or open the storage folder. To continue, import a known valid DeskPilot backup or move both unusable files aside before restarting."
       ].join("\n"),
-      buttons: ["Open Storage Folder", "Quit"],
+      buttons: ["Export Active Database", "Export Rolling Backup", "Open Storage Folder", "Quit"],
       defaultId: 0,
-      cancelId: 1,
+      cancelId: 3,
       noLink: true
     }
+  };
+}
+
+export function exportStorageRecoveryFile(
+  sourcePath: string,
+  targetPath: string,
+  protectedSourcePaths: string[] = [sourcePath]
+): StorageRecoveryExportResult {
+  const resolvedTargetPath = path.resolve(targetPath);
+
+  if (protectedSourcePaths.some((protectedPath) => path.resolve(protectedPath) === resolvedTargetPath)) {
+    throw new Error("Recovery export target must not overwrite a DeskPilot source file.");
+  }
+
+  fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+  fs.copyFileSync(sourcePath, targetPath);
+
+  return {
+    sourcePath,
+    targetPath,
+    sizeBytes: fs.statSync(targetPath).size
   };
 }
 

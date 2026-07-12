@@ -44,7 +44,10 @@ import {
   getSupportedBrowserExecutableCandidates
 } from "../dist-electron/main/browserLauncher.js";
 import { getExtensionInstallInfo } from "../dist-electron/main/extensionInstall.js";
-import { createStorageStartupFailurePrompt } from "../dist-electron/main/storageStartupFailure.js";
+import {
+  createStorageStartupFailurePrompt,
+  exportStorageRecoveryFile
+} from "../dist-electron/main/storageStartupFailure.js";
 
 process.env.DESKPILOT_DATA_PROFILE = "development";
 process.env.DESKPILOT_DISALLOW_PRODUCTIVE_PROFILE = "1";
@@ -854,8 +857,30 @@ assert(
   "Expected startup dialog to show both unusable database paths"
 );
 assert(
-  JSON.stringify(startupFailurePrompt.options.buttons) === JSON.stringify(["Open Storage Folder", "Quit"]),
-  "Expected startup dialog to offer storage folder access and controlled quit"
+  JSON.stringify(startupFailurePrompt.options.buttons) ===
+    JSON.stringify(["Export Active Database", "Export Rolling Backup", "Open Storage Folder", "Quit"]),
+  "Expected startup recovery menu to offer read-only exports, folder access and controlled quit"
+);
+const activeRecoveryExportPath = path.join(startupFailureDir, "exported-active-recovery.sqlite");
+const activeRecoveryExport = exportStorageRecoveryFile(startupFailure.activeDatabasePath, activeRecoveryExportPath);
+assert(activeRecoveryExport.sourcePath === startupFailure.activeDatabasePath, "Expected recovery export to report its source");
+assert(activeRecoveryExport.targetPath === activeRecoveryExportPath, "Expected recovery export to report its destination");
+assert(
+  fs.readFileSync(activeRecoveryExportPath, "utf-8") === "corrupted active database" &&
+    fs.readFileSync(startupFailure.activeDatabasePath, "utf-8") === "corrupted active database",
+  "Expected recovery export to copy bytes without changing the source"
+);
+assertThrows(
+  () =>
+    exportStorageRecoveryFile(startupFailure.activeDatabasePath, startupFailure.rollingBackupPath, [
+      startupFailure.activeDatabasePath,
+      startupFailure.rollingBackupPath
+    ]),
+  "Expected recovery export not to overwrite either DeskPilot source file"
+);
+assert(
+  fs.readFileSync(startupFailure.rollingBackupPath, "utf-8") === "corrupted rolling backup",
+  "Expected protected rolling backup bytes to remain unchanged after rejected export"
 );
 assert(
   fs.readFileSync(failedStorageInfo.databasePath, "utf-8") === "corrupted active database" &&

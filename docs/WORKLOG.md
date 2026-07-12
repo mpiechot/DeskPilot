@@ -698,3 +698,20 @@ Current status:
 
 Next recommended step:
 - Add a read-only recovery launch option that starts without mutating storage and allows exporting preserved files from inside DeskPilot.
+
+### Read-only startup recovery exports
+
+Completed:
+- Expanded the unrecoverable startup dialog into a persistent native recovery menu.
+- Added separate `Export Active Database` and `Export Rolling Backup` actions with native save destinations.
+- Kept each export byte-preserving and verified that the source remains unchanged.
+- Blocked both DeskPilot source files as export destinations so neither can be overwritten through the save dialog.
+- Kept recovery mode active after export, canceled export or storage-folder access until the user explicitly chooses `Quit`.
+- Added success and failure feedback for recovery exports without starting the normal DeskPilot window or tray.
+- Extended storage and packaged-main coverage for both export actions and explicit destinations.
+
+Current status:
+- Even when neither database is usable, the user can safely extract both files from DeskPilot before attempting manual repair or replacement.
+
+Next recommended step:
+- Add automatic creation of a compact recovery report text file alongside exported failure artifacts, containing profile, paths, timestamps and validation errors.

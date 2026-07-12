@@ -101,7 +101,7 @@ Expected features:
 - export/import - initial local file-dialog pass done
 - restore history - manual snapshot list started
 - no silent data loss
-- recovery after app crash - automatic rolling recovery and native double-failure guidance done
+- recovery after app crash - automatic rolling recovery plus read-only double-failure export workflow done
 
 ## v0.5 - Cleanup Workflow
 

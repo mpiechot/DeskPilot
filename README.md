@@ -48,7 +48,7 @@ Current state:
 - Saved URLs from a selected category open together in a new Chrome/Edge browser window.
 - Manual SQLite backup snapshots can be created, restored, exported and imported from the Safety mode, and the latest automatic rolling backup can be restored safely.
 - A corrupted active database is recovered automatically from the valid rolling backup at startup, while the corrupted source file is preserved for diagnosis.
-- If both database copies are unusable, a native recovery dialog shows both paths and can open the affected storage folder.
+- If both database copies are unusable, a native read-only recovery menu can export either file, show both paths and open the affected storage folder.
 - A Chrome/Edge unpacked extension prototype can capture the current browser window through the local bridge in append or replace mode.
 - The extension can save the current tab into the active DeskPilot category with duplicate protection and keeps the connected data profile visible in its popup.
 - The local browser bridge is origin-restricted to browser-extension origins, visible in the app status area and profile-aware.

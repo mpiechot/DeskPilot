@@ -42,7 +42,11 @@ import { getBrowserBridgeStatus, startBrowserBridge } from "./browserBridge.js";
 import { openUrlsInNewBrowserWindow } from "./browserLauncher.js";
 import { getExtensionInstallInfo } from "./extensionInstall.js";
 import { loadWindowBounds, saveWindowBounds } from "./windowSettings.js";
-import { createStorageStartupFailurePrompt } from "./storageStartupFailure.js";
+import {
+  createStorageStartupFailurePrompt,
+  exportStorageRecoveryFile,
+  type StorageStartupFailurePrompt
+} from "./storageStartupFailure.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, "../..");
@@ -159,14 +163,73 @@ function showOpenDialog(options: OpenDialogOptions) {
 
 async function showStorageStartupFailure(error: unknown): Promise<void> {
   const prompt = createStorageStartupFailurePrompt(error, app.getPath("userData"));
-  const result = await dialog.showMessageBox(prompt.options);
 
-  if (result.response === 0) {
-    await shell.openPath(prompt.storageDirectory);
+  while (true) {
+    const result = await dialog.showMessageBox(prompt.options);
+
+    if (result.response === 0) {
+      await exportStartupRecoveryFile(prompt, "Active database", prompt.activeDatabasePath, "deskpilot-active-recovery.sqlite");
+      continue;
+    }
+
+    if (result.response === 1) {
+      await exportStartupRecoveryFile(prompt, "Rolling backup", prompt.rollingBackupPath, "deskpilot-rolling-recovery.sqlite");
+      continue;
+    }
+
+    if (result.response === 2) {
+      await shell.openPath(prompt.storageDirectory);
+      continue;
+    }
+
+    break;
   }
 
   isQuitting = true;
   app.quit();
+}
+
+async function exportStartupRecoveryFile(
+  prompt: StorageStartupFailurePrompt,
+  label: string,
+  sourcePath: string,
+  defaultFileName: string
+): Promise<void> {
+  const result = await showSaveDialog({
+    title: `Export DeskPilot ${label.toLowerCase()}`,
+    defaultPath: path.join(app.getPath("downloads"), defaultFileName),
+    filters: [{ name: "SQLite database", extensions: ["sqlite"] }]
+  });
+
+  if (result.canceled || !result.filePath) {
+    return;
+  }
+
+  try {
+    const exported = exportStorageRecoveryFile(sourcePath, result.filePath, [
+      prompt.activeDatabasePath,
+      prompt.rollingBackupPath
+    ]);
+    await dialog.showMessageBox({
+      type: "info",
+      title: prompt.options.title ?? "DeskPilot storage recovery",
+      message: `${label} exported safely.`,
+      detail: `${exported.sizeBytes} bytes copied to:\n${exported.targetPath}`,
+      buttons: ["Continue Recovery"],
+      defaultId: 0,
+      noLink: true
+    });
+  } catch (exportError) {
+    await dialog.showMessageBox({
+      type: "error",
+      title: prompt.options.title ?? "DeskPilot storage recovery",
+      message: `${label} could not be exported.`,
+      detail: `${exportError instanceof Error ? exportError.message : String(exportError)}\n\n${prompt.options.detail ?? ""}`,
+      buttons: ["Continue Recovery"],
+      defaultId: 0,
+      noLink: true
+    });
+  }
 }
 
 if (!hasSingleInstanceLock) {

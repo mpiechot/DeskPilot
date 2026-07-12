@@ -63,3 +63,9 @@ Preserving a broken database with a normal `.sqlite` name makes it look restorab
 
 Double-failure note:
 An unhandled startup promise is not a recovery experience. When neither database copy works, the app must stop before creating its normal window, name both files, offer the storage folder and quit deliberately instead of leaving a hidden or half-started tray process.
+
+Read-only recovery note:
+Opening the storage folder is useful but still asks the user to copy unfamiliar files manually. Keep the failure menu alive and let each source be exported explicitly; never initialize, migrate, rename or rewrite either broken source merely to make recovery more convenient.
+
+Recovery export target note:
+A save dialog does not make an export automatically safe. Explicitly reject both active and rolling database paths as destinations, or a well-intentioned export can overwrite the other recovery source.
