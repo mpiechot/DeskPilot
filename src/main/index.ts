@@ -33,6 +33,7 @@ import {
   moveTab,
   restoreCategory,
   restoreManualBackup,
+  restoreRollingBackup,
   restoreTab,
   setActiveCategoryId,
   updateCategory
@@ -170,6 +171,7 @@ if (!hasSingleInstanceLock) {
     ipcMain.handle("storage:info", () => getStorageInfo());
     ipcMain.handle("storage:create-backup", () => createManualBackup());
     ipcMain.handle("storage:restore-backup", (_event, fileName) => restoreManualBackup(fileName));
+    ipcMain.handle("storage:restore-rolling-backup", () => restoreRollingBackup());
     ipcMain.handle("storage:export-backup", async (_event, fileName?: string) => {
       const defaultFileName = fileName || `deskpilot-current-${new Date().toISOString().slice(0, 10)}.sqlite`;
       const result = await showSaveDialog({

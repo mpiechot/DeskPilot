@@ -509,6 +509,30 @@ function App() {
       .catch(() => setOperationMessage("Could not restore backup. Existing data was left untouched."));
   }
 
+  function handleRestoreRollingBackup(): void {
+    if (!window.deskPilot) {
+      setOperationMessage("Restoring backups requires the Electron app.");
+      return;
+    }
+
+    if (!storageInfo?.rollingBackup) {
+      setOperationMessage("No automatic rolling backup is available yet.");
+      return;
+    }
+
+    if (!window.confirm("Restore the latest automatic rolling backup? DeskPilot will preserve the current data in a safety backup first.")) {
+      return;
+    }
+
+    window.deskPilot
+      .restoreRollingStorageBackup()
+      .then((result: StorageRestoreResult) => {
+        applyStorageRestoreResult(result);
+        setOperationMessage(`Restored automatic backup. Safety backup: ${result.safetyBackupFileName}.`);
+      })
+      .catch(() => setOperationMessage("Could not restore automatic backup. Existing data was left untouched."));
+  }
+
   function handleExportStorageBackup(fileName?: string): void {
     if (!window.deskPilot) {
       setOperationMessage("Export requires the Electron app.");
@@ -905,6 +929,32 @@ function App() {
             <div className="backupPathBox">
               <strong>Manual backups</strong>
               <code>{storageInfo?.manualBackupDirectory ?? "No backup directory yet"}</code>
+            </div>
+            <div className="rollingBackupSection">
+              <div className="backupListHeader">
+                <p>Automatic rolling backup</p>
+                <span>{storageInfo?.rollingBackup ? "Ready" : "Pending"}</span>
+              </div>
+              <div className="backupListItem">
+                <div className="backupListItemText">
+                  <span title={storageInfo?.rollingBackup?.path}>{storageInfo?.rollingBackup?.fileName ?? "Not created yet"}</span>
+                  <small>
+                    {storageInfo?.rollingBackup
+                      ? `${formatBackupSize(storageInfo.rollingBackup.sizeBytes)} - ${formatBackupTime(storageInfo.rollingBackup.createdAt)}`
+                      : "DeskPilot creates this after the first database update."}
+                  </small>
+                </div>
+                <div className="backupListActions">
+                  <button
+                    type="button"
+                    onClick={handleRestoreRollingBackup}
+                    title="Restore automatic rolling backup"
+                    disabled={!storageInfo?.rollingBackup}
+                  >
+                    <RotateCcw aria-hidden="true" />
+                  </button>
+                </div>
+              </div>
             </div>
             <div className="backupList">
               <div className="backupListHeader">

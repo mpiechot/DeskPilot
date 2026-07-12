@@ -125,6 +125,7 @@ export function getStorageInfo(): StorageBackupInfo {
     dataProfile: getDataProfileInfo(),
     databasePath: storagePaths.databasePath,
     rollingBackupPath: storagePaths.backupPath,
+    rollingBackup: getBackupSnapshot(storagePaths.backupPath),
     manualBackupDirectory: storagePaths.manualBackupDirectory,
     manualBackups: listManualBackups(storagePaths.manualBackupDirectory)
   };
@@ -148,6 +149,21 @@ export function restoreManualBackup(fileName: string): StorageRestoreResult {
   replaceActiveDatabase(backupPath);
 
   return createStorageRestoreResult(backupPath, safetyBackupPath);
+}
+
+export function restoreRollingBackup(): StorageRestoreResult {
+  const rollingBackupPath = getPaths().backupPath;
+
+  if (!fs.existsSync(rollingBackupPath)) {
+    throw new Error("Rolling backup does not exist yet.");
+  }
+
+  const rollingBackupContents = fs.readFileSync(rollingBackupPath);
+  validateDeskPilotDatabaseContents(rollingBackupContents);
+  const safetyBackupPath = createSafetyBackup("pre-restore");
+  replaceActiveDatabaseContents(rollingBackupContents);
+
+  return createStorageRestoreResult(rollingBackupPath, safetyBackupPath);
 }
 
 export function exportStorageBackup(fileName: string | null, targetPath: string): StorageExportResult {
@@ -548,18 +564,24 @@ function listManualBackups(manualBackupDirectory: string): StorageBackupSnapshot
   return fs
     .readdirSync(manualBackupDirectory, { withFileTypes: true })
     .filter((entry) => entry.isFile() && entry.name.endsWith(".sqlite"))
-    .map((entry) => {
-      const backupPath = path.join(manualBackupDirectory, entry.name);
-      const stats = fs.statSync(backupPath);
-
-      return {
-        fileName: entry.name,
-        path: backupPath,
-        createdAt: stats.mtime.toISOString(),
-        sizeBytes: stats.size
-      };
-    })
+    .map((entry) => getBackupSnapshot(path.join(manualBackupDirectory, entry.name)))
+    .filter((backup): backup is StorageBackupSnapshot => backup !== null)
     .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+}
+
+function getBackupSnapshot(backupPath: string): StorageBackupSnapshot | null {
+  if (!fs.existsSync(backupPath)) {
+    return null;
+  }
+
+  const stats = fs.statSync(backupPath);
+
+  return {
+    fileName: path.basename(backupPath),
+    path: backupPath,
+    createdAt: stats.mtime.toISOString(),
+    sizeBytes: stats.size
+  };
 }
 
 function createManualBackupPath(manualBackupDirectory: string, date: Date, prefix: string): string {
@@ -599,8 +621,12 @@ function resolveManualBackupPath(fileName: string): string {
 }
 
 function validateDeskPilotDatabaseFile(filePath: string): void {
+  validateDeskPilotDatabaseContents(fs.readFileSync(filePath));
+}
+
+function validateDeskPilotDatabaseContents(contents: Uint8Array): void {
   const SQL = getSqlite();
-  const candidate = new SQL.Database(fs.readFileSync(filePath));
+  const candidate = new SQL.Database(contents);
 
   try {
     assertDeskPilotTables(candidate);
@@ -634,8 +660,12 @@ function createSafetyBackup(prefix: "pre-import" | "pre-restore"): string {
 }
 
 function replaceActiveDatabase(sourcePath: string): void {
+  replaceActiveDatabaseContents(fs.readFileSync(sourcePath));
+}
+
+function replaceActiveDatabaseContents(contents: Uint8Array): void {
   const SQL = getSqlite();
-  const nextDatabase = new SQL.Database(fs.readFileSync(sourcePath));
+  const nextDatabase = new SQL.Database(contents);
 
   try {
     assertDeskPilotTables(nextDatabase);

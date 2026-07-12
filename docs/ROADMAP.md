@@ -93,10 +93,11 @@ Goal:
 Make session restore reliable.
 
 Status:
-Started. The app can create, restore, export and import SQLite backup snapshots from Safety mode.
+Started. The app can create, restore, export and import SQLite backup snapshots from Safety mode, including safe restore of the latest automatic rolling backup.
 
 Expected features:
 - backups - initial manual snapshot and pre-restore/pre-import safety backup pass done
+- automatic rolling backup restore - done with validation and a pre-restore safety snapshot
 - export/import - initial local file-dialog pass done
 - restore history - manual snapshot list started
 - no silent data loss

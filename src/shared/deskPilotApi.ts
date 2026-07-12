@@ -7,6 +7,7 @@ export type DeskPilotApi = {
   storageInfo: () => Promise<StorageBackupInfo>;
   createStorageBackup: () => Promise<StorageBackupInfo>;
   restoreStorageBackup: (fileName: string) => Promise<StorageRestoreResult>;
+  restoreRollingStorageBackup: () => Promise<StorageRestoreResult>;
   exportStorageBackup: (fileName?: string) => Promise<StorageExportResult | null>;
   importStorageBackup: () => Promise<StorageRestoreResult | null>;
   listCategories: () => Promise<SessionCategory[]>;
@@ -52,6 +53,7 @@ export type StorageBackupInfo = {
   dataProfile: DataProfileInfo;
   databasePath: string;
   rollingBackupPath: string;
+  rollingBackup: StorageBackupSnapshot | null;
   manualBackupDirectory: string;
   manualBackups: StorageBackupSnapshot[];
 };

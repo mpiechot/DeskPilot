@@ -22,6 +22,7 @@ import {
   moveTab,
   restoreCategory,
   restoreManualBackup,
+  restoreRollingBackup,
   restoreTab,
   saveCapturedTab,
   saveCapturedTabs,
@@ -761,6 +762,32 @@ assert(
 assert(
   getStorageInfo().dataProfile.cutover.status === "copied-from-legacy",
   "Expected Productive cutover state to remain one-time"
+);
+
+const rollingRestoreDir = fs.mkdtempSync(path.join(os.tmpdir(), "deskpilot-rolling-restore-"));
+await initializeStorage(rollingRestoreDir, { profile: "development", disallowProductive: true });
+createCategory({ name: "Rolling Baseline", description: "Must be restored from the rolling backup." });
+createCategory({ name: "Rolling Mutation", description: "Must disappear after rolling restore." });
+const rollingBackupInfo = getStorageInfo().rollingBackup;
+assert(rollingBackupInfo, "Expected storage info to expose the available rolling backup");
+assert(fs.existsSync(rollingBackupInfo.path), "Expected rolling backup file to exist");
+
+const rollingRestoreResult = restoreRollingBackup();
+assert(
+  listCategories().some((category) => category.name === "Rolling Baseline"),
+  "Expected rolling backup restore to recover the previous database state"
+);
+assert(
+  !listCategories().some((category) => category.name === "Rolling Mutation"),
+  "Expected rolling backup restore to replace the newer database state"
+);
+assert(
+  rollingRestoreResult.safetyBackupFileName.includes("pre-restore"),
+  "Expected rolling backup restore to create a pre-restore safety backup"
+);
+assert(
+  fs.existsSync(path.join(rollingRestoreDir, "profiles", "development", "storage", "manual-backups", rollingRestoreResult.safetyBackupFileName)),
+  "Expected rolling backup restore safety snapshot to remain available"
 );
 
 const extensionInfo = getExtensionInstallInfo(process.cwd());

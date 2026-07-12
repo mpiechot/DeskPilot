@@ -369,6 +369,11 @@ h1 {
   scrollbar-width: thin;
 }
 
+.rollingBackupSection {
+  display: grid;
+  gap: 6px;
+}
+
 .backupListHeader {
   display: flex;
   align-items: baseline;
@@ -437,6 +442,12 @@ h1 {
   background: #fffaf0;
   color: #27312d;
   cursor: pointer;
+}
+
+.backupListActions button:disabled {
+  background: #ebe4d8;
+  color: #8a8d88;
+  cursor: not-allowed;
 }
 
 .backupListActions svg {

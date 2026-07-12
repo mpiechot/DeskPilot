@@ -8,6 +8,7 @@ const deskPilot: DeskPilotApi = {
   storageInfo: () => ipcRenderer.invoke("storage:info"),
   createStorageBackup: () => ipcRenderer.invoke("storage:create-backup"),
   restoreStorageBackup: (fileName) => ipcRenderer.invoke("storage:restore-backup", fileName),
+  restoreRollingStorageBackup: () => ipcRenderer.invoke("storage:restore-rolling-backup"),
   exportStorageBackup: (fileName) => ipcRenderer.invoke("storage:export-backup", fileName),
   importStorageBackup: () => ipcRenderer.invoke("storage:import-backup"),
   listCategories: () => ipcRenderer.invoke("categories:list"),

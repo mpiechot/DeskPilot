@@ -46,7 +46,7 @@ Current state:
 - Individual saved tabs can be opened from the Session Board.
 - Saved URLs can be viewed and removed from the selected category.
 - Saved URLs from a selected category open together in a new Chrome/Edge browser window.
-- Manual SQLite backup snapshots can be created, restored, exported and imported from the Safety mode.
+- Manual SQLite backup snapshots can be created, restored, exported and imported from the Safety mode, and the latest automatic rolling backup can be restored safely.
 - A Chrome/Edge unpacked extension prototype can capture the current browser window through the local bridge in append or replace mode.
 - The extension can save the current tab into the active DeskPilot category with duplicate protection and keeps the connected data profile visible in its popup.
 - The local browser bridge is origin-restricted to browser-extension origins, visible in the app status area and profile-aware.

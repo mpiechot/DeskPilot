@@ -646,3 +646,20 @@ Current status:
 
 Next recommended step:
 - Reload the unpacked extension and run the remaining real Productive save trial against the local DeskPilot instance.
+
+### Automatic rolling backup restore
+
+Completed:
+- Added a real Safety-mode recovery action for the automatically maintained `deskpilot.sqlite.bak` file.
+- Exposed rolling-backup availability, timestamp and size through the shared API and Electron preload.
+- Added an explicit confirmation before restoring the automatic backup.
+- Made rolling restore read and validate its source before creating the required manual pre-restore safety snapshot, preventing the normal backup write from overwriting the restore source.
+- Refreshed categories, selected tabs, deleted data and backup status after restore.
+- Added storage coverage proving the previous database state is restored and the replaced state remains preserved as a manual safety backup.
+- Extended the packaged renderer smoke test through the real Safety UI restore control.
+
+Current status:
+- Users can now recover the previous automatically backed-up database state without locating or copying SQLite files manually.
+
+Next recommended step:
+- Add automatic startup recovery for a corrupted active database, using the same validated rolling-backup path and a visible recovery report.

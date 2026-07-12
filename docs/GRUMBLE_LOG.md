@@ -54,3 +54,6 @@ Separating Productive and Development storage is necessary, but it makes launch 
 
 Extension bridge profile note:
 Sharing one localhost bridge port between Productive and Development is unsafe for a tray app. A hidden Development instance can keep accepting extension writes even after Productive is opened. Keep Productive on the stable extension port and move Development to a separate fallback port.
+
+Rolling backup restore note:
+Creating the required pre-restore safety snapshot normally updates the rolling backup file. A rolling restore must therefore read and validate its source before creating that snapshot, or it will quietly replace the recovery source with the current database and restore nothing.

@@ -80,8 +80,36 @@ async function runElectronSmoke() {
     dataProfile: smokeDataProfile,
     databasePath: smokeDataProfile.databasePath,
     rollingBackupPath: path.join(prototypeRoot, "profiles", "development", "storage", "smoke-deskpilot.sqlite.bak"),
+    rollingBackup: {
+      fileName: "smoke-deskpilot.sqlite.bak",
+      path: path.join(prototypeRoot, "profiles", "development", "storage", "smoke-deskpilot.sqlite.bak"),
+      createdAt: "2026-07-12T12:00:00.000Z",
+      sizeBytes: 4096
+    },
     manualBackupDirectory: path.join(prototypeRoot, "profiles", "development", "storage", "manual-backups"),
     manualBackups: []
+  }));
+  ipcMain.handle("storage:restore-rolling-backup", () => ({
+    storageInfo: {
+      dataProfile: smokeDataProfile,
+      databasePath: smokeDataProfile.databasePath,
+      rollingBackupPath: path.join(prototypeRoot, "profiles", "development", "storage", "smoke-deskpilot.sqlite.bak"),
+      rollingBackup: {
+        fileName: "smoke-deskpilot.sqlite.bak",
+        path: path.join(prototypeRoot, "profiles", "development", "storage", "smoke-deskpilot.sqlite.bak"),
+        createdAt: "2026-07-12T12:00:00.000Z",
+        sizeBytes: 4096
+      },
+      manualBackupDirectory: path.join(prototypeRoot, "profiles", "development", "storage", "manual-backups"),
+      manualBackups: []
+    },
+    categories,
+    deletedCategories: [],
+    selectedCategoryId: activeCategoryId,
+    tabs: getActiveTabs(activeCategoryId),
+    deletedTabs: getDeletedTabs(activeCategoryId),
+    restoredFrom: "smoke-deskpilot.sqlite.bak",
+    safetyBackupFileName: "deskpilot-pre-restore-smoke.sqlite"
   }));
   ipcMain.handle("categories:list", () => categories);
   ipcMain.handle("categories:active", () => activeCategoryId);
@@ -426,6 +454,14 @@ async function runElectronSmoke() {
                   waitForText("Restore " + longWorkTitle, () => {
                   const recoveryOverflow = getControlRailOverflow();
                   const workBoardTitles = getBoardTitles("Work");
+                  const sessionBoardOpenWorked = getRenderedText().includes("Opened Work second.");
+
+                  findButtonByText("Safety").click();
+                  waitForText("Automatic rolling backup", () => {
+                  window.confirm = () => true;
+                  document.querySelector('button[title="Restore automatic rolling backup"]').click();
+
+                  waitForText("Restored automatic backup. Safety backup: deskpilot-pre-restore-smoke.sqlite.", () => {
 
                 resolve({
                   hasDeskPilotApi: Boolean(window.deskPilot),
@@ -436,7 +472,7 @@ async function runElectronSmoke() {
                     workBoardTitles.includes("Work second") &&
                     workBoardTitles.includes("Project title") &&
                     workBoardTitles.indexOf("Work second") < workBoardTitles.indexOf("Project title"),
-                  sessionBoardOpenWorked: getRenderedText().includes("Opened Work second."),
+                  sessionBoardOpenWorked,
                   workBoardTitles,
                   entertainmentCardText: getCategoryCardText("Entertainment"),
                   titleInputAcceptsText,
@@ -460,8 +496,11 @@ async function runElectronSmoke() {
                     recoveryOverflow.offenders.length === 0 &&
                     recoveryOverflow.controlRailScrollWidth <= recoveryOverflow.controlRailClientWidth + 1,
                   recoveryOverflow,
+                  rollingBackupRestoreWorked: getRenderedText().includes("Restored automatic backup."),
                   bodyText: getRenderedText()
                 });
+                  });
+                  });
                   });
                   });
                     });
@@ -507,6 +546,7 @@ async function runElectronSmoke() {
     console.error(JSON.stringify(result.recoveryOverflow, null, 2));
   }
   assert(result.recoveryStaysInsideRail, "Expected Recovery mode controls not to overlap the category list");
+  assert(result.rollingBackupRestoreWorked, "Expected Safety mode to restore the automatic rolling backup");
   if (!result.bodyText.includes("Saved URL to Projects.") && !result.projectTitleSavedBeforeRecovery) {
     console.error(result.bodyText);
   }
