@@ -715,3 +715,20 @@ Current status:
 
 Next recommended step:
 - Add automatic creation of a compact recovery report text file alongside exported failure artifacts, containing profile, paths, timestamps and validation errors.
+
+### Explicit Productive desktop launcher
+
+Completed:
+- Added `npm run package:productive` as a dedicated build path for real Productive use.
+- Generated Productive into `dist-productive/DeskPilot Productive`, separate from the guarded Development prototype.
+- Added console-free VBS, detached CMD and foreground debug launchers whose folder names, filenames and process profile all explicitly say Productive.
+- Cleared the development-only profile guard inside every Productive launcher while keeping the existing prototype launchers forced to Development.
+- Added a Productive launcher smoke test and included both package variants in the full prototype verification flow.
+- Documented the no-console Productive start path and the need to regenerate the local package after application build changes.
+- Verified `npm run lint`, `npm run test:storage`, `npm run test:prototype` and `npm audit` with zero reported vulnerabilities.
+
+Current status:
+- Productive DeskPilot can now be started by double-clicking `dist-productive/DeskPilot Productive/start-deskpilot-productive.vbs`; a console command is no longer required for normal launches.
+
+Next recommended step:
+- Use the new launcher for the real Productive browser-session trial, then prioritize any daily-use friction found there over additional speculative recovery polish.

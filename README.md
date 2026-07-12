@@ -29,6 +29,7 @@ Commands:
 - `npm run build` builds the Electron main/preload code and renderer.
 - `npm run test:extension` loads the real extension popup in an isolated Electron smoke app and verifies a Productive current-tab save.
 - `npm run package:prototype` creates a local Windows prototype folder under `dist-prototype/DeskPilot`.
+- `npm run package:productive` creates an explicit Productive launcher folder under `dist-productive/DeskPilot Productive`.
 - `npm run test:prototype` regenerates the local prototype and verifies the desktop launchers, renderer workflow and extension popup.
 
 More detailed run and verification notes live in `docs/USAGE.md`.

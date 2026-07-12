@@ -127,6 +127,30 @@ dist-prototype/DeskPilot/start-deskpilot.vbs
 
 This is not a signed installer. It is a local development prototype that uses the repository's installed Electron runtime. The generated launchers force the Development data profile and refuse the Productive profile.
 
+## Package The Productive Launcher
+
+To create the console-free launcher for real browser-session data:
+
+```bash
+npm run package:productive
+```
+
+The output lives at:
+
+```text
+dist-productive/DeskPilot Productive/
+```
+
+Start Productive use by double-clicking:
+
+```text
+dist-productive/DeskPilot Productive/start-deskpilot-productive.vbs
+```
+
+The filename, folder name and generated package all identify this as Productive. The launcher explicitly selects the Productive data profile and clears the development-only guard. If startup fails, run `start-deskpilot-productive-debug.cmd` in the same folder to keep a diagnostic console open.
+
+This local package is not a signed installer and still uses the repository's installed Electron runtime. Re-run `npm run package:productive` after application builds change so the packaged renderer and Electron files stay current.
+
 ## Data Profiles
 
 DeskPilot uses explicit local data profiles under Electron's DeskPilot user-data folder:
@@ -136,7 +160,7 @@ profiles/development/storage/
 profiles/productive/storage/
 ```
 
-Development is the default for normal development and prototype launchers. Productive must be selected deliberately with `npm run dev:electron:productive` or `DESKPILOT_DATA_PROFILE=productive`.
+Development is the default for normal development and prototype launchers. Productive must be selected deliberately with the generated `start-deskpilot-productive.vbs` launcher, `npm run dev:electron:productive` or `DESKPILOT_DATA_PROFILE=productive`.
 
 When the Productive profile is created for the first time, DeskPilot looks for the old prototype database at:
 

@@ -91,6 +91,14 @@ Store Development and Productive data in separate profile directories under Elec
 Reason:
 DeskPilot is now close enough to daily use that smoke tests, renderer checks and prototype launchers must not share the user's real browser-session database. Productive use is selected deliberately, and its first creation copies the old prototype database once without deleting or repeatedly importing the source.
 
+## 2026-07-12 - Explicit Productive Launcher
+
+Decision:
+Generate the Productive launcher into its own `dist-productive/DeskPilot Productive` folder with Productive in every launcher filename, while keeping the existing prototype package strictly Development-only.
+
+Reason:
+Productive use should not require a console, but it must remain a deliberate choice. Separate output folders preserve the profile safety boundary and make the selected data profile visible before DeskPilot starts.
+
 ## 2026-07-03 - Saved Tab Order
 
 Decision:

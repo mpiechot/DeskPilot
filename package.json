@@ -12,11 +12,13 @@
     "build": "tsc -p tsconfig.json && npm run build:electron && vite build",
     "build:electron": "tsc -p tsconfig.electron.json",
     "lint": "eslint .",
-    "package:prototype": "npm run build && node scripts/package-prototype.mjs",
+    "package:prototype": "npm run build && node scripts/package-prototype.mjs development",
+    "package:productive": "npm run build && node scripts/package-prototype.mjs productive",
     "preview": "vite preview --host 127.0.0.1",
     "test:storage": "npm run build:electron && node scripts/storage-smoke.mjs",
     "test:extension": "node scripts/run-extension-popup-smoke.mjs",
-    "test:prototype": "npm run package:prototype && node scripts/prototype-launcher-smoke.mjs && electron scripts/prototype-renderer-smoke-app && npm run test:extension"
+    "test:productive-launcher": "node scripts/productive-launcher-smoke.mjs",
+    "test:prototype": "npm run package:prototype && node scripts/prototype-launcher-smoke.mjs && npm run package:productive && npm run test:productive-launcher && electron scripts/prototype-renderer-smoke-app && npm run test:extension"
   },
   "dependencies": {
     "lucide-react": "0.468.0",

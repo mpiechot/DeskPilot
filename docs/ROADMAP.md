@@ -133,10 +133,11 @@ Goal:
 Make DeskPilot easy to launch for local trial use.
 
 Status:
-Started. `npm run package:prototype` creates a local prototype folder with a double-click launcher.
+Started. Separate generated folders now provide a guarded Development prototype launcher and an explicitly named Productive double-click launcher.
 
 Expected features:
 - local prototype folder - initial pass done
 - double-click launcher - initial pass done
+- explicit Productive no-console launcher - done
 - signed installer
 - standalone runtime bundle
