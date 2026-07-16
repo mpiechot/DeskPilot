@@ -81,6 +81,10 @@ assert(
   "Expected Open Selected to restore saved URLs in a new browser window"
 );
 assert(
+  categoryOpenHandler.includes("category.name"),
+  "Expected Open Selected to pass the Category name to the browser window launcher"
+);
+assert(
   !categoryOpenHandler.includes("openExternal(tab.url)"),
   "Expected Open Selected not to open saved URLs one-by-one"
 );

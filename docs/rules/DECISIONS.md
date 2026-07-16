@@ -115,6 +115,14 @@ Installed DeskPilot builds check the public GitHub repository's latest stable Re
 Reason:
 The user wants update visibility without a resident polling mechanism. Opening the release page keeps installation deliberate while the Windows installer remains unsigned and avoids mixing network availability with DeskPilot's local session workflow.
 
+## 2026-07-16 - Name Restored Browser Windows After Categories
+
+Decision:
+When `Open Selected` restores a Category through the supported Chrome/Edge launch path, pass `--window-name=DeskPilot – <Category>` as a separate process argument before the saved URLs.
+
+Reason:
+Multiple restored browser windows are otherwise difficult to distinguish in the Windows taskbar and Alt+Tab. The Chromium launch switch can assign the initial user-visible window title without requiring shell interpolation or expanding the browser extension's permissions.
+
 ## 2026-07-03 - Saved Tab Order
 
 Decision:

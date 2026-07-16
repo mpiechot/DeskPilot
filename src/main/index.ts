@@ -403,9 +403,16 @@ if (!hasSingleInstanceLock) {
     ipcMain.handle("tabs:restore", (_event, id) => restoreTab(id));
     ipcMain.handle("tabs:unarchive", (_event, id) => unarchiveTab(id));
     ipcMain.handle("categories:open", async (_event, categoryId) => {
-      const tabs = listTabs(categoryId);
+      const category = listCategories().find((item) => item.id === categoryId);
+
+      if (!category) {
+        return [];
+      }
+
+      const tabs = listTabs(category.id);
       await openUrlsInNewBrowserWindow(
         tabs.map((tab) => tab.url),
+        category.name,
         (url) => shell.openExternal(url)
       );
 

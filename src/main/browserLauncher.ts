@@ -18,11 +18,28 @@ const browserRelativePaths = [
   ["Microsoft", "Edge", "Application", "msedge.exe"]
 ];
 
-export function createBrowserWindowLaunchPlan(urls: string[], executablePath: string): BrowserWindowLaunchPlan {
+export function createBrowserWindowLaunchPlan(
+  urls: string[],
+  executablePath: string,
+  categoryName: string
+): BrowserWindowLaunchPlan {
   return {
     executablePath,
-    args: ["--new-window", ...urls]
+    args: ["--new-window", `--window-name=${createBrowserWindowName(categoryName)}`, ...urls]
   };
+}
+
+export function createBrowserWindowName(categoryName: string): string {
+  const withoutControlCharacters = Array.from(categoryName, (character) => {
+    const codePoint = character.codePointAt(0) ?? 0;
+    return codePoint < 32 || codePoint === 127 ? " " : character;
+  }).join("");
+  const safeCategoryName = withoutControlCharacters
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 40);
+
+  return `DeskPilot – ${safeCategoryName || "Session"}`;
 }
 
 export function getSupportedBrowserExecutableCandidates(environment: Environment = process.env): string[] {
@@ -44,6 +61,7 @@ export function findSupportedBrowserExecutable(
 
 export async function openUrlsInNewBrowserWindow(
   urls: string[],
+  categoryName: string,
   openExternal: OpenExternal,
   spawnBrowser: SpawnBrowser = spawnDetachedBrowser
 ): Promise<void> {
@@ -62,7 +80,7 @@ export async function openUrlsInNewBrowserWindow(
     return;
   }
 
-  const plan = createBrowserWindowLaunchPlan(httpUrls, executablePath);
+  const plan = createBrowserWindowLaunchPlan(httpUrls, executablePath, categoryName);
   spawnBrowser(plan.executablePath, plan.args);
 }
 
