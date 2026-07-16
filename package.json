@@ -1,10 +1,14 @@
 {
   "name": "deskpilot",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Local desktop control panel for browser session management and workflow switching.",
+  "author": "portfolio-pirat <mattzeal@gmail.com>",
   "main": "dist-electron/main/index.js",
   "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "dev:electron": "npm run build:electron && concurrently -k \"npm:dev\" \"wait-on tcp:127.0.0.1:5173 && cross-env VITE_DEV_SERVER_URL=http://127.0.0.1:5173 electron .\"",
@@ -12,10 +16,17 @@
     "build": "tsc -p tsconfig.json && npm run build:electron && vite build",
     "build:electron": "tsc -p tsconfig.electron.json",
     "lint": "eslint .",
-    "package:prototype": "npm run build && node scripts/package-prototype.mjs",
+    "package:prototype": "npm run build && node scripts/package-prototype.mjs development",
+    "package:productive": "npm run build && node scripts/package-prototype.mjs productive",
+    "package:windows": "npm run build && electron-builder --win nsis",
+    "package:windows:signed": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-windows-signed.ps1",
     "preview": "vite preview --host 127.0.0.1",
     "test:storage": "npm run build:electron && node scripts/storage-smoke.mjs",
-    "test:prototype": "npm run package:prototype && node scripts/prototype-launcher-smoke.mjs && electron scripts/prototype-renderer-smoke-app"
+    "test:extension": "node scripts/run-extension-popup-smoke.mjs",
+    "test:productive-launcher": "node scripts/productive-launcher-smoke.mjs",
+    "test:installer": "node scripts/installer-config-smoke.mjs",
+    "test:update": "npm run build:electron && node scripts/update-smoke.mjs",
+    "test:prototype": "npm run package:prototype && node scripts/prototype-launcher-smoke.mjs && npm run package:productive && npm run test:productive-launcher && electron scripts/prototype-renderer-smoke-app && npm run test:extension && npm run test:update"
   },
   "dependencies": {
     "lucide-react": "0.468.0",
@@ -25,7 +36,7 @@
   },
   "devDependencies": {
     "@eslint/js": "9.39.4",
-    "@types/node": "20.16.0",
+    "@types/node": "22.20.1",
     "@types/react": "18.3.18",
     "@types/react-dom": "18.3.5",
     "@types/sql.js": "^1.4.11",
@@ -33,6 +44,7 @@
     "concurrently": "9.2.3",
     "cross-env": "7.0.3",
     "electron": "41.7.1",
+    "electron-builder": "26.15.3",
     "eslint": "9.39.4",
     "eslint-plugin-react-hooks": "5.1.0",
     "eslint-plugin-react-refresh": "0.4.16",
@@ -41,5 +53,34 @@
     "typescript-eslint": "8.20.0",
     "vite": "6.4.3",
     "wait-on": "8.0.1"
+  },
+  "build": {
+    "appId": "com.portfoliopirat.deskpilot",
+    "productName": "DeskPilot",
+    "asar": false,
+    "npmRebuild": false,
+    "electronDist": "node_modules/electron/dist",
+    "directories": {
+      "output": "dist-installer"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*",
+      "browser-extension/**/*",
+      "node_modules/sql.js/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis",
+      "artifactName": "DeskPilot-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "DeskPilot"
+    }
   }
 }

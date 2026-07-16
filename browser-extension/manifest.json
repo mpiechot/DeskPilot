@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "description": "Saves the current browser tab or window to the local DeskPilot app.",
   "permissions": ["tabs"],
-  "host_permissions": ["http://127.0.0.1:17383/*"],
+  "host_permissions": ["http://127.0.0.1:17383/*", "http://127.0.0.1:17384/*"],
   "icons": {
     "16": "icons/deskpilot-16.png",
     "32": "icons/deskpilot-32.png",

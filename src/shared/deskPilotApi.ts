@@ -1,12 +1,19 @@
 import type { SessionCategory } from "./sessions.js";
+import type { CategoryIconName } from "./categoryIcons.js";
 
 export type DeskPilotApi = {
   version: string;
+  updateStatus: () => Promise<AppUpdateStatus>;
+  openAvailableUpdate: () => Promise<AppUpdateStatus>;
+  onUpdateStatusChanged: (callback: (status: AppUpdateStatus) => void) => () => void;
   bridgeStatus: () => Promise<BridgeStatus>;
   extensionInstallInfo: () => Promise<ExtensionInstallInfo>;
   storageInfo: () => Promise<StorageBackupInfo>;
+  displaySettings: () => Promise<DisplaySettingsInfo>;
+  updateDisplayPreferences: (preferences: WindowPreferences) => Promise<DisplaySettingsInfo>;
   createStorageBackup: () => Promise<StorageBackupInfo>;
   restoreStorageBackup: (fileName: string) => Promise<StorageRestoreResult>;
+  restoreRollingStorageBackup: () => Promise<StorageRestoreResult>;
   exportStorageBackup: (fileName?: string) => Promise<StorageExportResult | null>;
   importStorageBackup: () => Promise<StorageRestoreResult | null>;
   listCategories: () => Promise<SessionCategory[]>;
@@ -19,11 +26,15 @@ export type DeskPilotApi = {
   restoreCategory: (id: string) => Promise<CategoryRecoveryResult>;
   listTabs: (categoryId: string) => Promise<SessionTab[]>;
   addTab: (input: SessionTabInput) => Promise<SessionMutationResult>;
+  archiveTab: (id: string) => Promise<SessionMutationResult>;
   deleteTab: (id: string) => Promise<SessionMutationResult>;
+  deleteArchivedTabPermanently: (id: string) => Promise<SessionMutationResult>;
   moveTab: (id: string, input: MoveTabInput) => Promise<SessionMutationResult>;
   openTab: (id: string) => Promise<SessionTab | null>;
   listDeletedTabs: (categoryId: string) => Promise<SessionTab[]>;
+  listArchivedTabs: (categoryId: string) => Promise<SessionTab[]>;
   restoreTab: (id: string) => Promise<SessionMutationResult>;
+  unarchiveTab: (id: string) => Promise<SessionMutationResult>;
   openCategory: (categoryId: string) => Promise<SessionTab[]>;
   onSessionsChanged: (callback: () => void) => () => void;
 };
@@ -31,6 +42,7 @@ export type DeskPilotApi = {
 export type CategoryInput = {
   name: string;
   description: string;
+  icon?: CategoryIconName;
 };
 
 export type BridgeStatus = {
@@ -38,6 +50,23 @@ export type BridgeStatus = {
   host: string;
   port: number;
   allowedOrigins: string[];
+  dataProfile?: DataProfileInfo;
+};
+
+export type AppUpdateStatusValue =
+  | "disabled"
+  | "not-checked"
+  | "checking"
+  | "up-to-date"
+  | "available"
+  | "unavailable";
+
+export type AppUpdateStatus = {
+  status: AppUpdateStatusValue;
+  currentVersion: string;
+  availableVersion?: string;
+  releaseUrl?: string;
+  message: string;
 };
 
 export type ExtensionInstallInfo = {
@@ -49,10 +78,43 @@ export type ExtensionInstallInfo = {
 
 export type StorageBackupInfo = {
   dataProfile: DataProfileInfo;
+  startupRecovery: StorageStartupRecoveryInfo;
   databasePath: string;
   rollingBackupPath: string;
+  rollingBackup: StorageBackupSnapshot | null;
   manualBackupDirectory: string;
   manualBackups: StorageBackupSnapshot[];
+};
+
+export type WindowLayoutMode = "standard" | "touch";
+
+export type WindowPreferences = {
+  layoutMode: WindowLayoutMode;
+  displayId: string | null;
+  kiosk: boolean;
+};
+
+export type DisplayDescriptor = {
+  id: string;
+  label: string;
+  primary: boolean;
+  width: number;
+  height: number;
+};
+
+export type DisplaySettingsInfo = {
+  preferences: WindowPreferences;
+  displays: DisplayDescriptor[];
+};
+
+export type StorageStartupRecoveryStatus = "not-needed" | "recovered-from-rolling";
+
+export type StorageStartupRecoveryInfo = {
+  status: StorageStartupRecoveryStatus;
+  message: string;
+  recoveredAt?: string;
+  rollingBackupPath?: string;
+  corruptDatabaseBackupPath?: string;
 };
 
 export type DataProfileId = "development" | "productive";
@@ -98,6 +160,7 @@ export type StorageRestoreResult = {
   selectedCategoryId: string;
   tabs: SessionTab[];
   deletedTabs: SessionTab[];
+  archivedTabs: SessionTab[];
   restoredFrom: string;
   safetyBackupFileName: string;
 };
@@ -117,6 +180,7 @@ export type CategoryRow = {
   id: string;
   name: string;
   description: string;
+  icon: string | null;
   position: number;
   is_favorite: number;
   tab_count: number;

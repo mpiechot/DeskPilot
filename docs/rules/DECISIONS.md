@@ -91,6 +91,30 @@ Store Development and Productive data in separate profile directories under Elec
 Reason:
 DeskPilot is now close enough to daily use that smoke tests, renderer checks and prototype launchers must not share the user's real browser-session database. Productive use is selected deliberately, and its first creation copies the old prototype database once without deleting or repeatedly importing the source.
 
+## 2026-07-12 - Explicit Productive Launcher
+
+Decision:
+Generate the Productive launcher into its own `dist-productive/DeskPilot Productive` folder with Productive in every launcher filename, while keeping the existing prototype package strictly Development-only.
+
+Reason:
+Productive use should not require a console, but it must remain a deliberate choice. Separate output folders preserve the profile safety boundary and make the selected data profile visible before DeskPilot starts.
+
+## 2026-07-16 - Stable Monochrome Category Icons
+
+Decision:
+Persist category icons as identifiers from a curated built-in Lucide-style set. Keep the existing single foreground color and category-icon background, and use the folder icon as the migration and unknown-value fallback.
+
+Reason:
+Stable identifiers survive restart, backup and import without storing executable or external image data. A constrained monochrome set improves at-a-glance recognition while preserving DeskPilot's existing visual language.
+
+## 2026-07-16 - One Installed-App Update Check Per Start
+
+Decision:
+Installed DeskPilot builds check the public GitHub repository's latest stable Release exactly once per process start. A newer semantic version changes the header version badge into an explicit action that opens only the validated DeskPilot GitHub Release page. Development runs do not check, and no timer, automatic download or forced restart is added.
+
+Reason:
+The user wants update visibility without a resident polling mechanism. Opening the release page keeps installation deliberate while the Windows installer remains unsigned and avoids mixing network availability with DeskPilot's local session workflow.
+
 ## 2026-07-03 - Saved Tab Order
 
 Decision:
@@ -106,3 +130,11 @@ Keep `Open Selected` as the category-level restore action and add compact per-ta
 
 Reason:
 The low control-panel layout has room for a small icon without hiding tab titles or hosts. This gives precise single-tab access while preserving the safer full-session restore workflow.
+
+## 2026-07-12 - Corrupted Database Startup Recovery
+
+Decision:
+When the active SQLite database cannot be opened, recover automatically only from a rolling backup that passes DeskPilot schema validation. Preserve the unreadable active file with a `.sqlite.corrupt` suffix, keep it out of normal restore choices and report the recovery visibly in Safety mode. If both copies are unusable, modify neither file and show a native read-only recovery menu with both paths, error details, byte-preserving exports and direct storage-folder access.
+
+Reason:
+A damaged database must not leave the resident control panel unusable when a valid local backup exists. Automatic recovery is safe only when the source is validated, the damaged evidence remains available and the user is told exactly what happened.

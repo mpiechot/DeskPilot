@@ -51,3 +51,33 @@ A resident tray app must be single-instance from the beginning. Otherwise a norm
 
 Data profile note:
 Separating Productive and Development storage is necessary, but it makes launch paths matter. Every prototype launcher and smoke test must keep forcing Development, and any future installer must make Productive startup explicit instead of inheriting a random developer environment variable.
+
+Extension bridge profile note:
+Sharing one localhost bridge port between Productive and Development is unsafe for a tray app. A hidden Development instance can keep accepting extension writes even after Productive is opened. Keep Productive on the stable extension port and move Development to a separate fallback port.
+
+Rolling backup restore note:
+Creating the required pre-restore safety snapshot normally updates the rolling backup file. A rolling restore must therefore read and validate its source before creating that snapshot, or it will quietly replace the recovery source with the current database and restore nothing.
+
+Corrupted startup note:
+Preserving a broken database with a normal `.sqlite` name makes it look restorable even though validation must reject it. Mark preserved evidence as `.sqlite.corrupt`, keep it out of the backup picker and show its path in the recovery report instead.
+
+Double-failure note:
+An unhandled startup promise is not a recovery experience. When neither database copy works, the app must stop before creating its normal window, name both files, offer the storage folder and quit deliberately instead of leaving a hidden or half-started tray process.
+
+Read-only recovery note:
+Opening the storage folder is useful but still asks the user to copy unfamiliar files manually. Keep the failure menu alive and let each source be exported explicitly; never initialize, migrate, rename or rewrite either broken source merely to make recovery more convenient.
+
+Recovery export target note:
+A save dialog does not make an export automatically safe. Explicitly reject both active and rolling database paths as destinations, or a well-intentioned export can overwrite the other recovery source.
+
+Installer signing note:
+An installer generator can call `signtool.exe` without producing a real Authenticode signature when no certificate is available. Keep unsigned test packaging and signed packaging as separate commands, make the signed command fail closed without `CSC_LINK` and `CSC_KEY_PASSWORD`, and verify the resulting signature rather than trusting build-log wording.
+
+Installer archive note:
+The current installer intentionally leaves app files unpacked because the browser extension must remain a real load-unpacked directory and sql.js must locate its WASM file reliably. electron-builder warns about disabled ASAR; enabling it later requires explicit unpack paths and end-to-end verification of both extension discovery and SQLite startup.
+
+Category gesture note:
+A draggable category board and draggable saved tabs share the same surface. Category panning must start only outside buttons, form controls and draggable tab rows, and it must suppress the click generated after a real pan; otherwise navigation creates accidental selections or steals the existing tab workflow.
+
+Update-check note:
+An update banner is not free space on a 390-pixel-high control panel. The first separate banner pushed the URL title field below the usable renderer height, so the final update action reuses the existing header version position. Keep update failures non-blocking and resist turning a once-at-start requirement into a timer disguised as convenience.

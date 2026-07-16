@@ -5,9 +5,11 @@ import type {
   CaptureMode,
   CaptureResult,
   CrossCategoryDuplicatePolicy,
+  DataProfileId,
+  DataProfileInfo,
   SessionTabInput
 } from "../shared/deskPilotApi.js";
-import { getActiveCategoryId, listCategories, saveCapturedTab, saveCapturedTabs } from "./storage.js";
+import { getActiveCategoryId, getDataProfileInfo, listCategories, saveCapturedTab, saveCapturedTabs } from "./storage.js";
 
 type CapturedTab = {
   url?: unknown;
@@ -29,31 +31,35 @@ type WindowSavePayload = {
 
 type BridgeOptions = {
   port?: number;
+  dataProfile?: DataProfileInfo;
   showApp?: () => void;
   onSessionsChanged?: () => void;
 };
 
 export const bridgeHost = "127.0.0.1";
-export const bridgePort = 17383;
+export const productiveBridgePort = 17383;
+export const developmentBridgePort = 17384;
+export const bridgePort = productiveBridgePort;
 export const allowedOriginPrefixes = ["chrome-extension://", "edge-extension://"];
 export const extensionClientHeaderName = "x-deskpilot-client";
 export const extensionClientHeaderValue = "deskpilot-browser-extension";
 
 export function startBrowserBridge(options: BridgeOptions = {}): http.Server {
+  const port = resolveBridgePort(options);
   const server = http.createServer((request, response) => {
     void handleRequest(request, response, options);
   });
 
   server.on("error", (error: NodeJS.ErrnoException) => {
     if (error.code === "EADDRINUSE") {
-      console.warn(`DeskPilot extension bridge could not bind ${bridgeHost}:${options.port ?? bridgePort}; port is already in use.`);
+      console.warn(`DeskPilot extension bridge could not bind ${bridgeHost}:${port}; port is already in use.`);
       return;
     }
 
     console.warn(`DeskPilot extension bridge failed: ${error.message}`);
   });
 
-  server.listen(options.port ?? bridgePort, bridgeHost);
+  server.listen(port, bridgeHost);
   server.on("listening", () => {
     const address = server.address() as AddressInfo;
     console.log(`DeskPilot extension bridge listening on ${address.address}:${address.port} (not the app UI)`);
@@ -62,16 +68,25 @@ export function startBrowserBridge(options: BridgeOptions = {}): http.Server {
   return server;
 }
 
-export function getBrowserBridgeStatus(server: http.Server | null): BridgeStatus {
+export function getBrowserBridgeStatus(server: http.Server | null, dataProfile?: DataProfileInfo): BridgeStatus {
   const address = server?.address();
-  const actualPort = typeof address === "object" && address ? address.port : bridgePort;
+  const actualPort = typeof address === "object" && address ? address.port : getBridgePortForDataProfile(dataProfile?.id ?? "productive");
 
   return {
     running: Boolean(server?.listening),
     host: bridgeHost,
     port: actualPort,
-    allowedOrigins: allowedOriginPrefixes
+    allowedOrigins: allowedOriginPrefixes,
+    dataProfile
   };
+}
+
+export function getBridgePortForDataProfile(profileId: DataProfileId): number {
+  return profileId === "development" ? developmentBridgePort : productiveBridgePort;
+}
+
+function resolveBridgePort(options: BridgeOptions): number {
+  return options.port ?? getBridgePortForDataProfile(options.dataProfile?.id ?? "productive");
 }
 
 async function handleRequest(
@@ -107,7 +122,11 @@ async function handleRequest(
   }
 
   if (request.method === "GET" && request.url === "/categories") {
-    writeJson(response, 200, { categories: listCategories(), activeCategoryId: getActiveCategoryId() });
+    writeJson(response, 200, {
+      categories: listCategories(),
+      activeCategoryId: getActiveCategoryId(),
+      dataProfile: getDataProfileInfo()
+    });
     return;
   }
 

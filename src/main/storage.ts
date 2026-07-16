@@ -1,6 +1,13 @@
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import initSqlJs, { type Database, type SqlJsStatic } from "sql.js";
+import {
+  categoryIconOptions,
+  defaultCategoryIcon,
+  normalizeCategoryIcon,
+  type CategoryIconName
+} from "../shared/categoryIcons.js";
 import { defaultCategories, type SessionCategory } from "../shared/sessions.js";
 import type {
   CaptureMode,
@@ -20,9 +27,12 @@ import type {
   StorageExportResult,
   StorageBackupInfo,
   StorageBackupSnapshot,
-  StorageRestoreResult
+  StorageRestoreResult,
+  StorageStartupRecoveryInfo
 } from "../shared/deskPilotApi.js";
 import { prepareDataProfile } from "./dataProfile.js";
+
+const storageModuleDirectory = path.dirname(fileURLToPath(import.meta.url));
 
 type StoragePaths = {
   databasePath: string;
@@ -30,6 +40,24 @@ type StoragePaths = {
   manualBackupDirectory: string;
   temporaryPath: string;
 };
+
+export class StorageStartupError extends Error {
+  readonly activeDatabasePath: string;
+  readonly rollingBackupPath: string;
+  readonly storageDirectory: string;
+  readonly activeDatabaseError: string;
+  readonly rollingBackupError: string;
+
+  constructor(storagePaths: StoragePaths, activeDatabaseError: unknown, rollingBackupError: unknown) {
+    super("DeskPilot could not open the active database or the automatic rolling backup.");
+    this.name = "StorageStartupError";
+    this.activeDatabasePath = storagePaths.databasePath;
+    this.rollingBackupPath = storagePaths.backupPath;
+    this.storageDirectory = path.dirname(storagePaths.databasePath);
+    this.activeDatabaseError = describeError(activeDatabaseError);
+    this.rollingBackupError = describeError(rollingBackupError);
+  }
+}
 
 type SaveTabOptions = {
   crossCategoryDuplicatePolicy: CrossCategoryDuplicatePolicy;
@@ -55,6 +83,7 @@ type TabOrderRow = {
   id: string;
   category_id: string;
   deleted_at: string | null;
+  archived_at: string | null;
   position: number;
   saved_at: string;
 };
@@ -69,6 +98,7 @@ let sqlite: SqlJsStatic | null = null;
 let database: Database | null = null;
 let paths: StoragePaths | null = null;
 let dataProfile: DataProfileInfo | null = null;
+let startupRecovery: StorageStartupRecoveryInfo = createNoStartupRecoveryInfo();
 
 type InitializeStorageOptions = {
   profile?: DataProfileId;
@@ -83,22 +113,38 @@ export async function initializeStorage(userDataPath: string, options: Initializ
   const SQL =
     sqlite ??
     (await initSqlJs({
-      locateFile: (file) => path.join(process.cwd(), "node_modules", "sql.js", "dist", file)
+      locateFile: (file) => path.resolve(storageModuleDirectory, "../../node_modules/sql.js/dist", file)
     }));
   sqlite = SQL;
 
-  const nextDatabase = fs.existsSync(nextPaths.databasePath)
-    ? new SQL.Database(fs.readFileSync(nextPaths.databasePath))
-    : new SQL.Database();
+  const activeDatabaseExists = fs.existsSync(nextPaths.databasePath);
+  let nextDatabase: Database | null = null;
+  let nextStartupRecovery = createNoStartupRecoveryInfo();
 
-  migrate(nextDatabase);
-  seedDefaultCategories(nextDatabase);
+  try {
+    nextDatabase = activeDatabaseExists
+      ? new SQL.Database(fs.readFileSync(nextPaths.databasePath))
+      : new SQL.Database();
+    migrate(nextDatabase);
+    seedDefaultCategories(nextDatabase);
+  } catch (error) {
+    nextDatabase?.close();
+
+    if (!activeDatabaseExists) {
+      throw error;
+    }
+
+    const recovered = recoverStartupDatabase(SQL, nextPaths, error);
+    nextDatabase = recovered.database;
+    nextStartupRecovery = recovered.info;
+  }
 
   database?.close();
   database = nextDatabase;
   paths = nextPaths;
   dataProfile = nextDataProfile;
-  saveDatabase();
+  startupRecovery = nextStartupRecovery;
+  saveDatabase({ preserveRollingBackup: nextStartupRecovery.status === "recovered-from-rolling" });
 }
 
 export function getDataProfileInfo(): DataProfileInfo {
@@ -123,8 +169,10 @@ export function getStorageInfo(): StorageBackupInfo {
 
   return {
     dataProfile: getDataProfileInfo(),
+    startupRecovery,
     databasePath: storagePaths.databasePath,
     rollingBackupPath: storagePaths.backupPath,
+    rollingBackup: getBackupSnapshot(storagePaths.backupPath),
     manualBackupDirectory: storagePaths.manualBackupDirectory,
     manualBackups: listManualBackups(storagePaths.manualBackupDirectory)
   };
@@ -148,6 +196,21 @@ export function restoreManualBackup(fileName: string): StorageRestoreResult {
   replaceActiveDatabase(backupPath);
 
   return createStorageRestoreResult(backupPath, safetyBackupPath);
+}
+
+export function restoreRollingBackup(): StorageRestoreResult {
+  const rollingBackupPath = getPaths().backupPath;
+
+  if (!fs.existsSync(rollingBackupPath)) {
+    throw new Error("Rolling backup does not exist yet.");
+  }
+
+  const rollingBackupContents = fs.readFileSync(rollingBackupPath);
+  validateDeskPilotDatabaseContents(rollingBackupContents);
+  const safetyBackupPath = createSafetyBackup("pre-restore");
+  replaceActiveDatabaseContents(rollingBackupContents);
+
+  return createStorageRestoreResult(rollingBackupPath, safetyBackupPath);
 }
 
 export function exportStorageBackup(fileName: string | null, targetPath: string): StorageExportResult {
@@ -201,13 +264,14 @@ export function createCategory(input: CategoryInput): SessionCategory[] {
 
   db.run(
     `
-      INSERT INTO categories (id, name, description, position)
-      VALUES ($id, $name, $description, $position)
+      INSERT INTO categories (id, name, description, icon, position)
+      VALUES ($id, $name, $description, $icon, $position)
     `,
     {
       $id: id,
       $name: normalized.name,
       $description: normalized.description,
+      $icon: normalized.icon,
       $position: position
     }
   );
@@ -219,21 +283,23 @@ export function createCategory(input: CategoryInput): SessionCategory[] {
 
 export function updateCategory(id: string, input: CategoryInput): SessionCategory[] {
   const db = getDatabase();
-  const normalized = normalizeCategoryInput(input);
   const safeId = normalizeCategoryId(id);
+  const normalized = normalizeCategoryInput(input, getStoredCategoryIcon(db, safeId));
 
   db.run(
     `
       UPDATE categories
       SET name = $name,
           description = $description,
+          icon = $icon,
           updated_at = CURRENT_TIMESTAMP
       WHERE id = $id AND deleted_at IS NULL
     `,
     {
       $id: safeId,
       $name: normalized.name,
-      $description: normalized.description
+      $description: normalized.description,
+      $icon: normalized.icon
     }
   );
 
@@ -292,11 +358,15 @@ export function restoreCategory(id: string): CategoryRecoveryResult {
 }
 
 export function listTabs(categoryId: string): SessionTab[] {
-  return listTabsByDeletedState(categoryId, false);
+  return listTabsByState(categoryId, "active");
 }
 
 export function listDeletedTabs(categoryId: string): SessionTab[] {
-  return listTabsByDeletedState(categoryId, true);
+  return listTabsByState(categoryId, "deleted");
+}
+
+export function listArchivedTabs(categoryId: string): SessionTab[] {
+  return listTabsByState(categoryId, "archived");
 }
 
 export function getActiveTab(id: string): SessionTab | null {
@@ -306,7 +376,7 @@ export function getActiveTab(id: string): SessionTab | null {
     `
       SELECT id, category_id, url, title, position, saved_at
       FROM session_tabs
-      WHERE id = $id AND deleted_at IS NULL
+      WHERE id = $id AND deleted_at IS NULL AND archived_at IS NULL
       LIMIT 1
     `,
     {
@@ -323,14 +393,20 @@ export function getActiveTab(id: string): SessionTab | null {
   return mapSessionTabRow(row);
 }
 
-function listTabsByDeletedState(categoryId: string, deleted: boolean): SessionTab[] {
+function listTabsByState(categoryId: string, state: "active" | "archived" | "deleted"): SessionTab[] {
   const db = getDatabase();
   const safeCategoryId = normalizeCategoryId(categoryId);
+  const stateClause =
+    state === "deleted"
+      ? "deleted_at IS NOT NULL"
+      : state === "archived"
+        ? "deleted_at IS NULL AND archived_at IS NOT NULL"
+        : "deleted_at IS NULL AND archived_at IS NULL";
   const result = db.exec(
     `
       SELECT id, category_id, url, title, position, saved_at
       FROM session_tabs
-      WHERE category_id = $categoryId AND deleted_at IS ${deleted ? "NOT NULL" : "NULL"}
+      WHERE category_id = $categoryId AND ${stateClause}
       ORDER BY position ASC, saved_at ASC, id ASC
     `,
     {
@@ -406,7 +482,7 @@ export function saveCapturedTabs(
       `
         UPDATE session_tabs
         SET deleted_at = CURRENT_TIMESTAMP
-        WHERE category_id = $categoryId AND deleted_at IS NULL
+        WHERE category_id = $categoryId AND deleted_at IS NULL AND archived_at IS NULL
       `,
       {
         $categoryId: safeCategoryId
@@ -437,7 +513,7 @@ export function deleteTab(id: string): SessionMutationResult {
     `
       UPDATE session_tabs
       SET deleted_at = CURRENT_TIMESTAMP
-      WHERE id = $id AND deleted_at IS NULL
+      WHERE id = $id AND deleted_at IS NULL AND archived_at IS NULL
     `,
     {
       $id: safeId
@@ -479,7 +555,7 @@ export function moveTab(id: string, input: MoveTabInput): SessionMutationResult 
         `
           UPDATE session_tabs
           SET category_id = $targetCategoryId
-          WHERE id = $id AND deleted_at IS NULL
+          WHERE id = $id AND deleted_at IS NULL AND archived_at IS NULL
         `,
         {
           $id: safeId,
@@ -548,18 +624,173 @@ function listManualBackups(manualBackupDirectory: string): StorageBackupSnapshot
   return fs
     .readdirSync(manualBackupDirectory, { withFileTypes: true })
     .filter((entry) => entry.isFile() && entry.name.endsWith(".sqlite"))
-    .map((entry) => {
-      const backupPath = path.join(manualBackupDirectory, entry.name);
-      const stats = fs.statSync(backupPath);
-
-      return {
-        fileName: entry.name,
-        path: backupPath,
-        createdAt: stats.mtime.toISOString(),
-        sizeBytes: stats.size
-      };
-    })
+    .map((entry) => getBackupSnapshot(path.join(manualBackupDirectory, entry.name)))
+    .filter((backup): backup is StorageBackupSnapshot => backup !== null)
     .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+}
+
+export function archiveTab(id: string): SessionMutationResult {
+  const db = getDatabase();
+  const safeId = normalizeRequiredString(id, "Tab id is required.");
+  const placement = getActiveTabPlacement(db, safeId);
+
+  if (!placement) {
+    throw new Error("Saved tab is not active.");
+  }
+
+  db.run(
+    `
+      UPDATE session_tabs
+      SET archived_at = CURRENT_TIMESTAMP,
+          position = $position
+      WHERE id = $id AND deleted_at IS NULL AND archived_at IS NULL
+    `,
+    {
+      $id: safeId,
+      $position: getNextArchivedTabPosition(db, placement.category_id)
+    }
+  );
+
+  rewriteTabPositions(db, placement.category_id, getActiveTabIds(db, placement.category_id));
+  saveDatabase();
+  return {
+    categories: listCategories(),
+    tabs: listTabs(placement.category_id)
+  };
+}
+
+export function unarchiveTab(id: string): SessionMutationResult {
+  const db = getDatabase();
+  const safeId = normalizeRequiredString(id, "Tab id is required.");
+  const categoryId = getArchivedTabCategoryId(db, safeId);
+
+  if (!categoryId) {
+    throw new Error("Archived tab does not exist.");
+  }
+
+  db.run(
+    `
+      UPDATE session_tabs
+      SET archived_at = NULL,
+          position = $position,
+          saved_at = CURRENT_TIMESTAMP
+      WHERE id = $id AND deleted_at IS NULL AND archived_at IS NOT NULL
+    `,
+    {
+      $id: safeId,
+      $position: getNextTabPosition(db, categoryId)
+    }
+  );
+
+  saveDatabase();
+  return {
+    categories: listCategories(),
+    tabs: listTabs(categoryId)
+  };
+}
+
+export function deleteArchivedTabPermanently(id: string): SessionMutationResult {
+  const db = getDatabase();
+  const safeId = normalizeRequiredString(id, "Tab id is required.");
+  const categoryId = getArchivedTabCategoryId(db, safeId);
+
+  if (!categoryId) {
+    throw new Error("Only an archived tab can be permanently deleted.");
+  }
+
+  db.run(
+    "DELETE FROM session_tabs WHERE id = $id AND deleted_at IS NULL AND archived_at IS NOT NULL",
+    { $id: safeId }
+  );
+  normalizeTabPositions(db);
+  saveDatabase();
+  return {
+    categories: listCategories(),
+    tabs: listTabs(categoryId)
+  };
+}
+
+function getBackupSnapshot(backupPath: string): StorageBackupSnapshot | null {
+  if (!fs.existsSync(backupPath)) {
+    return null;
+  }
+
+  const stats = fs.statSync(backupPath);
+
+  return {
+    fileName: path.basename(backupPath),
+    path: backupPath,
+    createdAt: stats.mtime.toISOString(),
+    sizeBytes: stats.size
+  };
+}
+
+function createNoStartupRecoveryInfo(): StorageStartupRecoveryInfo {
+  return {
+    status: "not-needed",
+    message: "Active database opened normally. No startup recovery was needed."
+  };
+}
+
+function recoverStartupDatabase(
+  SQL: SqlJsStatic,
+  storagePaths: StoragePaths,
+  activeDatabaseError: unknown
+): { database: Database; info: StorageStartupRecoveryInfo } {
+  if (!fs.existsSync(storagePaths.backupPath)) {
+    throw new StorageStartupError(storagePaths, activeDatabaseError, "Automatic rolling backup does not exist.");
+  }
+
+  let recoveredDatabase: Database | null = null;
+
+  try {
+    recoveredDatabase = new SQL.Database(fs.readFileSync(storagePaths.backupPath));
+    assertDeskPilotTables(recoveredDatabase);
+    migrate(recoveredDatabase);
+    seedDefaultCategories(recoveredDatabase);
+  } catch (rollingBackupError) {
+    recoveredDatabase?.close();
+    throw new StorageStartupError(storagePaths, activeDatabaseError, rollingBackupError);
+  }
+
+  fs.mkdirSync(storagePaths.manualBackupDirectory, { recursive: true });
+  const corruptDatabaseBackupPath = createCorruptDatabaseBackupPath(storagePaths.manualBackupDirectory, new Date());
+
+  try {
+    fs.copyFileSync(storagePaths.databasePath, corruptDatabaseBackupPath);
+  } catch (error) {
+    recoveredDatabase.close();
+    throw error;
+  }
+
+  return {
+    database: recoveredDatabase,
+    info: {
+      status: "recovered-from-rolling",
+      message: "DeskPilot recovered the active database from the automatic rolling backup and preserved the corrupted file.",
+      recoveredAt: new Date().toISOString(),
+      rollingBackupPath: storagePaths.backupPath,
+      corruptDatabaseBackupPath
+    }
+  };
+}
+
+function describeError(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function createCorruptDatabaseBackupPath(manualBackupDirectory: string, date: Date): string {
+  const timestamp = date.toISOString().replace(/[:.]/g, "-");
+  const baseName = `deskpilot-corrupt-startup-${timestamp}`;
+  let suffix = 1;
+  let candidate = path.join(manualBackupDirectory, `${baseName}.sqlite.corrupt`);
+
+  while (fs.existsSync(candidate)) {
+    suffix += 1;
+    candidate = path.join(manualBackupDirectory, `${baseName}-${suffix}.sqlite.corrupt`);
+  }
+
+  return candidate;
 }
 
 function createManualBackupPath(manualBackupDirectory: string, date: Date, prefix: string): string {
@@ -599,8 +830,12 @@ function resolveManualBackupPath(fileName: string): string {
 }
 
 function validateDeskPilotDatabaseFile(filePath: string): void {
+  validateDeskPilotDatabaseContents(fs.readFileSync(filePath));
+}
+
+function validateDeskPilotDatabaseContents(contents: Uint8Array): void {
   const SQL = getSqlite();
-  const candidate = new SQL.Database(fs.readFileSync(filePath));
+  const candidate = new SQL.Database(contents);
 
   try {
     assertDeskPilotTables(candidate);
@@ -634,8 +869,12 @@ function createSafetyBackup(prefix: "pre-import" | "pre-restore"): string {
 }
 
 function replaceActiveDatabase(sourcePath: string): void {
+  replaceActiveDatabaseContents(fs.readFileSync(sourcePath));
+}
+
+function replaceActiveDatabaseContents(contents: Uint8Array): void {
   const SQL = getSqlite();
-  const nextDatabase = new SQL.Database(fs.readFileSync(sourcePath));
+  const nextDatabase = new SQL.Database(contents);
 
   try {
     assertDeskPilotTables(nextDatabase);
@@ -671,6 +910,7 @@ function createStorageRestoreResult(sourcePath: string, safetyBackupPath: string
     selectedCategoryId,
     tabs: selectedCategoryId ? listTabs(selectedCategoryId) : [],
     deletedTabs: selectedCategoryId ? listDeletedTabs(selectedCategoryId) : [],
+    archivedTabs: selectedCategoryId ? listArchivedTabs(selectedCategoryId) : [],
     restoredFrom: sourcePath,
     safetyBackupFileName: path.basename(safetyBackupPath)
   };
@@ -683,12 +923,13 @@ function listCategoryRows(whereClause: string): SessionCategory[] {
       c.id,
       c.name,
       c.description,
+      c.icon,
       c.position,
       c.is_favorite,
       COUNT(t.id) AS tab_count,
       MAX(t.saved_at) AS last_saved_at
     FROM categories c
-    LEFT JOIN session_tabs t ON t.category_id = c.id AND t.deleted_at IS NULL
+    LEFT JOIN session_tabs t ON t.category_id = c.id AND t.deleted_at IS NULL AND t.archived_at IS NULL
     WHERE ${whereClause}
     GROUP BY c.id
     ORDER BY c.position ASC, c.name ASC
@@ -730,6 +971,7 @@ function migrate(db: Database): void {
       position INTEGER NOT NULL DEFAULT 0,
       saved_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       deleted_at TEXT,
+      archived_at TEXT,
       FOREIGN KEY (category_id) REFERENCES categories(id)
     );
   `);
@@ -743,7 +985,10 @@ function migrate(db: Database): void {
   `);
 
   ensureColumn(db, "categories", "position", "INTEGER NOT NULL DEFAULT 0");
+  ensureColumn(db, "categories", "icon", "TEXT");
   ensureColumn(db, "session_tabs", "position", "INTEGER NOT NULL DEFAULT 0");
+  ensureColumn(db, "session_tabs", "archived_at", "TEXT");
+  normalizeCategoryIcons(db);
   normalizeTabPositions(db);
 }
 
@@ -758,10 +1003,11 @@ function ensureColumn(db: Database, tableName: "categories" | "session_tabs", co
 
 function normalizeTabPositions(db: Database): void {
   const result = db.exec(`
-    SELECT id, category_id, deleted_at, position, saved_at
+    SELECT id, category_id, deleted_at, archived_at, position, saved_at
     FROM session_tabs
     ORDER BY category_id ASC,
              deleted_at IS NOT NULL ASC,
+             archived_at IS NOT NULL ASC,
              position ASC,
              saved_at ASC,
              id ASC
@@ -777,7 +1023,8 @@ function normalizeTabPositions(db: Database): void {
 
   for (const value of result[0].values) {
     const row = Object.fromEntries(columns.map((column, index) => [column, value[index]])) as TabOrderRow;
-    const groupKey = `${row.category_id}:${row.deleted_at ? "deleted" : "active"}`;
+    const state = row.deleted_at ? "deleted" : row.archived_at ? "archived" : "active";
+    const groupKey = `${row.category_id}:${state}`;
     const nextPosition = nextPositionByGroup.get(groupKey) ?? 0;
 
     if (Number(row.position) !== nextPosition) {
@@ -807,8 +1054,8 @@ function normalizeTabPositions(db: Database): void {
 
 function seedDefaultCategories(db: Database): void {
   const statement = db.prepare(`
-    INSERT INTO categories (id, name, description, position)
-    VALUES ($id, $name, $description, $position)
+    INSERT INTO categories (id, name, description, icon, position)
+    VALUES ($id, $name, $description, $icon, $position)
     ON CONFLICT(id) DO NOTHING
   `);
 
@@ -818,6 +1065,7 @@ function seedDefaultCategories(db: Database): void {
         $id: category.id,
         $name: category.name,
         $description: category.description,
+        $icon: category.icon,
         $position: index
       });
     });
@@ -897,9 +1145,13 @@ function assertActiveCategoryExists(db: Database, id: string): void {
   }
 }
 
-function normalizeCategoryInput(input: CategoryInput): CategoryInput {
+function normalizeCategoryInput(
+  input: CategoryInput,
+  fallbackIcon: CategoryIconName = defaultCategoryIcon
+): CategoryInput & { icon: CategoryIconName } {
   const name = input.name.trim();
   const description = input.description.trim();
+  const icon = normalizeCategoryIcon(input.icon ?? fallbackIcon);
 
   if (!name) {
     throw new Error("Category name is required.");
@@ -913,7 +1165,19 @@ function normalizeCategoryInput(input: CategoryInput): CategoryInput {
     throw new Error("Category description must be 140 characters or less.");
   }
 
-  return { name, description };
+  return { name, description, icon };
+}
+
+function getStoredCategoryIcon(db: Database, id: string): CategoryIconName {
+  const result = db.exec("SELECT icon FROM categories WHERE id = $id AND deleted_at IS NULL LIMIT 1", {
+    $id: id
+  });
+
+  if (result.length === 0 || result[0].values.length === 0) {
+    throw new Error("DeskPilot category not found.");
+  }
+
+  return normalizeCategoryIcon(result[0].values[0][0]);
 }
 
 function normalizeCategoryId(id: string): string {
@@ -1044,7 +1308,7 @@ function getActiveTabPlacement(db: Database, id: string): ActiveTabPlacementRow 
     `
       SELECT category_id, position, url
       FROM session_tabs
-      WHERE id = $id AND deleted_at IS NULL
+      WHERE id = $id AND deleted_at IS NULL AND archived_at IS NULL
       LIMIT 1
     `,
     {
@@ -1069,6 +1333,7 @@ function hasActiveTabUrlInCategoryExcept(db: Database, categoryId: string, url: 
         AND url = $url
         AND id != $excludedTabId
         AND deleted_at IS NULL
+        AND archived_at IS NULL
       LIMIT 1
     `,
     {
@@ -1086,7 +1351,7 @@ function getActiveTabIds(db: Database, categoryId: string): string[] {
     `
       SELECT id
       FROM session_tabs
-      WHERE category_id = $categoryId AND deleted_at IS NULL
+      WHERE category_id = $categoryId AND deleted_at IS NULL AND archived_at IS NULL
       ORDER BY position ASC, saved_at ASC, id ASC
     `,
     {
@@ -1106,7 +1371,7 @@ function rewriteTabPositions(db: Database, categoryId: string, tabIds: string[])
     UPDATE session_tabs
     SET category_id = $categoryId,
         position = $position
-    WHERE id = $id AND deleted_at IS NULL
+    WHERE id = $id AND deleted_at IS NULL AND archived_at IS NULL
   `);
 
   try {
@@ -1127,7 +1392,7 @@ function getNextTabPosition(db: Database, categoryId: string): number {
     `
       SELECT COALESCE(MAX(position), -1) + 1 AS next_position
       FROM session_tabs
-      WHERE category_id = $categoryId AND deleted_at IS NULL
+      WHERE category_id = $categoryId AND deleted_at IS NULL AND archived_at IS NULL
     `,
     {
       $categoryId: categoryId
@@ -1141,10 +1406,51 @@ function getNextTabPosition(db: Database, categoryId: string): number {
   return Number(result[0].values[0][0]);
 }
 
+function normalizeCategoryIcons(db: Database): void {
+  const allowedIcons = categoryIconOptions.map((option) => `'${option.name}'`).join(", ");
+
+  db.run(`
+    UPDATE categories
+    SET icon = '${defaultCategoryIcon}'
+    WHERE icon IS NULL OR TRIM(icon) = '' OR icon NOT IN (${allowedIcons})
+  `);
+}
+
+function getArchivedTabCategoryId(db: Database, id: string): string | null {
+  const result = db.exec(
+    `
+      SELECT category_id
+      FROM session_tabs
+      WHERE id = $id AND deleted_at IS NULL AND archived_at IS NOT NULL
+      LIMIT 1
+    `,
+    {
+      $id: id
+    }
+  );
+
+  return result.length > 0 && result[0].values.length > 0 ? String(result[0].values[0][0]) : null;
+}
+
+function getNextArchivedTabPosition(db: Database, categoryId: string): number {
+  const result = db.exec(
+    `
+      SELECT COALESCE(MAX(position), -1) + 1 AS next_position
+      FROM session_tabs
+      WHERE category_id = $categoryId AND deleted_at IS NULL AND archived_at IS NOT NULL
+    `,
+    {
+      $categoryId: categoryId
+    }
+  );
+
+  return result.length === 0 ? 0 : Number(result[0].values[0][0]);
+}
+
 function saveTab(db: Database, input: SessionTabInput, options: SaveTabOptions): SaveTabOutcome {
   assertActiveCategoryExists(db, input.categoryId);
 
-  const activeSameCategoryTab = findTabByUrl(db, input.categoryId, input.url, false);
+  const activeSameCategoryTab = findTabByUrl(db, input.categoryId, input.url, "active");
 
   if (activeSameCategoryTab) {
     return {
@@ -1159,7 +1465,24 @@ function saveTab(db: Database, input: SessionTabInput, options: SaveTabOptions):
     };
   }
 
-  const deletedSameCategoryTab = findTabByUrl(db, input.categoryId, input.url, true);
+  const archivedSameCategoryTab = findTabByUrl(db, input.categoryId, input.url, "archived");
+
+  if (archivedSameCategoryTab) {
+    restoreTabRow(db, archivedSameCategoryTab.id, input);
+
+    return {
+      status: "restored",
+      savedCount: 1,
+      restoredCount: 1,
+      skippedSameCategoryDuplicateCount: 0,
+      skippedCrossCategoryDuplicateCount: 0,
+      confirmationRequired: false,
+      duplicateCategoryNames: [],
+      savedUrls: [input.url]
+    };
+  }
+
+  const deletedSameCategoryTab = findTabByUrl(db, input.categoryId, input.url, "deleted");
 
   if (deletedSameCategoryTab) {
     restoreTabRow(db, deletedSameCategoryTab.id, input);
@@ -1220,12 +1543,23 @@ function saveTab(db: Database, input: SessionTabInput, options: SaveTabOptions):
   };
 }
 
-function findTabByUrl(db: Database, categoryId: string, url: string, deleted: boolean): SessionTab | null {
+function findTabByUrl(
+  db: Database,
+  categoryId: string,
+  url: string,
+  state: "active" | "archived" | "deleted"
+): SessionTab | null {
+  const stateClause =
+    state === "deleted"
+      ? "deleted_at IS NOT NULL"
+      : state === "archived"
+        ? "deleted_at IS NULL AND archived_at IS NOT NULL"
+        : "deleted_at IS NULL AND archived_at IS NULL";
   const result = db.exec(
     `
       SELECT id, category_id, url, title, position, saved_at
       FROM session_tabs
-      WHERE category_id = $categoryId AND url = $url AND deleted_at IS ${deleted ? "NOT NULL" : "NULL"}
+      WHERE category_id = $categoryId AND url = $url AND ${stateClause}
       ORDER BY position DESC, saved_at DESC, id DESC
       LIMIT 1
     `,
@@ -1251,7 +1585,8 @@ function restoreTabRow(db: Database, tabId: string, input: SessionTabInput): voi
       SET title = $title,
           position = $position,
           saved_at = CURRENT_TIMESTAMP,
-          deleted_at = NULL
+          deleted_at = NULL,
+          archived_at = NULL
       WHERE id = $id
     `,
     {
@@ -1271,6 +1606,7 @@ function findCrossCategoryDuplicateNames(db: Database, categoryId: string, url: 
       WHERE t.url = $url
         AND t.category_id != $categoryId
         AND t.deleted_at IS NULL
+        AND t.archived_at IS NULL
         AND c.deleted_at IS NULL
       ORDER BY c.position ASC, c.name ASC
     `,
@@ -1291,7 +1627,7 @@ function getCrossCategoryDuplicateNamesForTabs(db: Database, categoryId: string,
   const names = new Set<string>();
 
   for (const tab of tabs) {
-    if (findTabByUrl(db, categoryId, tab.url, false)) {
+    if (findTabByUrl(db, categoryId, tab.url, "active")) {
       continue;
     }
 
@@ -1407,12 +1743,12 @@ function mapSessionTabRow(row: SessionTabRow): SessionTab {
   };
 }
 
-function saveDatabase(): void {
+function saveDatabase(options: { preserveRollingBackup?: boolean } = {}): void {
   const db = getDatabase();
   const storagePaths = getPaths();
   const exported = Buffer.from(db.export());
 
-  if (fs.existsSync(storagePaths.databasePath)) {
+  if (!options.preserveRollingBackup && fs.existsSync(storagePaths.databasePath)) {
     fs.copyFileSync(storagePaths.databasePath, storagePaths.backupPath);
   }
 
@@ -1427,6 +1763,7 @@ function mapCategoryRow(row: CategoryRow): SessionCategory {
     id: row.id,
     name: row.name,
     description: row.description,
+    icon: normalizeCategoryIcon(row.icon),
     tabCount,
     lastSavedLabel: row.last_saved_at ? "Saved" : "Not saved yet",
     status: tabCount > 0 ? "ready" : "empty"

@@ -129,6 +129,31 @@ h1 {
   gap: 4px;
 }
 
+.headerUpdateAction {
+  display: inline-grid;
+  grid-template-columns: 16px auto;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #c7a35c;
+  border-radius: 7px;
+  background: #f0e4c7;
+  color: #5f4317;
+  cursor: pointer;
+  padding: 5px 7px;
+  text-align: left;
+}
+
+.headerUpdateAction span {
+  font-size: 0.7rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.headerUpdateAction svg {
+  width: 15px;
+  height: 15px;
+}
+
 .quickActions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -179,6 +204,112 @@ h1 {
   min-height: 0;
 }
 
+.categoryManagementPanel {
+  display: grid;
+  align-content: start;
+  min-height: 0;
+  gap: 12px;
+  overflow-y: auto;
+  padding-right: 2px;
+  scrollbar-width: thin;
+}
+
+.managedCategoryForm {
+  border-bottom: 1px solid #d7d0c2;
+  padding-bottom: 12px;
+}
+
+.categoryManagementHeading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  color: #27312d;
+  font-size: 0.78rem;
+}
+
+.categoryManagementHeading span {
+  color: #6d726c;
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.categoryIconPicker {
+  min-width: 0;
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+
+.categoryIconPicker legend {
+  margin-bottom: 5px;
+  padding: 0;
+  color: #5c625d;
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.categoryIconOptions {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.categoryIconOption {
+  display: grid;
+  min-width: 0;
+  height: 32px;
+  place-items: center;
+  border: 1px solid #c9c0b2;
+  border-radius: 7px;
+  background: #fffaf0;
+  color: #4f5852;
+  cursor: pointer;
+}
+
+.categoryIconOption svg {
+  width: 16px;
+  height: 16px;
+}
+
+.categoryIconOption-selected {
+  border-color: #789282;
+  background: #e7efe5;
+  color: #2e493d;
+  box-shadow: inset 0 0 0 1px rgba(69, 103, 83, 0.18);
+}
+
+.categoryManagementActions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+}
+
+.compactCategoryAction,
+.removeCategoryAction {
+  min-height: 38px;
+}
+
+.removeCategoryAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid #d0b6ad;
+  border-radius: 8px;
+  background: #fffaf0;
+  color: #70352d;
+  cursor: pointer;
+  padding: 0 10px;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.removeCategoryAction svg {
+  width: 16px;
+  height: 16px;
+}
+
 .recoveryList p {
   color: #5c625d;
   font-size: 0.84rem;
@@ -200,7 +331,7 @@ h1 {
 
 .modeSwitch {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 6px;
 }
 
@@ -262,7 +393,8 @@ h1 {
 }
 
 .extensionPanel,
-.safetyPanel {
+.safetyPanel,
+.displayPanel {
   display: grid;
   align-content: start;
   gap: 7px;
@@ -369,6 +501,174 @@ h1 {
   scrollbar-width: thin;
 }
 
+.archivedTabItem {
+  display: grid;
+  gap: 3px;
+  border: 1px solid #d7d0c2;
+  border-radius: 8px;
+  background: rgba(255, 250, 240, 0.76);
+  padding: 8px;
+  min-width: 0;
+}
+
+.archivedTabItem > span,
+.archivedTabItem > small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.archivedTabItem > span {
+  color: #27312d;
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.archivedTabItem > small {
+  color: #6d726c;
+  font-size: 0.7rem;
+}
+
+.archivedTabActions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+  margin-top: 4px;
+}
+
+.archivedTabActions button {
+  min-width: 0;
+  min-height: 38px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.permanentDeleteAction {
+  border: 1px solid #c67f77;
+  background: #f8dfda;
+  color: #7c2f27;
+}
+
+.archivedTabActions svg {
+  width: 13px;
+  height: 13px;
+  margin-right: 4px;
+  vertical-align: text-bottom;
+}
+
+.displayPanel label {
+  display: grid;
+  gap: 5px;
+  color: #5c625d;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.displayPanel select {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid #c9c0b2;
+  border-radius: 8px;
+  background: #fffaf0;
+  color: #27312d;
+  padding: 0 9px;
+}
+
+.displayPanel .displayCheckbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.displayCheckbox input {
+  width: 18px;
+  height: 18px;
+}
+
+.displayPanel > small {
+  color: #6d726c;
+  font-size: 0.7rem;
+  line-height: 1.35;
+}
+
+.shell-touch {
+  grid-template-columns: minmax(300px, 360px) 1fr;
+}
+
+.shell-touch button,
+.shell-touch input,
+.shell-touch select {
+  min-height: 46px;
+}
+
+.shell-touch .modeButton {
+  min-height: 44px;
+}
+
+.shell-touch .sessionBoardTab {
+  grid-template-columns: 16px minmax(0, 1fr) 72px;
+  min-height: 50px;
+}
+
+.shell-touch .savedUrlManagerItem {
+  grid-template-columns: minmax(0, 1fr) 72px;
+}
+
+.shell-touch .sessionBoardOpenAction,
+.shell-touch .miniArchiveAction,
+.shell-touch .miniDangerAction,
+.shell-touch .iconAction {
+  width: 34px;
+  min-height: 34px;
+  height: 34px;
+}
+
+.startupRecoveryNotice {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 8px;
+  border: 1px solid #c99b55;
+  border-radius: 8px;
+  background: #fff0d2;
+  color: #70480c;
+  padding: 8px;
+  min-width: 0;
+}
+
+.startupRecoveryNotice svg {
+  width: 18px;
+  height: 18px;
+}
+
+.startupRecoveryNotice strong,
+.startupRecoveryNotice span,
+.startupRecoveryNotice small,
+.startupRecoveryNotice code {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.startupRecoveryNotice strong {
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.startupRecoveryNotice span,
+.startupRecoveryNotice small {
+  margin-top: 3px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.rollingBackupSection {
+  display: grid;
+  gap: 6px;
+}
+
 .backupListHeader {
   display: flex;
   align-items: baseline;
@@ -439,6 +739,12 @@ h1 {
   cursor: pointer;
 }
 
+.backupListActions button:disabled {
+  background: #ebe4d8;
+  color: #8a8d88;
+  cursor: not-allowed;
+}
+
 .backupListActions svg {
   width: 14px;
   height: 14px;
@@ -477,6 +783,17 @@ h1 {
   overflow-x: auto;
   padding-bottom: 2px;
   scrollbar-width: thin;
+  cursor: grab;
+  touch-action: pan-y;
+}
+
+.categoryList-dragging {
+  cursor: grabbing;
+  user-select: none;
+}
+
+.categoryList-dragging .categoryCard {
+  cursor: grabbing;
 }
 
 .categoryCard {
@@ -586,7 +903,7 @@ h2 {
 
 .sessionBoardTab {
   display: grid;
-  grid-template-columns: 16px minmax(0, 1fr) 24px;
+  grid-template-columns: 16px minmax(0, 1fr) 54px;
   gap: 6px;
   align-items: center;
   min-height: 38px;
@@ -596,6 +913,12 @@ h2 {
   color: #27312d;
   cursor: grab;
   padding: 6px 7px 6px 5px;
+}
+
+.sessionBoardTabActions,
+.savedUrlActions {
+  display: flex;
+  gap: 4px;
 }
 
 .sessionBoardTab:active {
@@ -740,7 +1063,7 @@ h2 {
 
 .savedUrlManagerItem {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 26px;
+  grid-template-columns: minmax(0, 1fr) 56px;
   gap: 8px;
   align-items: center;
   border: 1px solid #d7d0c2;
@@ -770,7 +1093,8 @@ h2 {
   font-weight: 700;
 }
 
-.miniDangerAction {
+.miniDangerAction,
+.miniArchiveAction {
   display: grid;
   width: 26px;
   height: 26px;
@@ -782,7 +1106,14 @@ h2 {
   cursor: pointer;
 }
 
-.miniDangerAction svg {
+.miniArchiveAction {
+  border-color: #b9c9b8;
+  background: #e7efe5;
+  color: #243d32;
+}
+
+.miniDangerAction svg,
+.miniArchiveAction svg {
   width: 14px;
   height: 14px;
 }

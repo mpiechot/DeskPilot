@@ -35,8 +35,23 @@ async function runElectronSmoke() {
 
   const tabsByCategory = new Map();
   const deletedTabsByCategory = new Map();
-  const categories = defaultCategories.map((category) => ({ ...category }));
+  const archivedTabsByCategory = new Map();
+  const categories = [
+    ...defaultCategories.map((category) => ({ ...category })),
+    ...Array.from({ length: 6 }, (_value, index) => ({
+      id: `overflow-${index + 1}`,
+      name: `Overflow ${index + 1}`,
+      description: "Horizontal category navigation fixture.",
+      icon: "folder",
+      tabCount: 0,
+      lastSavedLabel: "Not saved yet",
+      status: "empty"
+    }))
+  ];
+  const deletedCategories = [];
   let activeCategoryId = categories[0]?.id ?? "";
+  let displayPreferences = { layoutMode: "standard", displayId: null, kiosk: false };
+  let openedUpdateUrl = "";
 
   function getActiveTabs(categoryId) {
     return tabsByCategory.get(categoryId) ?? [];
@@ -69,7 +84,28 @@ async function runElectronSmoke() {
     return deletedTabsByCategory.get(categoryId) ?? [];
   }
 
+  function getArchivedTabs(categoryId) {
+    return archivedTabsByCategory.get(categoryId) ?? [];
+  }
+
   ipcMain.handle("bridge:status", () => ({ running: true, host: "127.0.0.1", port: 17383 }));
+  ipcMain.handle("updates:status", () => ({
+    status: "available",
+    currentVersion: "0.1.0",
+    availableVersion: "0.1.1",
+    releaseUrl: "https://github.com/mpiechot/DeskPilot/releases/tag/v0.1.1",
+    message: "DeskPilot 0.1.1 is available."
+  }));
+  ipcMain.handle("updates:open", () => {
+    openedUpdateUrl = "https://github.com/mpiechot/DeskPilot/releases/tag/v0.1.1";
+    return {
+      status: "available",
+      currentVersion: "0.1.0",
+      availableVersion: "0.1.1",
+      releaseUrl: openedUpdateUrl,
+      message: "DeskPilot 0.1.1 is available."
+    };
+  });
   ipcMain.handle("extension:install-info", () => ({
     extensionPath: path.join(prototypeRoot, "browser-extension"),
     manifestPath: path.join(prototypeRoot, "browser-extension", "manifest.json"),
@@ -78,10 +114,84 @@ async function runElectronSmoke() {
   }));
   ipcMain.handle("storage:info", () => ({
     dataProfile: smokeDataProfile,
+    startupRecovery: {
+      status: "recovered-from-rolling",
+      message: "DeskPilot recovered the active database from the automatic rolling backup and preserved the corrupted file.",
+      recoveredAt: "2026-07-12T12:00:00.000Z",
+      rollingBackupPath: path.join(prototypeRoot, "profiles", "development", "storage", "smoke-deskpilot.sqlite.bak"),
+      corruptDatabaseBackupPath: path.join(
+        prototypeRoot,
+        "profiles",
+        "development",
+        "storage",
+        "manual-backups",
+        "deskpilot-corrupt-startup-smoke.sqlite.corrupt"
+      )
+    },
     databasePath: smokeDataProfile.databasePath,
     rollingBackupPath: path.join(prototypeRoot, "profiles", "development", "storage", "smoke-deskpilot.sqlite.bak"),
+    rollingBackup: {
+      fileName: "smoke-deskpilot.sqlite.bak",
+      path: path.join(prototypeRoot, "profiles", "development", "storage", "smoke-deskpilot.sqlite.bak"),
+      createdAt: "2026-07-12T12:00:00.000Z",
+      sizeBytes: 4096
+    },
     manualBackupDirectory: path.join(prototypeRoot, "profiles", "development", "storage", "manual-backups"),
     manualBackups: []
+  }));
+  ipcMain.handle("display:settings", () => ({
+    preferences: displayPreferences,
+    displays: [
+      { id: "primary", label: "Display 1 (Primary)", primary: true, width: 1920, height: 1080 },
+      { id: "secondary", label: "Display 2", primary: false, width: 1280, height: 720 }
+    ]
+  }));
+  ipcMain.handle("display:update-preferences", (_event, preferences) => {
+    displayPreferences = preferences;
+    return {
+      preferences: displayPreferences,
+      displays: [
+        { id: "primary", label: "Display 1 (Primary)", primary: true, width: 1920, height: 1080 },
+        { id: "secondary", label: "Display 2", primary: false, width: 1280, height: 720 }
+      ]
+    };
+  });
+  ipcMain.handle("storage:restore-rolling-backup", () => ({
+    storageInfo: {
+      dataProfile: smokeDataProfile,
+      startupRecovery: {
+        status: "recovered-from-rolling",
+        message: "DeskPilot recovered the active database from the automatic rolling backup and preserved the corrupted file.",
+        recoveredAt: "2026-07-12T12:00:00.000Z",
+        rollingBackupPath: path.join(prototypeRoot, "profiles", "development", "storage", "smoke-deskpilot.sqlite.bak"),
+        corruptDatabaseBackupPath: path.join(
+          prototypeRoot,
+          "profiles",
+          "development",
+          "storage",
+          "manual-backups",
+          "deskpilot-corrupt-startup-smoke.sqlite.corrupt"
+        )
+      },
+      databasePath: smokeDataProfile.databasePath,
+      rollingBackupPath: path.join(prototypeRoot, "profiles", "development", "storage", "smoke-deskpilot.sqlite.bak"),
+      rollingBackup: {
+        fileName: "smoke-deskpilot.sqlite.bak",
+        path: path.join(prototypeRoot, "profiles", "development", "storage", "smoke-deskpilot.sqlite.bak"),
+        createdAt: "2026-07-12T12:00:00.000Z",
+        sizeBytes: 4096
+      },
+      manualBackupDirectory: path.join(prototypeRoot, "profiles", "development", "storage", "manual-backups"),
+      manualBackups: []
+    },
+    categories,
+    deletedCategories: [],
+    selectedCategoryId: activeCategoryId,
+    tabs: getActiveTabs(activeCategoryId),
+    deletedTabs: getDeletedTabs(activeCategoryId),
+    archivedTabs: getArchivedTabs(activeCategoryId),
+    restoredFrom: "smoke-deskpilot.sqlite.bak",
+    safetyBackupFileName: "deskpilot-pre-restore-smoke.sqlite"
   }));
   ipcMain.handle("categories:list", () => categories);
   ipcMain.handle("categories:active", () => activeCategoryId);
@@ -92,9 +202,60 @@ async function runElectronSmoke() {
 
     return activeCategoryId;
   });
-  ipcMain.handle("categories:deleted", () => []);
+  ipcMain.handle("categories:create", (_event, input) => {
+    categories.push({
+      id: `smoke-category-${Date.now()}`,
+      name: input.name,
+      description: input.description,
+      icon: input.icon || "folder",
+      tabCount: 0,
+      lastSavedLabel: "Not saved yet",
+      status: "empty"
+    });
+    return categories;
+  });
+  ipcMain.handle("categories:update", (_event, id, input) => {
+    const index = categories.findIndex((category) => category.id === id);
+
+    if (index >= 0) {
+      categories[index] = {
+        ...categories[index],
+        name: input.name,
+        description: input.description,
+        icon: input.icon || categories[index].icon || "folder"
+      };
+    }
+
+    return categories;
+  });
+  ipcMain.handle("categories:delete", (_event, id) => {
+    const index = categories.findIndex((category) => category.id === id);
+
+    if (index >= 0) {
+      deletedCategories.push(categories[index]);
+      categories.splice(index, 1);
+    }
+
+    if (!categories.some((category) => category.id === activeCategoryId)) {
+      activeCategoryId = categories[0]?.id ?? "";
+    }
+
+    return categories;
+  });
+  ipcMain.handle("categories:deleted", () => deletedCategories);
+  ipcMain.handle("categories:restore", (_event, id) => {
+    const index = deletedCategories.findIndex((category) => category.id === id);
+
+    if (index >= 0) {
+      categories.push(deletedCategories[index]);
+      deletedCategories.splice(index, 1);
+    }
+
+    return { categories, deletedCategories };
+  });
   ipcMain.handle("tabs:list", (_event, categoryId) => getActiveTabs(categoryId));
   ipcMain.handle("tabs:deleted", (_event, categoryId) => getDeletedTabs(categoryId));
+  ipcMain.handle("tabs:archived", (_event, categoryId) => getArchivedTabs(categoryId));
   ipcMain.handle("tabs:add", (_event, input) => {
     const tab = {
       id: `smoke-tab-${input.categoryId}-${Date.now()}`,
@@ -125,6 +286,50 @@ async function runElectronSmoke() {
           tabs.filter((tab) => tab.id !== id)
         );
         deletedTabsByCategory.set(categoryId, [...getDeletedTabs(categoryId), deletedTab]);
+        break;
+      }
+    }
+
+    return {
+      categories,
+      tabs: affectedCategoryId ? getActiveTabs(affectedCategoryId) : []
+    };
+  });
+  ipcMain.handle("tabs:archive", (_event, id) => {
+    let affectedCategoryId = "";
+
+    for (const [categoryId, tabs] of tabsByCategory.entries()) {
+      const archivedTab = tabs.find((tab) => tab.id === id);
+
+      if (archivedTab) {
+        affectedCategoryId = categoryId;
+        setActiveTabs(
+          categoryId,
+          tabs.filter((tab) => tab.id !== id)
+        );
+        archivedTabsByCategory.set(categoryId, [...getArchivedTabs(categoryId), archivedTab]);
+        break;
+      }
+    }
+
+    return {
+      categories,
+      tabs: affectedCategoryId ? getActiveTabs(affectedCategoryId) : []
+    };
+  });
+  ipcMain.handle("tabs:unarchive", (_event, id) => {
+    let affectedCategoryId = "";
+
+    for (const [categoryId, tabs] of archivedTabsByCategory.entries()) {
+      const restoredTab = tabs.find((tab) => tab.id === id);
+
+      if (restoredTab) {
+        affectedCategoryId = categoryId;
+        archivedTabsByCategory.set(
+          categoryId,
+          tabs.filter((tab) => tab.id !== id)
+        );
+        setActiveTabs(categoryId, [...getActiveTabs(categoryId), restoredTab]);
         break;
       }
     }
@@ -205,6 +410,98 @@ async function runElectronSmoke() {
 
   await window.loadFile(path.join(prototypeRoot, "dist", "index.html"));
   console.log("Prototype renderer smoke: renderer loaded");
+
+  const updateNoticeResult = await window.webContents.executeJavaScript(`
+    new Promise((resolve) => {
+      const inspect = (attempts = 120) => {
+        const action = document.querySelector(".headerUpdateAction");
+
+        if (action) {
+          const visibleText = action.textContent;
+          action.click();
+          setTimeout(
+            () => resolve({ visibleText, actionText: action.textContent, ariaLabel: action.getAttribute("aria-label") }),
+            100
+          );
+          return;
+        }
+
+        if (attempts === 0) {
+          resolve(null);
+          return;
+        }
+
+        setTimeout(() => inspect(attempts - 1), 25);
+      };
+
+      inspect();
+    })
+  `);
+
+  const categoryDragStart = await window.webContents.executeJavaScript(`
+    new Promise((resolve) => {
+      const inspect = (attempts = 120) => {
+        const list = document.querySelector(".categoryList");
+
+        if (list && list.scrollWidth > list.clientWidth) {
+          const rect = list.getBoundingClientRect();
+          list.scrollLeft = 0;
+          resolve({
+            x: Math.round(rect.right - 36),
+            y: Math.round(rect.top + 24),
+            targetX: Math.round(rect.left + 36),
+            initialScrollLeft: list.scrollLeft
+          });
+          return;
+        }
+
+        if (attempts === 0) {
+          resolve(null);
+          return;
+        }
+
+        setTimeout(() => inspect(attempts - 1), 25);
+      };
+
+      inspect();
+    })
+  `);
+
+  if (categoryDragStart) {
+    window.webContents.sendInputEvent({
+      type: "mouseMove",
+      x: categoryDragStart.x,
+      y: categoryDragStart.y,
+      movementX: 0,
+      movementY: 0
+    });
+    window.webContents.sendInputEvent({
+      type: "mouseDown",
+      x: categoryDragStart.x,
+      y: categoryDragStart.y,
+      button: "left",
+      clickCount: 1
+    });
+    window.webContents.sendInputEvent({
+      type: "mouseMove",
+      x: categoryDragStart.targetX,
+      y: categoryDragStart.y,
+      movementX: categoryDragStart.targetX - categoryDragStart.x,
+      movementY: 0
+    });
+    window.webContents.sendInputEvent({
+      type: "mouseUp",
+      x: categoryDragStart.targetX,
+      y: categoryDragStart.y,
+      button: "left",
+      clickCount: 1
+    });
+  }
+
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  const categoryDragWorked = Boolean(categoryDragStart) && (await window.webContents.executeJavaScript(`
+    document.querySelector(".categoryList").scrollLeft > 100
+  `));
 
   setTimeout(() => {
     setActiveTabs("entertainment", [
@@ -301,6 +598,11 @@ async function runElectronSmoke() {
       };
       const longWorkTitle =
         "WorkTitleWithEnoughDetailToOverflowTheRecoveryPanelWhenRenderedInsideTheNarrowControlRail";
+      let archiveRoundTripWorked = false;
+      let removeConfirmationWorked = false;
+      let displaySettingsWorked = false;
+      let sessionBoardOpenWorked = false;
+      let permanentDeleteConfirmationWorked = false;
 
       const getControlRailOverflow = () => {
         const controlRail = document.querySelector(".controlRail");
@@ -341,7 +643,7 @@ async function runElectronSmoke() {
         };
       };
 
-      waitForText("Development data profile is active.", () => {
+      waitForText("Database recovered from the automatic rolling backup. Review Safety for details.", () => {
         waitForCondition(
           () =>
             getCategoryCardText("Entertainment").includes("1 tabs") &&
@@ -357,9 +659,40 @@ async function runElectronSmoke() {
         saveButton.click();
 
         waitForText("Saved URL to Work.", () => {
-          document.querySelector('.savedUrlManagerItem button[title="Remove URL"]').click();
+          document.querySelector('.savedUrlManagerItem button[title="Archive URL"]').click();
 
-          waitForText("Saved URL removed safely.", () => {
+          waitForText("Saved URL archived.", () => {
+            findButtonByText("Archive").click();
+
+            waitForText(longWorkTitle, () => {
+              const archivedItem = Array.from(document.querySelectorAll(".archivedTabItem")).find((item) =>
+                item.textContent.includes(longWorkTitle)
+              );
+              window.confirm = (message) => {
+                permanentDeleteConfirmationWorked = message.includes(longWorkTitle) && message.includes("cannot be recovered");
+                return false;
+              };
+              archivedItem.querySelector(".permanentDeleteAction").click();
+
+              waitForText("Permanent deletion canceled.", () => {
+              archivedItem.querySelector(".restoreAction").click();
+
+              waitForText("Archived URL returned to the active Session.", () => {
+                archiveRoundTripWorked = true;
+                findButtonByText("Session").click();
+
+                waitForText("Target: Work", () => {
+                  window.confirm = (message) => {
+                    removeConfirmationWorked = message.includes(longWorkTitle) && message.includes("Recovery");
+                    return false;
+                  };
+                  document.querySelector('.savedUrlManagerItem button[title="Remove URL"]').click();
+
+                  waitForText("Removal canceled.", () => {
+                    window.confirm = () => true;
+                    document.querySelector('.savedUrlManagerItem button[title="Remove URL"]').click();
+
+                    waitForText("Saved URL removed safely.", () => {
             clickCategory("Projects");
 
             waitForText("Target: Projects", () => {
@@ -421,11 +754,38 @@ async function runElectronSmoke() {
                   getBoardTab("Work", "Work second").querySelector('button[title="Open saved tab"]').click();
 
                   waitForText("Opened Work second.", () => {
+                  sessionBoardOpenWorked = true;
+                  findButtonByText("Display").click();
+
+                  waitForText("Apply Display Settings", () => {
+                  const layoutSelect = document.querySelector('select[aria-label="DeskPilot layout"]');
+                  const displaySelect = document.querySelector('select[aria-label="DeskPilot launch display"]');
+                  const kioskCheckbox = document.querySelector('.displayCheckbox input[type="checkbox"]');
+                  layoutSelect.value = "touch";
+                  layoutSelect.dispatchEvent(new Event("change", { bubbles: true }));
+                  displaySelect.value = "secondary";
+                  displaySelect.dispatchEvent(new Event("change", { bubbles: true }));
+                  kioskCheckbox.click();
+                  findButtonByText("Apply Display Settings").click();
+
+                  waitForText("Display settings applied.", () => {
+                  displaySettingsWorked =
+                    document.querySelector(".shell").classList.contains("shell-touch") &&
+                    layoutSelect.value === "touch" &&
+                    displaySelect.value === "secondary" &&
+                    kioskCheckbox.checked;
                   findButtonByText("Recovery").click();
 
                   waitForText("Restore " + longWorkTitle, () => {
                   const recoveryOverflow = getControlRailOverflow();
                   const workBoardTitles = getBoardTitles("Work");
+
+                  findButtonByText("Safety").click();
+                  waitForText("Automatic rolling backup", () => {
+                  window.confirm = () => true;
+                  document.querySelector('button[title="Restore automatic rolling backup"]').click();
+
+                  waitForText("Restored automatic backup. Safety backup: deskpilot-pre-restore-smoke.sqlite.", () => {
 
                 resolve({
                   hasDeskPilotApi: Boolean(window.deskPilot),
@@ -436,7 +796,11 @@ async function runElectronSmoke() {
                     workBoardTitles.includes("Work second") &&
                     workBoardTitles.includes("Project title") &&
                     workBoardTitles.indexOf("Work second") < workBoardTitles.indexOf("Project title"),
-                  sessionBoardOpenWorked: getRenderedText().includes("Opened Work second."),
+                  sessionBoardOpenWorked,
+                  archiveRoundTripWorked,
+                  removeConfirmationWorked,
+                  displaySettingsWorked,
+                  permanentDeleteConfirmationWorked,
                   workBoardTitles,
                   entertainmentCardText: getCategoryCardText("Entertainment"),
                   titleInputAcceptsText,
@@ -460,8 +824,15 @@ async function runElectronSmoke() {
                     recoveryOverflow.offenders.length === 0 &&
                     recoveryOverflow.controlRailScrollWidth <= recoveryOverflow.controlRailClientWidth + 1,
                   recoveryOverflow,
+                  rollingBackupRestoreWorked: getRenderedText().includes("Restored automatic backup."),
+                  startupRecoveryVisible: getRenderedText().includes("Recovered at startup"),
                   bodyText: getRenderedText()
                 });
+                    });
+                  });
+                  });
+                  });
+                  });
                   });
                   });
                     });
@@ -469,6 +840,11 @@ async function runElectronSmoke() {
                 });
                   }
                 );
+              });
+            });
+                  });
+                });
+              });
               });
             });
           });
@@ -479,7 +855,129 @@ async function runElectronSmoke() {
     })
   `);
 
+  const categoryManagementResult = await window.webContents.executeJavaScript(`
+    new Promise((resolve) => {
+      const findButton = (text) =>
+        Array.from(document.querySelectorAll("button")).find((button) => button.textContent.trim().includes(text));
+      const findCard = (text) =>
+        Array.from(document.querySelectorAll(".categoryCard")).find((card) => card.textContent.includes(text));
+      let stage = "open category management";
+      const setInputValue = (input, value) => {
+        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
+        const previous = input.value;
+        setter.call(input, value);
+        input._valueTracker?.setValue(previous);
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+      };
+      const waitFor = (predicate, callback, attempts = 120) => {
+        if (predicate()) {
+          callback();
+          return;
+        }
+
+        if (attempts === 0) {
+          resolve({
+            categoryRenameWorked: false,
+            categoryIconWorked: false,
+            categoryRemovalWorked: false,
+            categoryRecoveryWorked: false,
+            stage,
+            selectedName: document.querySelector('input[aria-label="Selected category name"]')?.value,
+            selectedIcon: document.querySelector('.managedCategoryForm button[aria-pressed="true"]')?.getAttribute("aria-label"),
+            renamedCardIcon: findCard("Navigation Tools")?.querySelector(".categoryIcon")?.dataset.categoryIcon,
+            bodyText: document.body.textContent
+          });
+          return;
+        }
+
+        setTimeout(() => waitFor(predicate, callback, attempts - 1), 25);
+      };
+
+      findCard("Overflow 6").click();
+      findButton("Categories").click();
+      waitFor(
+        () => document.querySelector('input[aria-label="Selected category name"]')?.value === "Overflow 6",
+        () => {
+          const nameInput = document.querySelector('input[aria-label="Selected category name"]');
+          const descriptionInput = document.querySelector('input[aria-label="Selected category description"]');
+          setInputValue(nameInput, "Navigation Tools");
+          setInputValue(descriptionInput, "Managed without resizing the window.");
+          document.querySelector('.managedCategoryForm button[aria-label="Code icon"]').click();
+          stage = "select category icon";
+          waitFor(
+            () => document.querySelector('.managedCategoryForm button[aria-label="Code icon"]')?.getAttribute("aria-pressed") === "true",
+            () => {
+              findButton("Save changes").click();
+              stage = "save renamed category and icon";
+              waitFor(
+                () => Boolean(findCard("Navigation Tools")?.querySelector('[data-category-icon="code"]')),
+                () => {
+                  const renamedCard = findCard("Navigation Tools");
+                  const categoryRenameWorked = renamedCard?.textContent.includes("Managed without resizing the window.");
+                  const categoryIconWorked = Boolean(renamedCard?.querySelector('[data-category-icon="code"]'));
+                  let confirmationMessage = "";
+                  window.confirm = (message) => {
+                    confirmationMessage = message;
+                    return true;
+                  };
+                  findButton("Remove").click();
+                  stage = "remove category";
+                  waitFor(
+                    () => !findCard("Navigation Tools"),
+                    () => {
+                      const categoryRemovalWorked =
+                        confirmationMessage.includes("Navigation Tools") && confirmationMessage.includes("Recovery");
+                      findButton("Recovery").click();
+                      stage = "show category in Recovery";
+                      waitFor(
+                        () => Boolean(findButton("Restore Navigation Tools")),
+                        () => {
+                          findButton("Restore Navigation Tools").click();
+                          stage = "restore category";
+                          waitFor(
+                            () => Boolean(findCard("Navigation Tools")?.querySelector('[data-category-icon="code"]')),
+                            () => resolve({
+                              categoryRenameWorked,
+                              categoryIconWorked,
+                              categoryRemovalWorked,
+                              categoryRecoveryWorked: true
+                            })
+                          );
+                        }
+                      );
+                    }
+                  );
+                }
+              );
+            }
+          );
+        }
+      );
+    })
+  `);
+
   assert(result.hasDeskPilotApi, "Expected packaged renderer to receive the Electron preload API");
+  assert(
+    updateNoticeResult?.visibleText.includes("v0.1.0") && updateNoticeResult?.visibleText.includes("v0.1.1"),
+    "Expected the startup update notice to show installed and available versions"
+  );
+  assert(updateNoticeResult?.ariaLabel.includes("Update now"), "Expected an explicit update action");
+  assert(
+    openedUpdateUrl === "https://github.com/mpiechot/DeskPilot/releases/tag/v0.1.1",
+    "Expected the update action to open the validated GitHub release page"
+  );
+  assert(categoryDragWorked, "Expected horizontal category drag to reveal off-screen categories without resizing");
+  if (!Object.values(categoryManagementResult).every(Boolean)) {
+    console.error(JSON.stringify(categoryManagementResult, null, 2));
+  }
+  assert(categoryManagementResult.categoryRenameWorked, "Expected Categories mode to rename the selected category");
+  assert(categoryManagementResult.categoryIconWorked, "Expected Categories mode to apply a monochrome category icon");
+  assert(
+    categoryManagementResult.categoryRemovalWorked,
+    "Expected category removal to require a Recovery-aware confirmation"
+  );
+  assert(categoryManagementResult.categoryRecoveryWorked, "Expected a removed category and its icon to be recoverable");
   if (!result.extensionRefreshUpdatedCategoryCount) {
     console.error(JSON.stringify({ entertainmentCardText: result.entertainmentCardText, bodyText: result.bodyText }, null, 2));
   }
@@ -494,6 +992,10 @@ async function runElectronSmoke() {
   }
   assert(result.sessionBoardReorderWorked, "Expected Session Board drag/drop to reorder saved tabs within a category");
   assert(result.sessionBoardOpenWorked, "Expected Session Board per-tab open control to open a saved tab");
+  assert(result.archiveRoundTripWorked, "Expected a saved URL to archive and return to the active Session");
+  assert(result.removeConfirmationWorked, "Expected removing a saved URL to require a Recovery-aware confirmation");
+  assert(result.displaySettingsWorked, "Expected touch layout, display selection and kiosk preference to apply together");
+  assert(result.permanentDeleteConfirmationWorked, "Expected permanent archive deletion to require an irreversible warning");
   assert(
     !result.bodyText.includes("Saving URLs requires the Electron app."),
     "Expected Save URL not to report a missing Electron app"
@@ -507,6 +1009,8 @@ async function runElectronSmoke() {
     console.error(JSON.stringify(result.recoveryOverflow, null, 2));
   }
   assert(result.recoveryStaysInsideRail, "Expected Recovery mode controls not to overlap the category list");
+  assert(result.rollingBackupRestoreWorked, "Expected Safety mode to restore the automatic rolling backup");
+  assert(result.startupRecoveryVisible, "Expected Safety mode to report automatic startup recovery");
   if (!result.bodyText.includes("Saved URL to Projects.") && !result.projectTitleSavedBeforeRecovery) {
     console.error(result.bodyText);
   }

@@ -2,12 +2,23 @@ import { contextBridge, ipcRenderer } from "electron";
 import type { DeskPilotApi } from "../shared/deskPilotApi.js" with { "resolution-mode": "import" };
 
 const deskPilot: DeskPilotApi = {
-  version: "0.1.0",
+  version: "0.1.1",
+  updateStatus: () => ipcRenderer.invoke("updates:status"),
+  openAvailableUpdate: () => ipcRenderer.invoke("updates:open"),
+  onUpdateStatusChanged: (callback) => {
+    const listener = (_event: Electron.IpcRendererEvent, status: Parameters<typeof callback>[0]) => callback(status);
+
+    ipcRenderer.on("updates:changed", listener);
+    return () => ipcRenderer.removeListener("updates:changed", listener);
+  },
   bridgeStatus: () => ipcRenderer.invoke("bridge:status"),
   extensionInstallInfo: () => ipcRenderer.invoke("extension:install-info"),
   storageInfo: () => ipcRenderer.invoke("storage:info"),
+  displaySettings: () => ipcRenderer.invoke("display:settings"),
+  updateDisplayPreferences: (preferences) => ipcRenderer.invoke("display:update-preferences", preferences),
   createStorageBackup: () => ipcRenderer.invoke("storage:create-backup"),
   restoreStorageBackup: (fileName) => ipcRenderer.invoke("storage:restore-backup", fileName),
+  restoreRollingStorageBackup: () => ipcRenderer.invoke("storage:restore-rolling-backup"),
   exportStorageBackup: (fileName) => ipcRenderer.invoke("storage:export-backup", fileName),
   importStorageBackup: () => ipcRenderer.invoke("storage:import-backup"),
   listCategories: () => ipcRenderer.invoke("categories:list"),
@@ -20,11 +31,15 @@ const deskPilot: DeskPilotApi = {
   restoreCategory: (id) => ipcRenderer.invoke("categories:restore", id),
   listTabs: (categoryId) => ipcRenderer.invoke("tabs:list", categoryId),
   addTab: (input) => ipcRenderer.invoke("tabs:add", input),
+  archiveTab: (id) => ipcRenderer.invoke("tabs:archive", id),
   deleteTab: (id) => ipcRenderer.invoke("tabs:delete", id),
+  deleteArchivedTabPermanently: (id) => ipcRenderer.invoke("tabs:delete-archived-permanently", id),
   moveTab: (id, input) => ipcRenderer.invoke("tabs:move", id, input),
   openTab: (id) => ipcRenderer.invoke("tabs:open", id),
   listDeletedTabs: (categoryId) => ipcRenderer.invoke("tabs:deleted", categoryId),
+  listArchivedTabs: (categoryId) => ipcRenderer.invoke("tabs:archived", categoryId),
   restoreTab: (id) => ipcRenderer.invoke("tabs:restore", id),
+  unarchiveTab: (id) => ipcRenderer.invoke("tabs:unarchive", id),
   openCategory: (categoryId) => ipcRenderer.invoke("categories:open", categoryId),
   onSessionsChanged: (callback) => {
     const listener = () => callback();

@@ -596,3 +596,235 @@ Current status:
 
 Next recommended step:
 - Run final lint/audit verification, push PR #19, then use the regenerated prototype for a real productive browser-session trial and fix any quality-gate or daily-use issues before declaring 1.0 complete.
+
+### Productive extension bridge profile fix
+
+Completed:
+- Investigated a data-profile mix-up where a hidden Development instance kept the browser-extension bridge while the user expected Productive saves.
+- Split extension bridge defaults by profile: Productive keeps `127.0.0.1:17383`, Development now uses `127.0.0.1:17384`.
+- Updated the browser extension to try Productive first and fall back to Development only when Productive is not running.
+- Added storage smoke coverage so Development and Productive cannot regress to the same bridge port.
+- Appended 19 active tabs from `deskpilot-prototype/profiles/development` into the Productive database without replacing existing Productive data.
+- Created a Productive safety backup before the append migration.
+- Regenerated and verified the local prototype package.
+- Verified `npm run lint`, `npm run build`, `npm run test:storage`, `npm run test:prototype` and `npm audit`.
+
+Current status:
+- Productive contains 6 active categories, 40 active saved tabs and 3 soft-deleted tabs.
+- Development still retains its source rows; the recovery migration did not delete the Development data.
+
+Next recommended step:
+- Reload the unpacked browser extension and verify the popup reports the intended profile before saving tabs.
+
+## 2026-07-12
+
+### Persistent extension profile indicator
+
+Completed:
+- Added a dedicated profile badge to the browser-extension popup so the connected Productive or Development profile remains visible after save status messages change.
+- Gave Productive, Development and disconnected states distinct visual treatments.
+- Kept the bridge categories response covered as the source of truth for the connected data profile.
+- Added extension smoke checks that protect the persistent profile indicator from disappearing.
+
+Current status:
+- The extension popup now keeps the data destination visible throughout current-tab and current-window saves.
+
+Next recommended step:
+- Reload the unpacked extension and run a real Productive save trial while checking the persistent profile badge before each save.
+
+### Productive extension popup smoke coverage
+
+Completed:
+- Added an isolated Electron smoke app that loads the real browser-extension popup rather than checking only source strings.
+- Simulated a Productive bridge, active Work category and current browser tab through a test-only preload.
+- Verified the popup selects the active category, enables saving, posts the current tab and reports `Saved to Work.`.
+- Verified the Productive profile badge remains visible after the save status changes.
+- Added `npm run test:extension` and included it in the full prototype verification command.
+
+Current status:
+- The highest-risk Productive popup path now has an executable end-to-end smoke check without touching Productive user data.
+
+Next recommended step:
+- Reload the unpacked extension and run the remaining real Productive save trial against the local DeskPilot instance.
+
+### Automatic rolling backup restore
+
+Completed:
+- Added a real Safety-mode recovery action for the automatically maintained `deskpilot.sqlite.bak` file.
+- Exposed rolling-backup availability, timestamp and size through the shared API and Electron preload.
+- Added an explicit confirmation before restoring the automatic backup.
+- Made rolling restore read and validate its source before creating the required manual pre-restore safety snapshot, preventing the normal backup write from overwriting the restore source.
+- Refreshed categories, selected tabs, deleted data and backup status after restore.
+- Added storage coverage proving the previous database state is restored and the replaced state remains preserved as a manual safety backup.
+- Extended the packaged renderer smoke test through the real Safety UI restore control.
+
+Current status:
+- Users can now recover the previous automatically backed-up database state without locating or copying SQLite files manually.
+
+Next recommended step:
+- Add automatic startup recovery for a corrupted active database, using the same validated rolling-backup path and a visible recovery report.
+
+### Corrupted database startup recovery
+
+Completed:
+- Added automatic startup fallback when the active SQLite database cannot be opened or migrated.
+- Required the rolling backup to pass DeskPilot table validation before it can become active.
+- Preserved the unreadable active file under `manual-backups/` with a `.sqlite.corrupt` suffix before replacement.
+- Kept corrupted evidence out of the normal manual restore list while exposing its exact path in Safety mode.
+- Prevented startup recovery from copying the corrupted active file over the valid rolling backup.
+- Added a persistent footer warning and a detailed Safety-mode recovery report.
+- Added storage coverage that corrupts a real database file, restarts storage, verifies recovered Session data and verifies byte-for-byte preservation of the corrupted source.
+- Extended packaged renderer coverage for the visible startup recovery report.
+
+Current status:
+- DeskPilot can start successfully from its last valid automatic backup after active-database corruption without silently discarding the damaged source.
+
+Next recommended step:
+- Add a dedicated startup failure dialog for the case where both the active database and rolling backup are unusable, with paths and manual recovery guidance.
+
+### Native double-database startup failure dialog
+
+Completed:
+- Added a structured `StorageStartupError` when neither the active database nor the automatic rolling backup can be opened.
+- Exposed both file paths, storage directory and underlying validation errors without changing either file.
+- Added a native Electron error dialog before the normal DeskPilot window and tray are created.
+- Added `Open Storage Folder` and controlled `Quit` actions with explicit manual recovery guidance.
+- Added storage coverage proving both corrupt files remain byte-for-byte unchanged.
+- Added prompt coverage for both paths and available user actions.
+- Extended packaged-main smoke coverage for the native dialog and folder-opening path.
+
+Current status:
+- DeskPilot now handles successful startup, automatic rolling recovery and unrecoverable double-database failure as explicit user-visible states.
+
+Next recommended step:
+- Add a read-only recovery launch option that starts without mutating storage and allows exporting preserved files from inside DeskPilot.
+
+### Read-only startup recovery exports
+
+Completed:
+- Expanded the unrecoverable startup dialog into a persistent native recovery menu.
+- Added separate `Export Active Database` and `Export Rolling Backup` actions with native save destinations.
+- Kept each export byte-preserving and verified that the source remains unchanged.
+- Blocked both DeskPilot source files as export destinations so neither can be overwritten through the save dialog.
+- Kept recovery mode active after export, canceled export or storage-folder access until the user explicitly chooses `Quit`.
+- Added success and failure feedback for recovery exports without starting the normal DeskPilot window or tray.
+- Extended storage and packaged-main coverage for both export actions and explicit destinations.
+
+Current status:
+- Even when neither database is usable, the user can safely extract both files from DeskPilot before attempting manual repair or replacement.
+
+Next recommended step:
+- Add automatic creation of a compact recovery report text file alongside exported failure artifacts, containing profile, paths, timestamps and validation errors.
+
+### Explicit Productive desktop launcher
+
+Completed:
+- Added `npm run package:productive` as a dedicated build path for real Productive use.
+- Generated Productive into `dist-productive/DeskPilot Productive`, separate from the guarded Development prototype.
+- Added console-free VBS, detached CMD and foreground debug launchers whose folder names, filenames and process profile all explicitly say Productive.
+- Cleared the development-only profile guard inside every Productive launcher while keeping the existing prototype launchers forced to Development.
+- Added a Productive launcher smoke test and included both package variants in the full prototype verification flow.
+- Documented the no-console Productive start path and the need to regenerate the local package after application build changes.
+- Verified `npm run lint`, `npm run test:storage`, `npm run test:prototype` and `npm audit` with zero reported vulnerabilities.
+
+Current status:
+- Productive DeskPilot can now be started by double-clicking `dist-productive/DeskPilot Productive/start-deskpilot-productive.vbs`; a console command is no longer required for normal launches.
+
+Next recommended step:
+- Use the new launcher for the real Productive browser-session trial, then prioritize any daily-use friction found there over additional speculative recovery polish.
+
+### Post-MVP manual tab archive
+
+Completed:
+- Added a non-destructive Archived Tab state that remains separate from active Sessions and soft-deleted Recovery data.
+- Migrated existing SQLite databases in place with an optional `archived_at` column while preserving all existing rows.
+- Added storage, IPC and preload interfaces for listing, archiving and returning tabs to the active Session.
+- Excluded archived tabs from category counts, browser restore, drag-and-drop order and active duplicate checks.
+- Reactivated an archived same-category URL automatically when the user or browser extension saves it again.
+- Added archive controls to the Session Board and selected-category URL list plus a dedicated Archive view.
+- Added storage coverage and a packaged-renderer round trip through Archive and back to the active Session.
+- Verified `npm run lint`, `npm run test:storage`, `npm run test:prototype` and `npm audit` with zero reported vulnerabilities.
+
+Current status:
+- The first v0.5 Cleanup Workflow slice is usable without deleting data: active Sessions can be trimmed and archived tabs remain recoverable per Category.
+
+Next recommended step:
+- Add archive age and saved-time visibility, then use it as the foundation for stale-tab detection and review reminders.
+
+### Runtime, display and Windows distribution expansion
+
+Completed:
+- Rejected an invented time-based stale-tab threshold; no expiry or automatic time behavior was added.
+- Bundled the complete Electron runtime into the Productive launcher folder and changed every Productive launcher to use only its relative local runtime.
+- Added a Recovery-aware confirmation before soft-removing active URLs.
+- Added irreversible permanent deletion for Archived Tabs with an explicit warning and cancel path.
+- Extended recoverable window settings with Standard/Touch layout, selected display and optional kiosk preferences.
+- Added safe selected-display placement that preserves valid saved bounds and otherwise moves the window inside the selected work area.
+- Added a Display panel for applying layout, monitor and kiosk preferences together.
+- Added electron-builder NSIS configuration, an unpacked inspection build and an unsigned local installer command.
+- Added a separate signed-installer command that requires `CSC_LINK` and `CSC_KEY_PASSWORD` and fails closed without them.
+- Built `dist-installer/DeskPilot-Setup-0.1.0.exe` successfully with the bundled Node 24 runtime and verified it is currently `NotSigned`.
+- Raised the documented development/installer toolchain to Node 22.12+ and aligned Node type definitions.
+- Added smoke coverage for the standalone runtime, installer configuration, selected-display bounds, touch/kiosk preferences and both deletion warnings.
+- Verified `npm run lint`, `npm run test:storage`, `npm run test:prototype`, `npm run test:installer` and `npm audit` with zero reported vulnerabilities.
+- Rebuilt the final unsigned installer at 105,573,049 bytes and verified its Authenticode status is `NotSigned` rather than assuming build-log signing messages implied a certificate signature.
+
+Current status:
+- Standalone Productive packaging, the unsigned NSIS test installer, Touch layout, monitor selection, launch placement and optional kiosk mode are implemented.
+- A real Authenticode signature is externally blocked only by the absence of a code-signing certificate.
+- Sleep Lists remain intentionally unimplemented as a separate state because their product meaning relative to Archive has not been defined.
+
+Next recommended step:
+- Decide whether Sleep List is a renamed Archive view, a temporary state with different restore behavior, or a distinct workflow; implement only after that product distinction is explicit.
+
+## 2026-07-16
+
+### Category navigation and personalization session
+
+Completed:
+- Confirmed draft PR #20 is the single open DeskPilot working pull request and has no reported checks, reviews or unresolved review threads.
+- Created GitHub issues #21, #22 and #23 for horizontal category drag navigation, visible category management and monochrome category icons.
+- Added pointer-based horizontal panning to the category board while excluding buttons, inputs and saved-tab drag rows from the gesture.
+- Suppressed the card click generated after a completed pan and kept the native horizontal scrollbar available.
+- Added a selected-category management surface to Categories mode for renaming, description editing, icon selection and recoverable removal.
+- Expanded the removal warning with the active-tab count and an explicit Recovery explanation.
+- Added a curated monochrome icon picker that reuses the existing card colors and defaults safely to the original folder icon.
+- Persisted stable category icon identifiers in SQLite and normalized missing or unknown legacy values to the folder icon.
+- Extended storage smoke coverage for create/update, restart persistence and legacy fallback.
+- Extended packaged-renderer smoke coverage with real mouse panning plus category rename, icon change, soft removal and Recovery restoration.
+- Verified `npm run build`, `npm run lint`, `npm run test:storage`, `npm run test:prototype`, `npm run test:installer` and `npm audit`; all passed and the audit reported zero vulnerabilities.
+
+Current status:
+- Categories beyond the compact window width can be reached without resizing DeskPilot.
+- Category rename, safe removal and icon assignment are visible together in Categories mode.
+- Existing categories retain the original folder appearance until the user chooses another monochrome icon.
+
+Next recommended step:
+- Use the regenerated Productive package for a real compact-window trial and prioritize any remaining daily-use friction before expanding the cleanup workflow.
+
+### Installed-app startup update check
+
+Completed:
+- Created GitHub issue #24 for one update check at app startup and an explicit install action.
+- Scoped the mechanism to installed/packaged builds; Development and local launcher runs never contact GitHub automatically.
+- Added an idempotent update service that performs at most one request per process and compares only stable three-part semantic versions.
+- Rejected drafts, prereleases, malformed payloads and release URLs outside the public `mpiechot/DeskPilot` GitHub Release path.
+- Kept offline, rate-limit and API failures non-blocking and invisible to the local browser-session workflow.
+- Added IPC/preload update status delivery so an asynchronous startup result reaches the renderer without polling.
+- Replaced the normal header version badge with a highlighted installed-to-available version button only when a newer release exists.
+- Made the deliberate update action open the validated GitHub Release page; no automatic download, restart, install or recurring timer was added.
+- Reworked the first banner design after packaged low-height coverage showed it pushed the URL title field out of view.
+- Raised the application and installer version from 0.1.0 to 0.1.1 for the first update-aware build.
+- Added update-service smoke coverage for version comparison, one-check behavior, Development isolation and URL validation.
+- Extended packaged-renderer coverage for update visibility, version text, button action and compact-window layout safety.
+- Verified `npm run lint`, `npm run build`, `npm run test:storage`, `npm run test:prototype`, `npm run test:installer` and `npm audit`; all passed with zero reported vulnerabilities.
+- Built `dist-installer/DeskPilot-Setup-0.1.1.exe` successfully with the bundled Node 24 runtime at 105,577,991 bytes and verified its update metadata names version 0.1.1.
+- Verified the 0.1.1 installer remains explicitly `NotSigned`; the build did not create or imply an Authenticode signature.
+
+Current status:
+- Version 0.1.1 can announce future stable GitHub Releases once they are published.
+- Existing 0.1.0 installations need this one update manually because they do not contain the startup checker.
+- No GitHub Release has been created; release publication remains separately authorized work.
+
+Next recommended step:
+- Manually install the generated 0.1.1 unsigned installer, then separately decide when its public GitHub Release should be published.

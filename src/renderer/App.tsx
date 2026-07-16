@@ -1,11 +1,21 @@
 import {
   AlertTriangle,
+  Archive,
+  BookOpen,
+  Briefcase,
   CheckCircle2,
+  Clapperboard,
+  Code2,
   DatabaseBackup,
   Download,
   ExternalLink,
+  FlaskConical,
   FolderOpen,
+  Gamepad2,
+  Globe2,
   GripVertical,
+  Inbox,
+  Lightbulb,
   PanelTopOpen,
   Pencil,
   Plus,
@@ -15,23 +25,90 @@ import {
   ShieldCheck,
   Trash2,
   Upload,
+  Wrench,
+  type LucideIcon,
   X
 } from "lucide-react";
-import { type DragEvent, type FormEvent, useEffect, useState } from "react";
+import {
+  type DragEvent,
+  type FormEvent,
+  type PointerEvent as ReactPointerEvent,
+  useEffect,
+  useRef,
+  useState
+} from "react";
 import type {
+  AppUpdateStatus,
   BridgeStatus,
   CategoryInput,
   CategoryRecoveryResult,
+  DisplaySettingsInfo,
   ExtensionInstallInfo,
   SessionMutationResult,
   SessionTab,
   SessionTabInput,
   StorageExportResult,
   StorageBackupInfo,
-  StorageRestoreResult
+  StorageRestoreResult,
+  WindowPreferences
 } from "../shared/deskPilotApi";
+import {
+  categoryIconOptions,
+  defaultCategoryIcon,
+  type CategoryIconName
+} from "../shared/categoryIcons";
 import { defaultCategories, type SessionCategory } from "../shared/sessions";
 import "./styles.css";
+
+const categoryIconComponents: Record<CategoryIconName, LucideIcon> = {
+  folder: FolderOpen,
+  briefcase: Briefcase,
+  "book-open": BookOpen,
+  flask: FlaskConical,
+  clapperboard: Clapperboard,
+  gamepad: Gamepad2,
+  code: Code2,
+  inbox: Inbox,
+  globe: Globe2,
+  wrench: Wrench,
+  lightbulb: Lightbulb
+};
+
+function CategoryGlyph({ icon }: { icon: CategoryIconName }) {
+  const Icon = categoryIconComponents[icon] ?? FolderOpen;
+  return <Icon aria-hidden="true" />;
+}
+
+function CategoryIconPicker({
+  value,
+  onChange,
+  label
+}: {
+  value: CategoryIconName;
+  onChange: (icon: CategoryIconName) => void;
+  label: string;
+}) {
+  return (
+    <fieldset className="categoryIconPicker">
+      <legend>{label}</legend>
+      <div className="categoryIconOptions">
+        {categoryIconOptions.map((option) => (
+          <button
+            type="button"
+            className={value === option.name ? "categoryIconOption categoryIconOption-selected" : "categoryIconOption"}
+            key={option.name}
+            onClick={() => onChange(option.name)}
+            aria-label={`${option.label} icon`}
+            aria-pressed={value === option.name}
+            title={option.label}
+          >
+            <CategoryGlyph icon={option.name} />
+          </button>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
 
 function statusLabel(status: SessionCategory["status"]): string {
   if (status === "ready") {
@@ -71,24 +148,66 @@ function getUrlHost(value: string): string {
 function App() {
   const [categories, setCategories] = useState<SessionCategory[]>(defaultCategories);
   const [storageStatus, setStorageStatus] = useState<"loading" | "ready" | "fallback" | "error">("loading");
-  const [categoryDraft, setCategoryDraft] = useState<CategoryInput>({ name: "", description: "" });
+  const [categoryDraft, setCategoryDraft] = useState<CategoryInput>({
+    name: "",
+    description: "",
+    icon: defaultCategoryIcon
+  });
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
-  const [editDraft, setEditDraft] = useState<CategoryInput>({ name: "", description: "" });
+  const [editDraft, setEditDraft] = useState<CategoryInput>({ name: "", description: "", icon: defaultCategoryIcon });
+  const [managedCategoryDraft, setManagedCategoryDraft] = useState<CategoryInput>({
+    name: defaultCategories[0]?.name ?? "",
+    description: defaultCategories[0]?.description ?? "",
+    icon: defaultCategories[0]?.icon ?? defaultCategoryIcon
+  });
   const [selectedCategoryId, setSelectedCategoryId] = useState(defaultCategories[0]?.id ?? "");
   const [deletedCategories, setDeletedCategories] = useState<SessionCategory[]>([]);
   const [deletedTabs, setDeletedTabs] = useState<SessionTab[]>([]);
+  const [archivedTabs, setArchivedTabs] = useState<SessionTab[]>([]);
   const [tabs, setTabs] = useState<SessionTab[]>([]);
   const [boardTabsByCategory, setBoardTabsByCategory] = useState<Record<string, SessionTab[]>>({});
   const [tabDraft, setTabDraft] = useState<SessionTabInput>({ categoryId: selectedCategoryId, url: "", title: "" });
-  const [controlMode, setControlMode] = useState<"session" | "categories" | "recovery" | "extension" | "safety">("session");
+  const [controlMode, setControlMode] = useState<
+    "session" | "categories" | "archive" | "recovery" | "extension" | "display" | "safety"
+  >("session");
   const [operationMessage, setOperationMessage] = useState("");
+  const [appUpdateStatus, setAppUpdateStatus] = useState<AppUpdateStatus | null>(null);
   const [bridgeStatus, setBridgeStatus] = useState<BridgeStatus | null>(null);
   const [extensionInfo, setExtensionInfo] = useState<ExtensionInstallInfo | null>(null);
   const [storageInfo, setStorageInfo] = useState<StorageBackupInfo | null>(null);
+  const [displaySettings, setDisplaySettings] = useState<DisplaySettingsInfo | null>(null);
+  const [displayDraft, setDisplayDraft] = useState<WindowPreferences>({
+    layoutMode: "standard",
+    displayId: null,
+    kiosk: false
+  });
   const [draggedTab, setDraggedTab] = useState<{ id: string; categoryId: string } | null>(null);
+  const [isCategoryListDragging, setIsCategoryListDragging] = useState(false);
+  const categoryListDrag = useRef<{
+    pointerId: number;
+    startX: number;
+    startScrollLeft: number;
+    moved: boolean;
+  } | null>(null);
+  const suppressCategoryClick = useRef(false);
+  const selectedCategory = categories.find((category) => category.id === selectedCategoryId) ?? null;
+
+  useEffect(() => {
+    if (!selectedCategory) {
+      setManagedCategoryDraft({ name: "", description: "", icon: defaultCategoryIcon });
+      return;
+    }
+
+    setManagedCategoryDraft({
+      name: selectedCategory.name,
+      description: selectedCategory.description,
+      icon: selectedCategory.icon
+    });
+  }, [selectedCategory]);
 
   useEffect(() => {
     let isMounted = true;
+    let unsubscribeFromUpdates: () => void = () => undefined;
 
     if (!window.deskPilot) {
       setStorageStatus("fallback");
@@ -96,6 +215,21 @@ function App() {
         isMounted = false;
       };
     }
+
+    unsubscribeFromUpdates = window.deskPilot.onUpdateStatusChanged((status: AppUpdateStatus) => {
+      if (isMounted) {
+        setAppUpdateStatus(status);
+      }
+    });
+
+    window.deskPilot
+      .updateStatus()
+      .then((status: AppUpdateStatus) => {
+        if (isMounted) {
+          setAppUpdateStatus(status);
+        }
+      })
+      .catch(() => undefined);
 
     window.deskPilot
       .bridgeStatus()
@@ -120,6 +254,16 @@ function App() {
       .then((info: StorageBackupInfo) => {
         if (isMounted) {
           setStorageInfo(info);
+        }
+      })
+      .catch(() => undefined);
+
+    window.deskPilot
+      .displaySettings()
+      .then((info: DisplaySettingsInfo) => {
+        if (isMounted) {
+          setDisplaySettings(info);
+          setDisplayDraft(info.preferences);
         }
       })
       .catch(() => undefined);
@@ -157,6 +301,7 @@ function App() {
 
     return () => {
       isMounted = false;
+      unsubscribeFromUpdates();
     };
   }, []);
 
@@ -165,6 +310,8 @@ function App() {
 
     if (!window.deskPilot || !selectedCategoryId) {
       setTabs([]);
+      setDeletedTabs([]);
+      setArchivedTabs([]);
       return;
     }
 
@@ -176,6 +323,11 @@ function App() {
     window.deskPilot
       .listDeletedTabs(selectedCategoryId)
       .then((storedTabs: SessionTab[]) => setDeletedTabs(storedTabs))
+      .catch(() => undefined);
+
+    window.deskPilot
+      .listArchivedTabs(selectedCategoryId)
+      .then((storedTabs: SessionTab[]) => setArchivedTabs(storedTabs))
       .catch(() => undefined);
   }, [selectedCategoryId]);
 
@@ -230,10 +382,11 @@ function App() {
       const currentCategoryId = selectedCategoryId;
       const tabsPromise = currentCategoryId ? window.deskPilot?.listTabs(currentCategoryId) : Promise.resolve([]);
       const deletedTabsPromise = currentCategoryId ? window.deskPilot?.listDeletedTabs(currentCategoryId) : Promise.resolve([]);
+      const archivedTabsPromise = currentCategoryId ? window.deskPilot?.listArchivedTabs(currentCategoryId) : Promise.resolve([]);
 
-      Promise.all([window.deskPilot?.listCategories(), tabsPromise, deletedTabsPromise])
-        .then(([nextCategories, nextTabs, nextDeletedTabs]) => {
-          if (!isMounted || !nextCategories || !nextTabs || !nextDeletedTabs) {
+      Promise.all([window.deskPilot?.listCategories(), tabsPromise, deletedTabsPromise, archivedTabsPromise])
+        .then(([nextCategories, nextTabs, nextDeletedTabs, nextArchivedTabs]) => {
+          if (!isMounted || !nextCategories || !nextTabs || !nextDeletedTabs || !nextArchivedTabs) {
             return;
           }
 
@@ -247,6 +400,7 @@ function App() {
           });
           setTabs(nextTabs);
           setDeletedTabs(nextDeletedTabs);
+          setArchivedTabs(nextArchivedTabs);
           setStorageStatus("ready");
         })
         .catch(() => {
@@ -265,9 +419,13 @@ function App() {
   const isStorageWritable = storageStatus === "ready" && Boolean(window.deskPilot);
   const latestManualBackup = storageInfo?.manualBackups[0] ?? null;
   const activeDataProfile = storageInfo?.dataProfile ?? null;
-  const storageReadyMessage = activeDataProfile
-    ? `${activeDataProfile.label} data profile is active.`
-    : "Local SQLite storage is active.";
+  const startupRecovery = storageInfo?.startupRecovery ?? null;
+  const storageReadyMessage =
+    startupRecovery?.status === "recovered-from-rolling"
+      ? "Database recovered from the automatic rolling backup. Review Safety for details."
+      : activeDataProfile
+        ? `${activeDataProfile.label} data profile is active.`
+        : "Local SQLite storage is active.";
   const storageMessage = operationMessage
     ? operationMessage
     : storageStatus === "ready"
@@ -315,6 +473,18 @@ function App() {
       .catch(() => undefined);
   }
 
+  function refreshArchivedTabs(): void {
+    if (!window.deskPilot || !selectedCategoryId) {
+      setArchivedTabs([]);
+      return;
+    }
+
+    window.deskPilot
+      .listArchivedTabs(selectedCategoryId)
+      .then((storedTabs: SessionTab[]) => setArchivedTabs(storedTabs))
+      .catch(() => undefined);
+  }
+
   function updateRecoveryResult(result: CategoryRecoveryResult): void {
     updateCategories(result.categories);
     setDeletedCategories(result.deletedCategories);
@@ -327,6 +497,7 @@ function App() {
     setSelectedCategoryId(result.selectedCategoryId);
     setTabs(result.tabs);
     setDeletedTabs(result.deletedTabs);
+    setArchivedTabs(result.archivedTabs);
     setStorageStatus("ready");
   }
 
@@ -345,6 +516,65 @@ function App() {
 
   function getBoardTabs(categoryId: string): SessionTab[] {
     return boardTabsByCategory[categoryId] ?? [];
+  }
+
+  function handleCategoryListPointerDown(event: ReactPointerEvent<HTMLElement>): void {
+    const target = event.target instanceof Element ? event.target : null;
+    const interactiveTarget = target?.closest("button, input, textarea, select, a, [draggable='true']");
+
+    if (event.button !== 0 || interactiveTarget || event.currentTarget.scrollWidth <= event.currentTarget.clientWidth) {
+      return;
+    }
+
+    categoryListDrag.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startScrollLeft: event.currentTarget.scrollLeft,
+      moved: false
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function handleCategoryListPointerMove(event: ReactPointerEvent<HTMLElement>): void {
+    const drag = categoryListDrag.current;
+
+    if (!drag || drag.pointerId !== event.pointerId) {
+      return;
+    }
+
+    const distance = event.clientX - drag.startX;
+
+    if (!drag.moved && Math.abs(distance) >= 5) {
+      drag.moved = true;
+      setIsCategoryListDragging(true);
+    }
+
+    if (drag.moved) {
+      event.preventDefault();
+      event.currentTarget.scrollLeft = drag.startScrollLeft - distance;
+    }
+  }
+
+  function finishCategoryListDrag(event: ReactPointerEvent<HTMLElement>): void {
+    const drag = categoryListDrag.current;
+
+    if (!drag || drag.pointerId !== event.pointerId) {
+      return;
+    }
+
+    suppressCategoryClick.current = drag.moved;
+    categoryListDrag.current = null;
+    setIsCategoryListDragging(false);
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+
+    if (drag.moved) {
+      window.setTimeout(() => {
+        suppressCategoryClick.current = false;
+      }, 0);
+    }
   }
 
   function handleBoardDragStart(event: DragEvent<HTMLElement>, tab: SessionTab): void {
@@ -475,6 +705,19 @@ function App() {
       .catch(() => setOperationMessage("Could not open saved URLs."));
   }
 
+  function handleOpenAvailableUpdate(): void {
+    if (!window.deskPilot || appUpdateStatus?.status !== "available") {
+      return;
+    }
+
+    window.deskPilot
+      .openAvailableUpdate()
+      .then((status: AppUpdateStatus) => {
+        setAppUpdateStatus(status);
+      })
+      .catch(() => setOperationMessage("Could not open the DeskPilot update page."));
+  }
+
   function handleCreateStorageBackup(): void {
     if (!window.deskPilot) {
       setOperationMessage("Backups require the Electron app.");
@@ -507,6 +750,30 @@ function App() {
         setOperationMessage(`Restored backup. Safety backup: ${result.safetyBackupFileName}.`);
       })
       .catch(() => setOperationMessage("Could not restore backup. Existing data was left untouched."));
+  }
+
+  function handleRestoreRollingBackup(): void {
+    if (!window.deskPilot) {
+      setOperationMessage("Restoring backups requires the Electron app.");
+      return;
+    }
+
+    if (!storageInfo?.rollingBackup) {
+      setOperationMessage("No automatic rolling backup is available yet.");
+      return;
+    }
+
+    if (!window.confirm("Restore the latest automatic rolling backup? DeskPilot will preserve the current data in a safety backup first.")) {
+      return;
+    }
+
+    window.deskPilot
+      .restoreRollingStorageBackup()
+      .then((result: StorageRestoreResult) => {
+        applyStorageRestoreResult(result);
+        setOperationMessage(`Restored automatic backup. Safety backup: ${result.safetyBackupFileName}.`);
+      })
+      .catch(() => setOperationMessage("Could not restore automatic backup. Existing data was left untouched."));
   }
 
   function handleExportStorageBackup(fileName?: string): void {
@@ -553,20 +820,99 @@ function App() {
       .catch(() => setOperationMessage("Could not import backup. Existing data was left untouched."));
   }
 
-  function removeTab(id: string): void {
+  function removeTab(tab: SessionTab): void {
     if (!isStorageWritable) {
       setOperationMessage("Removing URLs requires the Electron app.");
       return;
     }
 
+    if (!window.confirm(`Remove "${tab.title}" from the active Session? It will remain available in Recovery.`)) {
+      setOperationMessage("Removal canceled.");
+      return;
+    }
+
     window.deskPilot
-      ?.deleteTab(id)
+      ?.deleteTab(tab.id)
       .then((result: SessionMutationResult) => {
         updateSessionResult(result);
         refreshDeletedTabs();
         setOperationMessage("Saved URL removed safely.");
       })
       .catch(handleStorageError);
+  }
+
+  function archiveSavedTab(id: string, categoryId = selectedCategoryId): void {
+    if (!isStorageWritable) {
+      setOperationMessage("Archiving URLs requires the Electron app.");
+      return;
+    }
+
+    window.deskPilot
+      ?.archiveTab(id)
+      .then((result: SessionMutationResult) => {
+        updateCategories(result.categories);
+
+        if (categoryId === selectedCategoryId) {
+          setTabs(result.tabs);
+          refreshArchivedTabs();
+        }
+
+        setOperationMessage("Saved URL archived.");
+      })
+      .catch(handleStorageError);
+  }
+
+  function restoreArchivedTab(id: string): void {
+    if (!isStorageWritable) {
+      setOperationMessage("Archive restore requires the Electron app.");
+      return;
+    }
+
+    window.deskPilot
+      ?.unarchiveTab(id)
+      .then((result: SessionMutationResult) => {
+        updateSessionResult(result);
+        refreshArchivedTabs();
+        setOperationMessage("Archived URL returned to the active Session.");
+      })
+      .catch(handleStorageError);
+  }
+
+  function permanentlyDeleteArchivedTab(tab: SessionTab): void {
+    if (!isStorageWritable) {
+      setOperationMessage("Permanent deletion requires the Electron app.");
+      return;
+    }
+
+    if (!window.confirm(`Permanently delete "${tab.title}"? This cannot be recovered.`)) {
+      setOperationMessage("Permanent deletion canceled.");
+      return;
+    }
+
+    window.deskPilot
+      ?.deleteArchivedTabPermanently(tab.id)
+      .then((result: SessionMutationResult) => {
+        updateSessionResult(result);
+        refreshArchivedTabs();
+        setOperationMessage("Archived URL permanently deleted.");
+      })
+      .catch(handleStorageError);
+  }
+
+  function handleSaveDisplayPreferences(): void {
+    if (!window.deskPilot) {
+      setOperationMessage("Display settings require the Electron app.");
+      return;
+    }
+
+    window.deskPilot
+      .updateDisplayPreferences(displayDraft)
+      .then((info: DisplaySettingsInfo) => {
+        setDisplaySettings(info);
+        setDisplayDraft(info.preferences);
+        setOperationMessage("Display settings applied.");
+      })
+      .catch(() => setOperationMessage("Could not apply display settings."));
   }
 
   function restoreDeletedTab(id: string): void {
@@ -602,7 +948,7 @@ function App() {
       ?.createCategory(categoryDraft)
       .then((nextCategories: SessionCategory[]) => {
         updateCategories(nextCategories);
-        setCategoryDraft({ name: "", description: "" });
+        setCategoryDraft({ name: "", description: "", icon: defaultCategoryIcon });
         setOperationMessage("Category added.");
       })
       .catch(handleStorageError);
@@ -610,13 +956,13 @@ function App() {
 
   function startEditingCategory(category: SessionCategory): void {
     setEditingCategoryId(category.id);
-    setEditDraft({ name: category.name, description: category.description });
+    setEditDraft({ name: category.name, description: category.description, icon: category.icon });
     setOperationMessage("");
   }
 
   function cancelEditingCategory(): void {
     setEditingCategoryId(null);
-    setEditDraft({ name: "", description: "" });
+    setEditDraft({ name: "", description: "", icon: defaultCategoryIcon });
   }
 
   function saveCategoryEdit(id: string): void {
@@ -640,10 +986,38 @@ function App() {
       .catch(handleStorageError);
   }
 
+  function saveManagedCategory(event: FormEvent<HTMLFormElement>): void {
+    event.preventDefault();
+
+    if (!selectedCategory || !managedCategoryDraft.name.trim()) {
+      setOperationMessage("Category name cannot be empty.");
+      return;
+    }
+
+    if (!isStorageWritable) {
+      setOperationMessage("Category changes require the Electron app.");
+      return;
+    }
+
+    window.deskPilot
+      ?.updateCategory(selectedCategory.id, managedCategoryDraft)
+      .then((nextCategories: SessionCategory[]) => {
+        updateCategories(nextCategories);
+        setOperationMessage("Category updated.");
+      })
+      .catch(handleStorageError);
+  }
+
   function removeCategory(id: string): void {
     const category = categories.find((item) => item.id === id);
 
-    if (!category || !window.confirm(`Remove "${category.name}" from active categories?`)) {
+    if (
+      !category ||
+      !window.confirm(
+        `Remove "${category.name}" and hide its ${category.tabCount} active tab${category.tabCount === 1 ? "" : "s"}? ` +
+          "The category and its saved tabs remain available in Recovery."
+      )
+    ) {
       return;
     }
 
@@ -683,7 +1057,7 @@ function App() {
   }
 
   return (
-    <main className="shell">
+    <main className={displaySettings?.preferences.layoutMode === "touch" ? "shell shell-touch" : "shell"}>
       <aside className="controlRail" aria-label="DeskPilot controls">
         <header className="appHeader">
           <div>
@@ -691,7 +1065,21 @@ function App() {
             <h1>Browser Sessions</h1>
           </div>
           <div className="headerMeta">
-            <div className="version">v{window.deskPilot?.version ?? "0.1.0"}</div>
+            {appUpdateStatus?.status === "available" ? (
+              <button
+                type="button"
+                className="headerUpdateAction"
+                onClick={handleOpenAvailableUpdate}
+                aria-label={`Update available: version ${appUpdateStatus.availableVersion}. Update now.`}
+              >
+                <Download aria-hidden="true" />
+                <span>
+                  Update v{appUpdateStatus.currentVersion} → v{appUpdateStatus.availableVersion}
+                </span>
+              </button>
+            ) : (
+              <div className="version">v{window.deskPilot?.version ?? "0.1.1"}</div>
+            )}
             <div
               className={
                 activeDataProfile?.id === "productive" ? "profileBadge profileBadge-productive" : "profileBadge"
@@ -738,6 +1126,13 @@ function App() {
           </button>
           <button
             type="button"
+            className={controlMode === "archive" ? "modeButton modeButton-active" : "modeButton"}
+            onClick={() => setControlMode("archive")}
+          >
+            Archive
+          </button>
+          <button
+            type="button"
             className={controlMode === "extension" ? "modeButton modeButton-active" : "modeButton"}
             onClick={() => setControlMode("extension")}
           >
@@ -749,6 +1144,13 @@ function App() {
             onClick={() => setControlMode("safety")}
           >
             Safety
+          </button>
+          <button
+            type="button"
+            className={controlMode === "display" ? "modeButton modeButton-active" : "modeButton"}
+            onClick={() => setControlMode("display")}
+          >
+            Display
           </button>
         </div>
 
@@ -785,9 +1187,19 @@ function App() {
                         <span>{tab.title}</span>
                         <small>{getUrlHost(tab.url)}</small>
                       </div>
-                      <button type="button" className="miniDangerAction" onClick={() => removeTab(tab.id)} title="Remove URL">
-                        <X aria-hidden="true" />
-                      </button>
+                      <div className="savedUrlActions">
+                        <button
+                          type="button"
+                          className="miniArchiveAction"
+                          onClick={() => archiveSavedTab(tab.id)}
+                          title="Archive URL"
+                        >
+                          <Archive aria-hidden="true" />
+                        </button>
+                        <button type="button" className="miniDangerAction" onClick={() => removeTab(tab)} title="Remove URL">
+                          <X aria-hidden="true" />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -795,28 +1207,104 @@ function App() {
             </section>
           </section>
         ) : controlMode === "categories" ? (
-          <form className="categoryForm" onSubmit={handleCreateCategory}>
-            <input
-              aria-label="Category name"
-              maxLength={40}
-              onChange={(event) => setCategoryDraft({ ...categoryDraft, name: event.target.value })}
-              placeholder="New category"
-              type="text"
-              value={categoryDraft.name}
-            />
-            <input
-              aria-label="Category description"
-              maxLength={140}
-              onChange={(event) => setCategoryDraft({ ...categoryDraft, description: event.target.value })}
-              placeholder="Short description"
-              type="text"
-              value={categoryDraft.description}
-            />
-            <button type="submit" className="addCategoryAction">
-              <Plus aria-hidden="true" />
-              Add Category
-            </button>
-          </form>
+          <section className="categoryManagementPanel" aria-label="Category management">
+            {selectedCategory ? (
+              <form className="categoryForm managedCategoryForm" onSubmit={saveManagedCategory}>
+                <div className="categoryManagementHeading">
+                  <strong>Selected category</strong>
+                  <span>{selectedCategory.tabCount} active tabs</span>
+                </div>
+                <input
+                  aria-label="Selected category name"
+                  maxLength={40}
+                  onChange={(event) => setManagedCategoryDraft({ ...managedCategoryDraft, name: event.target.value })}
+                  type="text"
+                  value={managedCategoryDraft.name}
+                />
+                <input
+                  aria-label="Selected category description"
+                  maxLength={140}
+                  onChange={(event) =>
+                    setManagedCategoryDraft({ ...managedCategoryDraft, description: event.target.value })
+                  }
+                  type="text"
+                  value={managedCategoryDraft.description}
+                />
+                <CategoryIconPicker
+                  label="Category icon"
+                  value={managedCategoryDraft.icon ?? defaultCategoryIcon}
+                  onChange={(icon) => setManagedCategoryDraft({ ...managedCategoryDraft, icon })}
+                />
+                <div className="categoryManagementActions">
+                  <button type="submit" className="addCategoryAction compactCategoryAction">
+                    <Save aria-hidden="true" />
+                    Save changes
+                  </button>
+                  <button
+                    type="button"
+                    className="removeCategoryAction"
+                    onClick={() => removeCategory(selectedCategory.id)}
+                  >
+                    <Trash2 aria-hidden="true" />
+                    Remove
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <span className="emptyRecoveryText">Create a category to start.</span>
+            )}
+            <form className="categoryForm newCategoryForm" onSubmit={handleCreateCategory}>
+              <div className="categoryManagementHeading">
+                <strong>New category</strong>
+              </div>
+              <input
+                aria-label="Category name"
+                maxLength={40}
+                onChange={(event) => setCategoryDraft({ ...categoryDraft, name: event.target.value })}
+                placeholder="New category"
+                type="text"
+                value={categoryDraft.name}
+              />
+              <input
+                aria-label="Category description"
+                maxLength={140}
+                onChange={(event) => setCategoryDraft({ ...categoryDraft, description: event.target.value })}
+                placeholder="Short description"
+                type="text"
+                value={categoryDraft.description}
+              />
+              <CategoryIconPicker
+                label="Category icon"
+                value={categoryDraft.icon ?? defaultCategoryIcon}
+                onChange={(icon) => setCategoryDraft({ ...categoryDraft, icon })}
+              />
+              <button type="submit" className="addCategoryAction compactCategoryAction">
+                <Plus aria-hidden="true" />
+                Add Category
+              </button>
+            </form>
+          </section>
+        ) : controlMode === "archive" ? (
+          <section className="recoveryList" aria-label={`Archived URLs in ${selectedCategoryName()}`}>
+            <p>Archived URLs in {selectedCategoryName()}</p>
+            {archivedTabs.length === 0 ? <span className="emptyRecoveryText">None</span> : null}
+            {archivedTabs.map((tab) => (
+              <div className="archivedTabItem" key={tab.id}>
+                <span>{tab.title}</span>
+                <small>{getUrlHost(tab.url)}</small>
+                <div className="archivedTabActions">
+                  <button type="button" className="restoreAction" onClick={() => restoreArchivedTab(tab.id)}>
+                    <RotateCcw aria-hidden="true" />
+                    Return to Session
+                  </button>
+                  <button type="button" className="permanentDeleteAction" onClick={() => permanentlyDeleteArchivedTab(tab)}>
+                    <Trash2 aria-hidden="true" />
+                    Delete Permanently
+                  </button>
+                </div>
+              </div>
+            ))}
+          </section>
         ) : controlMode === "recovery" ? (
           <section className="recoveryList" aria-label="Recover categories">
             <p>Removed categories</p>
@@ -843,6 +1331,49 @@ function App() {
                 Restore {tab.title}
               </button>
             ))}
+          </section>
+        ) : controlMode === "display" ? (
+          <section className="displayPanel" aria-label="Display settings">
+            <label>
+              Layout
+              <select
+                aria-label="DeskPilot layout"
+                value={displayDraft.layoutMode}
+                onChange={(event) =>
+                  setDisplayDraft({ ...displayDraft, layoutMode: event.target.value as WindowPreferences["layoutMode"] })
+                }
+              >
+                <option value="standard">Standard</option>
+                <option value="touch">Touch</option>
+              </select>
+            </label>
+            <label>
+              Launch display
+              <select
+                aria-label="DeskPilot launch display"
+                value={displayDraft.displayId ?? ""}
+                onChange={(event) => setDisplayDraft({ ...displayDraft, displayId: event.target.value || null })}
+              >
+                <option value="">Current / system default</option>
+                {displaySettings?.displays.map((display) => (
+                  <option value={display.id} key={display.id}>
+                    {display.label} · {display.width}×{display.height}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="displayCheckbox">
+              <input
+                type="checkbox"
+                checked={displayDraft.kiosk}
+                onChange={(event) => setDisplayDraft({ ...displayDraft, kiosk: event.target.checked })}
+              />
+              Kiosk-like fullscreen mode
+            </label>
+            <small>Kiosk mode can always be left by quitting DeskPilot from the tray menu.</small>
+            <button type="button" className="addCategoryAction" onClick={handleSaveDisplayPreferences}>
+              Apply Display Settings
+            </button>
           </section>
         ) : controlMode === "extension" ? (
           <section className="extensionPanel" aria-label="Browser extension">
@@ -884,6 +1415,18 @@ function App() {
               <span>{activeDataProfile?.description ?? "Profile status unavailable."}</span>
               <small>{activeDataProfile?.cutover.message ?? "Cutover status unavailable."}</small>
             </div>
+            {startupRecovery?.status === "recovered-from-rolling" ? (
+              <div className="startupRecoveryNotice" role="status">
+                <AlertTriangle aria-hidden="true" />
+                <div>
+                  <strong>Recovered at startup</strong>
+                  <span>{startupRecovery.message}</span>
+                  <small>
+                    Preserved corrupted file: <code>{startupRecovery.corruptDatabaseBackupPath}</code>
+                  </small>
+                </div>
+              </div>
+            ) : null}
             <div className="backupActionGrid">
               <button type="button" className="backupAction" onClick={handleCreateStorageBackup}>
                 <DatabaseBackup aria-hidden="true" />
@@ -905,6 +1448,32 @@ function App() {
             <div className="backupPathBox">
               <strong>Manual backups</strong>
               <code>{storageInfo?.manualBackupDirectory ?? "No backup directory yet"}</code>
+            </div>
+            <div className="rollingBackupSection">
+              <div className="backupListHeader">
+                <p>Automatic rolling backup</p>
+                <span>{storageInfo?.rollingBackup ? "Ready" : "Pending"}</span>
+              </div>
+              <div className="backupListItem">
+                <div className="backupListItemText">
+                  <span title={storageInfo?.rollingBackup?.path}>{storageInfo?.rollingBackup?.fileName ?? "Not created yet"}</span>
+                  <small>
+                    {storageInfo?.rollingBackup
+                      ? `${formatBackupSize(storageInfo.rollingBackup.sizeBytes)} - ${formatBackupTime(storageInfo.rollingBackup.createdAt)}`
+                      : "DeskPilot creates this after the first database update."}
+                  </small>
+                </div>
+                <div className="backupListActions">
+                  <button
+                    type="button"
+                    onClick={handleRestoreRollingBackup}
+                    title="Restore automatic rolling backup"
+                    disabled={!storageInfo?.rollingBackup}
+                  >
+                    <RotateCcw aria-hidden="true" />
+                  </button>
+                </div>
+              </div>
             </div>
             <div className="backupList">
               <div className="backupListHeader">
@@ -940,7 +1509,22 @@ function App() {
         </footer>
       </aside>
 
-      <section className="categoryList" aria-label="Session categories">
+      <section
+        className={isCategoryListDragging ? "categoryList categoryList-dragging" : "categoryList"}
+        aria-label="Session categories. Drag horizontally to browse."
+        title="Drag horizontally to browse categories"
+        onClickCapture={(event) => {
+          if (suppressCategoryClick.current) {
+            event.preventDefault();
+            event.stopPropagation();
+            suppressCategoryClick.current = false;
+          }
+        }}
+        onPointerCancel={finishCategoryListDrag}
+        onPointerDown={handleCategoryListPointerDown}
+        onPointerMove={handleCategoryListPointerMove}
+        onPointerUp={finishCategoryListDrag}
+      >
         {categories.map((category) => {
           const boardTabs = getBoardTabs(category.id);
 
@@ -951,8 +1535,8 @@ function App() {
             key={category.id}
             onClick={() => setSelectedCategoryId(category.id)}
           >
-            <div className="categoryIcon">
-              <FolderOpen aria-hidden="true" />
+            <div className="categoryIcon" data-category-icon={category.icon}>
+              <CategoryGlyph icon={category.icon} />
             </div>
             <div className="categoryBody">
               {editingCategoryId === category.id ? (
@@ -969,6 +1553,11 @@ function App() {
                     maxLength={140}
                     onChange={(event) => setEditDraft({ ...editDraft, description: event.target.value })}
                     value={editDraft.description}
+                  />
+                  <CategoryIconPicker
+                    label="Category icon"
+                    value={editDraft.icon ?? defaultCategoryIcon}
+                    onChange={(icon) => setEditDraft({ ...editDraft, icon })}
                   />
                   <div className="cardActions">
                     <button
@@ -1040,18 +1629,32 @@ function App() {
                           <span>{tab.title}</span>
                           <small>{getUrlHost(tab.url)}</small>
                         </div>
-                        <button
-                          type="button"
-                          className="sessionBoardOpenAction"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            handleOpenTab(tab);
-                          }}
-                          title="Open saved tab"
-                          aria-label={`Open ${tab.title}`}
-                        >
-                          <ExternalLink aria-hidden="true" />
-                        </button>
+                        <div className="sessionBoardTabActions">
+                          <button
+                            type="button"
+                            className="sessionBoardOpenAction"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              archiveSavedTab(tab.id, category.id);
+                            }}
+                            title="Archive saved tab"
+                            aria-label={`Archive ${tab.title}`}
+                          >
+                            <Archive aria-hidden="true" />
+                          </button>
+                          <button
+                            type="button"
+                            className="sessionBoardOpenAction"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              handleOpenTab(tab);
+                            }}
+                            title="Open saved tab"
+                            aria-label={`Open ${tab.title}`}
+                          >
+                            <ExternalLink aria-hidden="true" />
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>

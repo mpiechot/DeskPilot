@@ -6,7 +6,7 @@ Goal:
 Make DeskPilot safe and useful as the user's real local browser-session system while development continues separately.
 
 Status:
-Started. The planned Productive MVP implementation slices are now on the working PR branch. The next step is real productive trial, quality-gate feedback and any stabilization that falls out of that trial before calling 1.0 complete.
+Started. The planned Productive MVP implementation slices are now on the working PR branch. Daily Trial Hardening now includes an automated Productive extension-popup save check; the next step remains a real productive trial, quality-gate feedback and any stabilization that falls out of that trial before calling 1.0 complete.
 
 Expected features:
 1. Hard separation between Productive and Development data profiles - done.
@@ -59,13 +59,20 @@ In progress. Default categories now load from local SQLite storage.
 
 Expected features:
 - SQLite storage - initial pass done
-- categories - create/read/update/soft-delete done, default set includes Entertainment
+- categories - create/read/update/soft-delete done, with a visible selected-category management surface
+- category navigation - horizontal drag-to-scroll done for compact windows
+- category icons - persisted monochrome built-in icon picker done, with folder fallback for existing data
 - category recovery - initial pass done
 - saved URLs - manual save/open/list/soft-delete done
 - URL recovery - initial pass done
 - create/edit/delete categories - initial pass done with soft-delete
 - open category URLs in browser - initial pass done
 - open saved category as a new browser window instead of reusing an existing browser window - initial pass done with Chrome/Edge launcher
+
+Recent tracking issues:
+- #21 horizontal category drag navigation - done
+- #22 visible category rename and safe removal - done
+- #23 persisted monochrome category icon picker - done
 
 ## v0.3 - Browser Extension
 
@@ -93,23 +100,27 @@ Goal:
 Make session restore reliable.
 
 Status:
-Started. The app can create, restore, export and import SQLite backup snapshots from Safety mode.
+Started. The app can create, restore, export and import SQLite backup snapshots from Safety mode, including safe restore of the latest automatic rolling backup.
 
 Expected features:
 - backups - initial manual snapshot and pre-restore/pre-import safety backup pass done
+- automatic rolling backup restore - done with validation and a pre-restore safety snapshot
 - export/import - initial local file-dialog pass done
 - restore history - manual snapshot list started
 - no silent data loss
-- recovery after app crash
+- recovery after app crash - automatic rolling recovery plus read-only double-failure export workflow done
 
 ## v0.5 - Cleanup Workflow
 
 Goal:
 Prevent categories from becoming huge tab graveyards.
 
+Status:
+Started. Manual per-category archiving is available from the Session Board and selected-category URL list, with a dedicated Archive view for returning tabs to the active Session.
+
 Expected features:
 - sleep lists per category
-- manual archive
+- manual archive - initial per-category archive and restore flow done
 - stale-tab detection
 - review reminders
 - deletion only after warning
@@ -119,12 +130,15 @@ Expected features:
 Goal:
 Make DeskPilot pleasant on a small touch display.
 
+Status:
+Started. Standard/Touch layout, persisted monitor selection, launch-on-selected-display, optional kiosk-like fullscreen and horizontal category drag navigation are implemented.
+
 Expected features:
 - touch-sized buttons
-- configurable layout
-- monitor selection
-- launch on selected display
-- kiosk-like mode if useful
+- configurable layout - Standard and Touch modes done
+- monitor selection - done
+- launch on selected display - done with safe work-area placement
+- kiosk-like mode if useful - optional persisted mode done
 
 ## v0.7 - Prototype Packaging
 
@@ -132,10 +146,18 @@ Goal:
 Make DeskPilot easy to launch for local trial use.
 
 Status:
-Started. `npm run package:prototype` creates a local prototype folder with a double-click launcher.
+Started. Separate generated folders now provide a guarded Development prototype launcher and an explicitly named Productive double-click launcher.
 
 Expected features:
 - local prototype folder - initial pass done
 - double-click launcher - initial pass done
-- signed installer
-- standalone runtime bundle
+- explicit Productive no-console launcher - done
+- signed installer - signing workflow ready; certificate still required for a real signature
+- standalone runtime bundle - Productive package now includes Electron runtime
+- unsigned NSIS test installer - done
+- installed-app startup update check - done with one stable GitHub Release request and an explicit installer-page button
+- recurring/background update polling - intentionally not implemented
+- automatic update download/restart - intentionally not implemented while installers remain unsigned
+
+Recent tracking issue:
+- #24 one-time installed-app startup update check and explicit update action - done

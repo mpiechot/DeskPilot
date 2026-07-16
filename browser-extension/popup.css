@@ -17,6 +17,42 @@ h1 {
   font-size: 1.1rem;
 }
 
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.profileBadge {
+  border: 1px solid #c9c0b2;
+  border-radius: 999px;
+  background: #ebe4d8;
+  color: #5c625d;
+  padding: 3px 7px;
+  font-size: 0.68rem;
+  font-weight: 850;
+  line-height: 1;
+}
+
+.profileBadge[data-profile="productive"] {
+  border-color: #73a17c;
+  background: #dfeee0;
+  color: #1f5b2d;
+}
+
+.profileBadge[data-profile="development"] {
+  border-color: #c99b55;
+  background: #fff0d2;
+  color: #70480c;
+}
+
+.profileBadge[data-profile="unavailable"] {
+  border-color: #c67f77;
+  background: #f8dfda;
+  color: #7c2f27;
+}
+
 h2 {
   margin: 0;
   color: #27312d;

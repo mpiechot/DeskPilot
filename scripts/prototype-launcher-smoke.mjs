@@ -8,6 +8,7 @@ const silentLauncherPath = path.join(prototypeRoot, "start-deskpilot.vbs");
 const packagePath = path.join(prototypeRoot, "package.json");
 const rendererIndexPath = path.join(prototypeRoot, "dist", "index.html");
 const mainProcessPath = path.join(prototypeRoot, "dist-electron", "main", "index.js");
+const storageStartupFailurePath = path.join(prototypeRoot, "dist-electron", "main", "storageStartupFailure.js");
 
 assert(fs.existsSync(launcherPath), "Expected compatibility launcher to exist");
 assert(fs.existsSync(debugLauncherPath), "Expected debug launcher to exist");
@@ -15,6 +16,7 @@ assert(fs.existsSync(silentLauncherPath), "Expected no-console launcher to exist
 assert(fs.existsSync(packagePath), "Expected prototype package.json to exist");
 assert(fs.existsSync(rendererIndexPath), "Expected packaged renderer index to exist");
 assert(fs.existsSync(mainProcessPath), "Expected packaged Electron main process to exist");
+assert(fs.existsSync(storageStartupFailurePath), "Expected packaged storage startup recovery module to exist");
 
 const launcher = fs.readFileSync(launcherPath, "utf-8");
 const debugLauncher = fs.readFileSync(debugLauncherPath, "utf-8");
@@ -22,6 +24,7 @@ const silentLauncher = fs.readFileSync(silentLauncherPath, "utf-8");
 const prototypePackage = JSON.parse(fs.readFileSync(packagePath, "utf-8"));
 const rendererIndex = fs.readFileSync(rendererIndexPath, "utf-8");
 const mainProcess = fs.readFileSync(mainProcessPath, "utf-8");
+const storageStartupFailure = fs.readFileSync(storageStartupFailurePath, "utf-8");
 const categoryOpenHandlerStart = mainProcess.indexOf('ipcMain.handle("categories:open"');
 const categoryOpenHandlerEnd = mainProcess.indexOf("createMainWindow()", categoryOpenHandlerStart);
 const categoryOpenHandler =
@@ -59,6 +62,20 @@ assert(!rendererIndex.includes('src="/assets/'), "Expected renderer script path 
 assert(!rendererIndex.includes('href="/assets/'), "Expected renderer stylesheet path to be relative for Electron loadFile");
 assert(mainProcess.includes("requestSingleInstanceLock"), "Expected DeskPilot to prevent parallel app instances");
 assert(mainProcess.includes("second-instance"), "Expected DeskPilot to focus the existing window when started twice");
+assert(mainProcess.includes("isStorageInitialized"), "Expected DeskPilot not to create its normal window before storage initializes");
+assert(
+  mainProcess.includes("createStorageStartupFailurePrompt") && mainProcess.includes("dialog.showMessageBox"),
+  "Expected packaged DeskPilot to show a native storage startup failure dialog"
+);
+assert(mainProcess.includes("shell.openPath"), "Expected storage startup failure dialog to open the affected storage folder");
+assert(
+  storageStartupFailure.includes("Export Active Database") && storageStartupFailure.includes("Export Rolling Backup"),
+  "Expected packaged startup recovery menu to expose both read-only exports"
+);
+assert(
+  storageStartupFailure.includes("exportStorageRecoveryFile") && mainProcess.includes("showSaveDialog"),
+  "Expected packaged startup recovery exports to use explicit save destinations"
+);
 assert(
   categoryOpenHandler.includes("openUrlsInNewBrowserWindow"),
   "Expected Open Selected to restore saved URLs in a new browser window"

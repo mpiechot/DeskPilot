@@ -4,7 +4,7 @@ This document explains how to run the current DeskPilot development build.
 
 ## Current State
 
-DeskPilot is currently an early desktop skeleton.
+DeskPilot is a functional Productive MVP moving into post-MVP cleanup workflows.
 
 Working today:
 - Electron desktop shell
@@ -14,6 +14,8 @@ Working today:
 - visible active profile and Productive cutover status in the control panel
 - one-time Productive cutover from the old prototype database when Productive storage is first created
 - create, rename and remove active categories
+- drag the horizontal category board to reach categories beyond the current window width
+- assign each category a persisted monochrome icon from the built-in icon picker
 - restore removed categories
 - save http/https URLs into a selected category
 - open saved URLs from the selected category together in saved order in a new Chrome/Edge browser window
@@ -22,30 +24,42 @@ Working today:
 - reorder saved tabs within a category with mouse-first drag and drop
 - open individual saved tabs from the Session Board
 - view and remove saved URLs in the selected category
+- archive saved URLs without deleting them and return them to the active Session later
 - restore removed URLs from the selected category
 - remember the desktop window size and position between app runs
 - close the window to the system tray and quit explicitly from the tray menu
 - relaunch DeskPilot while it is already running without opening a second app instance
 - create manual local SQLite backup snapshots from Safety mode
 - restore, export and import local SQLite backup snapshots from Safety mode
+- inspect and restore the latest automatic rolling backup from Safety mode
+- automatically recover a corrupted active database from a valid rolling backup at startup
+- show a native read-only recovery menu when neither active nor rolling database can be opened
 - wide, low touch-display layout
 - visible browser-bridge status in the control panel
 - guided Extension mode with bridge, manifest and load-unpacked status
 - unpacked browser-extension prototype for saving the current browser window
 - one-click current-tab save from the browser extension into the active DeskPilot category
+- persistent Productive/Development profile badge in the browser-extension popup
+- profile-aware extension bridge ports so Productive saves are not silently intercepted by a hidden Development instance
 - automatic Electron UI refresh after browser-extension saves
 - append or replace mode when capturing a browser window
 - local prototype package command for a double-click launcher
+- explicit Productive no-console launcher package
+- standalone Productive package with its own Electron runtime
+- configurable Standard/Touch layout, launch monitor and optional kiosk-like fullscreen mode
+- guarded NSIS installer and certificate-driven signing commands
+- one latest-stable-release check when an installed build starts, with an explicit GitHub installer-page action
 - local development, lint and build commands
 
 Not implemented yet:
 - packaged extension installation flow
-- signed installer or portable standalone executable
+- Authenticode-signed installer artifact; signing infrastructure exists but requires a certificate
+- a separately defined Sleep List state beyond the implemented Archive workflow
 
 ## Requirements
 
 - Windows
-- Node.js 20.16 or newer in the Node 20 line
+- Node.js 22.12 or newer for development and installer packaging
 - npm
 
 ## Install
@@ -92,8 +106,12 @@ Before ending a work session, run:
 npm run lint
 npm run build
 npm run test:storage
+npm run test:extension
+npm run test:update
 npm audit
 ```
+
+`npm run test:extension` opens the real unpacked-extension popup in an isolated Electron smoke app. It supplies a fake Productive bridge and browser tab, saves that tab through the popup, and verifies that the Productive badge remains visible after the save result replaces the general status message.
 
 ## Package A Local Prototype
 
@@ -119,6 +137,68 @@ dist-prototype/DeskPilot/start-deskpilot.vbs
 
 This is not a signed installer. It is a local development prototype that uses the repository's installed Electron runtime. The generated launchers force the Development data profile and refuse the Productive profile.
 
+## Package The Productive Launcher
+
+To create the console-free launcher for real browser-session data:
+
+```bash
+npm run package:productive
+```
+
+The output lives at:
+
+```text
+dist-productive/DeskPilot Productive/
+```
+
+Start Productive use by double-clicking:
+
+```text
+dist-productive/DeskPilot Productive/start-deskpilot-productive.vbs
+```
+
+The filename, folder name and generated package all identify this as Productive. The launcher explicitly selects the Productive data profile and clears the development-only guard. If startup fails, run `start-deskpilot-productive-debug.cmd` in the same folder to keep a diagnostic console open.
+
+This local package is not an installer, but it contains its own Electron runtime and can be moved outside the repository. Re-run `npm run package:productive` after application builds change so the packaged renderer and runtime stay current.
+
+## Build The Windows Installer
+
+Create an unsigned local NSIS test installer with:
+
+```bash
+npm run package:windows
+```
+
+The installer and unpacked inspection build are written to `dist-installer/`. Installed builds default deliberately to the Productive data profile.
+
+For a digitally signed installer, provide a Windows code-signing certificate and password through `CSC_LINK` and `CSC_KEY_PASSWORD`, then run:
+
+```bash
+npm run package:windows:signed
+```
+
+The signed command fails closed when either value is missing. A successful unsigned test build must never be described as digitally signed.
+
+## Installed-App Update Check
+
+Only an installed/packaged DeskPilot build checks for an update. It makes one request during each process start to the public DeskPilot GitHub repository's latest stable Release. There is no timer, periodic background check, automatic download, forced restart or silent installation.
+
+When a newer stable semantic version is available, the version badge in the DeskPilot header becomes a highlighted update button showing the installed and available versions. Clicking it opens the validated DeskPilot GitHub Release page in the system browser, where the newer installer can be downloaded deliberately.
+
+Development, renderer-only and generated prototype/Productive launcher runs do not perform this request automatically. Offline, rate-limit and invalid-response failures remain silent so the local browser-session workflow continues normally.
+
+The update check first ships in version 0.1.1. An existing 0.1.0 installation therefore needs one final manual installer run before future published versions can be announced inside the app. Creating or publishing the corresponding GitHub Release remains a separate release operation.
+
+## Display And Touch Settings
+
+Open `Display` in the control rail to select:
+
+- Standard or larger Touch controls
+- the monitor DeskPilot should use when its window is created
+- optional kiosk-like fullscreen mode
+
+Apply saves all three preferences atomically. Kiosk mode can still be exited by quitting DeskPilot from its tray menu.
+
 ## Data Profiles
 
 DeskPilot uses explicit local data profiles under Electron's DeskPilot user-data folder:
@@ -128,7 +208,7 @@ profiles/development/storage/
 profiles/productive/storage/
 ```
 
-Development is the default for normal development and prototype launchers. Productive must be selected deliberately with `npm run dev:electron:productive` or `DESKPILOT_DATA_PROFILE=productive`.
+Development is the default for normal development and prototype launchers. Productive must be selected deliberately with the generated `start-deskpilot-productive.vbs` launcher, `npm run dev:electron:productive` or `DESKPILOT_DATA_PROFILE=productive`.
 
 When the Productive profile is created for the first time, DeskPilot looks for the old prototype database at:
 
@@ -148,6 +228,10 @@ The expected display shape is wide and not very tall. The UI should therefore pr
 - compact status text
 - dense category tiles that remain readable at low height
 
+The Session Board can be dragged horizontally from a non-interactive part of a category card. Buttons, inputs and saved-tab drag handles keep their own behavior. The scrollbar remains available as a fallback.
+
+Open `Categories` to edit the selected category's name, description and icon or to remove it safely. Removal names the affected active-tab count and keeps the category and saved tabs available in `Recovery`.
+
 ## Browser Extension Prototype
 
 An unpacked Chrome/Edge-compatible prototype lives in `browser-extension/`.
@@ -164,13 +248,16 @@ To try it during development:
 - choose `Replace` to soft-delete existing active URLs in the selected category before saving the captured tabs
 - enable `Close saved tabs` in the popup only when the current tabs should be closed after a successful save
 
-The control panel shows whether the local browser bridge is running. The prototype bridge listens on:
+The control panel shows whether the local browser bridge is running. Productive and Development use separate bridge ports:
 
 ```text
-127.0.0.1:17383
+Productive:  127.0.0.1:17383
+Development: 127.0.0.1:17384
 ```
 
-That bridge URL is not the DeskPilot app UI. Opening it in a normal browser tab only shows a diagnostic message, while protected bridge endpoints still accept requests only from Chrome/Edge extension origins. Browser tabs without `http` or `https` URLs are skipped during window saves and are not closed by the optional close-after-save action.
+The browser extension tries Productive first and falls back to Development only when Productive is not running. These bridge URLs are not the DeskPilot app UI. Opening one in a normal browser tab only shows a diagnostic message, while protected bridge endpoints still accept requests only from Chrome/Edge extension origins. Browser tabs without `http` or `https` URLs are skipped during window saves and are not closed by the optional close-after-save action.
+
+The popup keeps the connected `Productive` or `Development` profile visible beside the DeskPilot heading. This badge remains visible while save results and errors change in the separate status line, so check it before saving real browser tabs.
 
 The extension uses DeskPilot's active desktop category as the default `Save to` value. Changing the popup dropdown only affects that browser action; it does not change the desktop app selection. The bridge exposes explicit save routes for the current tab and current window, and the older `/capture` route is intentionally not kept as a compatibility alias.
 
@@ -189,10 +276,17 @@ Moving or reordering a saved tab updates the existing saved-tab row instead of d
 
 The Safety mode can create manual SQLite snapshots in the active profile storage folder under `manual-backups/`. DeskPilot also keeps a rolling `deskpilot.sqlite.bak` file beside the active database after writes.
 
+When the rolling backup exists, Safety mode shows its timestamp and size and offers an explicit restore action. Restoring it first reads and validates the backup, then creates a manual `pre-restore` safety snapshot of the current database before replacing active data. This preserves the state being replaced and avoids overwriting the rolling source while preparing the restore.
+
+If the active database cannot be opened during startup, DeskPilot validates the rolling backup and recovers from it automatically. The unreadable source file is copied into `manual-backups/` with a `.sqlite.corrupt` suffix before active storage is replaced. It is deliberately excluded from the manual restore list, but its full path remains visible in Safety mode. DeskPilot also keeps the valid rolling backup intact during recovery.
+
+If both the active database and rolling backup are unusable, DeskPilot leaves both files untouched and shows a native startup recovery menu. It includes both paths and underlying errors, can export either source byte-for-byte to a chosen destination, can open the affected storage folder and exits only when `Quit` is selected. Export destinations are forbidden from overwriting either DeskPilot source file. Preserve those files before moving them aside or importing a known valid DeskPilot backup.
+
 Restoring or importing a backup creates a new safety backup before replacing the active database. Invalid imports are rejected before the active database is touched.
 
 Removing a category currently performs a soft delete. The category is hidden from the active list, but the row remains in the local database for recovery-oriented future work.
 Removed categories can be restored from the Recovery mode in the control panel.
+Category icons are stored as stable built-in identifiers. Existing or unknown legacy values fall back to the original folder icon without changing the monochrome card style.
 Removing a saved URL also performs a soft delete. Removed URLs for the selected category can be restored from Recovery mode.
 
 Future storage work must preserve these rules:

@@ -4,10 +4,13 @@ import os from "node:os";
 import path from "node:path";
 import initSqlJs from "sql.js";
 import {
+  StorageStartupError,
+  archiveTab,
   createCategory,
   createManualBackup,
   addTab,
   deleteCategory,
+  deleteArchivedTabPermanently,
   deleteTab,
   exportStorageBackup,
   getActiveCategoryId,
@@ -15,6 +18,7 @@ import {
   getStorageInfo,
   importStorageBackup,
   initializeStorage,
+  listArchivedTabs,
   listDeletedCategories,
   listDeletedTabs,
   listCategories,
@@ -22,17 +26,27 @@ import {
   moveTab,
   restoreCategory,
   restoreManualBackup,
+  restoreRollingBackup,
   restoreTab,
   saveCapturedTab,
   saveCapturedTabs,
   setActiveCategoryId,
+  unarchiveTab,
   updateCategory
 } from "../dist-electron/main/storage.js";
-import { loadWindowBounds, saveWindowBounds } from "../dist-electron/main/windowSettings.js";
 import {
+  loadWindowBounds,
+  loadWindowPreferences,
+  resolveWindowBounds,
+  saveWindowBounds,
+  saveWindowPreferences
+} from "../dist-electron/main/windowSettings.js";
+import {
+  developmentBridgePort,
   extensionClientHeaderName,
   extensionClientHeaderValue,
   getBrowserBridgeStatus,
+  productiveBridgePort,
   startBrowserBridge
 } from "../dist-electron/main/browserBridge.js";
 import {
@@ -40,6 +54,10 @@ import {
   getSupportedBrowserExecutableCandidates
 } from "../dist-electron/main/browserLauncher.js";
 import { getExtensionInstallInfo } from "../dist-electron/main/extensionInstall.js";
+import {
+  createStorageStartupFailurePrompt,
+  exportStorageRecoveryFile
+} from "../dist-electron/main/storageStartupFailure.js";
 
 process.env.DESKPILOT_DATA_PROFILE = "development";
 process.env.DESKPILOT_DISALLOW_PRODUCTIVE_PROFILE = "1";
@@ -57,18 +75,25 @@ assert(getActiveCategoryId() === "projects", "Expected active category selection
 
 let categories = createCategory({
   name: "Writing",
-  description: "Drafting, notes and publishing."
+  description: "Drafting, notes and publishing.",
+  icon: "book-open"
 });
 const writing = categories.find((category) => category.name === "Writing");
 assert(writing, "Expected Writing category after create");
+assert(writing.icon === "book-open", "Expected a new category to persist its selected icon");
 
 categories = updateCategory(writing.id, {
   name: "Writing Desk",
-  description: "Drafting, notes and publishing context."
+  description: "Drafting, notes and publishing context.",
+  icon: "briefcase"
 });
 assert(
   categories.some((category) => category.name === "Writing Desk"),
   "Expected renamed Writing Desk category after update"
+);
+assert(
+  categories.some((category) => category.id === writing.id && category.icon === "briefcase"),
+  "Expected editing a category to persist its selected icon"
 );
 
 setActiveCategoryId(writing.id);
@@ -122,6 +147,51 @@ assert(result.tabs.length === 0, "Expected restored tab to be removable again");
 result = restoreTab(manualRestore.tabs[0].id);
 assert(result.tabs.length === 1, "Expected restored tab to return to active list");
 
+const archivedTabId = result.tabs[0].id;
+result = archiveTab(archivedTabId);
+assert(result.tabs.length === 0, "Expected archived tab to leave the active Session");
+assert(listArchivedTabs(recreatedWriting.id).length === 1, "Expected archived tab to remain available in its category");
+assert(listDeletedTabs(recreatedWriting.id).length === 0, "Expected archiving not to soft-delete the tab");
+assert(
+  result.categories.some((category) => category.id === recreatedWriting.id && category.tabCount === 0),
+  "Expected archived tabs not to count as active Session tabs"
+);
+result = unarchiveTab(archivedTabId);
+assert(result.tabs.length === 1, "Expected unarchived tab to return to the active Session");
+archiveTab(archivedTabId);
+const resavedArchivedTab = addTab({
+  categoryId: recreatedWriting.id,
+  url: "https://example.com/notes",
+  title: "Example Notes Reactivated From Archive"
+});
+assert(resavedArchivedTab.saveStatus === "restored", "Expected saving an archived URL to reactivate it");
+assert(listArchivedTabs(recreatedWriting.id).length === 0, "Expected reactivated URL to leave the archive");
+assert(
+  resavedArchivedTab.tabs[0].title === "Example Notes Reactivated From Archive",
+  "Expected reactivated archived URL title to update"
+);
+archiveTab(archivedTabId);
+await initializeStorage(dir, { profile: "development", disallowProductive: true });
+assert(listTabs(recreatedWriting.id).length === 0, "Expected archived tab to stay out of the active Session after restart");
+assert(listArchivedTabs(recreatedWriting.id).length === 1, "Expected archived tab to survive storage restart");
+assert(
+  listCategories().find((category) => category.id === recreatedWriting.id)?.icon === "briefcase",
+  "Expected a category icon to survive storage restart"
+);
+unarchiveTab(archivedTabId);
+const permanentDeleteTab = addTab({
+  categoryId: recreatedWriting.id,
+  url: "https://example.com/permanent-delete",
+  title: "Permanent Delete Test"
+}).tabs.find((item) => item.title === "Permanent Delete Test");
+assert(permanentDeleteTab, "Expected permanent-delete fixture tab");
+archiveTab(permanentDeleteTab.id);
+deleteArchivedTabPermanently(permanentDeleteTab.id);
+assert(
+  !listArchivedTabs(recreatedWriting.id).some((item) => item.id === permanentDeleteTab.id),
+  "Expected explicit permanent delete to remove only the archived tab"
+);
+
 const databasePath = path.join(dir, "profiles", "development", "storage", "deskpilot.sqlite");
 const backupPath = path.join(dir, "profiles", "development", "storage", "deskpilot.sqlite.bak");
 const orderCategory = createCategory({ name: "Order Test", description: "Saved tab order checks." }).find(
@@ -166,6 +236,9 @@ assertTabOrder(
 );
 
 await rewriteSqliteDatabase(databasePath, (db) => {
+  db.run("UPDATE categories SET icon = 'legacy-unknown-icon' WHERE id = $categoryId", {
+    $categoryId: recreatedWriting.id
+  });
   db.run("UPDATE session_tabs SET position = 0 WHERE category_id = $categoryId", {
     $categoryId: orderCategory.id
   });
@@ -174,6 +247,10 @@ await rewriteSqliteDatabase(databasePath, (db) => {
   db.run("UPDATE session_tabs SET saved_at = '2026-01-01T00:00:03.000Z' WHERE title = 'Order Gamma'");
 });
 await initializeStorage(dir, { profile: "development", disallowProductive: true });
+assert(
+  listCategories().find((category) => category.id === recreatedWriting.id)?.icon === "folder",
+  "Expected an unknown legacy category icon to fall back safely to folder"
+);
 assertTabOrder(
   listTabs(orderCategory.id),
   ["Order Alpha", "Order Beta", "Order Gamma"],
@@ -330,6 +407,21 @@ assert(
     loadedBounds.height === customBounds.height,
   "Expected window bounds to round-trip through settings storage"
 );
+saveWindowPreferences(dir, {
+  layoutMode: "touch",
+  displayId: "secondary",
+  kiosk: true
+});
+const loadedWindowPreferences = loadWindowPreferences(dir);
+assert(loadedWindowPreferences.layoutMode === "touch", "Expected touch layout preference to persist");
+assert(loadedWindowPreferences.displayId === "secondary", "Expected selected display to persist");
+assert(loadedWindowPreferences.kiosk, "Expected kiosk preference to persist");
+const selectedDisplayBounds = resolveWindowBounds(loadedBounds, loadedWindowPreferences, [
+  { id: "primary", workArea: { x: 0, y: 0, width: 1920, height: 1080 } },
+  { id: "secondary", workArea: { x: 1920, y: 0, width: 1280, height: 720 } }
+]);
+assert(selectedDisplayBounds.x === 1952 && selectedDisplayBounds.y === 32, "Expected window to launch on selected display");
+assert(selectedDisplayBounds.width === 1180 && selectedDisplayBounds.height === 390, "Expected selected display to preserve valid size");
 
 const restoreLaunchPlan = createBrowserWindowLaunchPlan(
   ["https://example.com/one", "https://example.com/two"],
@@ -356,6 +448,8 @@ assert(
   restoreBrowserCandidates.some((candidate) => candidate.endsWith("Edge\\Application\\msedge.exe")),
   "Expected saved category restore to support Edge"
 );
+assert(productiveBridgePort === 17383, "Expected Productive extension bridge to keep the browser-extension port");
+assert(developmentBridgePort !== productiveBridgePort, "Expected Development bridge not to share Productive's extension port");
 
 const bridgeServer = startBrowserBridge({ port: 0 });
 await new Promise((resolve) => bridgeServer.once("listening", resolve));
@@ -396,6 +490,7 @@ try {
   const categoryId = categoriesPayload.categories[0].id;
   const otherCategoryId = categoriesPayload.categories.find((category) => category.id !== categoryId).id;
   assert(categoriesPayload.activeCategoryId === getActiveCategoryId(), "Expected bridge categories to expose active category");
+  assert(categoriesPayload.dataProfile?.id === "development", "Expected bridge categories to expose the connected data profile");
 
   const currentTabResponse = await fetch(`${bridgeUrl}/tabs/current/save`, {
     method: "POST",
@@ -758,10 +853,130 @@ assert(
   "Expected Productive cutover state to remain one-time"
 );
 
+const rollingRestoreDir = fs.mkdtempSync(path.join(os.tmpdir(), "deskpilot-rolling-restore-"));
+await initializeStorage(rollingRestoreDir, { profile: "development", disallowProductive: true });
+createCategory({ name: "Rolling Baseline", description: "Must be restored from the rolling backup." });
+createCategory({ name: "Rolling Mutation", description: "Must disappear after rolling restore." });
+const rollingBackupInfo = getStorageInfo().rollingBackup;
+assert(rollingBackupInfo, "Expected storage info to expose the available rolling backup");
+assert(fs.existsSync(rollingBackupInfo.path), "Expected rolling backup file to exist");
+
+const rollingRestoreResult = restoreRollingBackup();
+assert(
+  listCategories().some((category) => category.name === "Rolling Baseline"),
+  "Expected rolling backup restore to recover the previous database state"
+);
+assert(
+  !listCategories().some((category) => category.name === "Rolling Mutation"),
+  "Expected rolling backup restore to replace the newer database state"
+);
+assert(
+  rollingRestoreResult.safetyBackupFileName.includes("pre-restore"),
+  "Expected rolling backup restore to create a pre-restore safety backup"
+);
+assert(
+  fs.existsSync(path.join(rollingRestoreDir, "profiles", "development", "storage", "manual-backups", rollingRestoreResult.safetyBackupFileName)),
+  "Expected rolling backup restore safety snapshot to remain available"
+);
+
+const startupRecoveryDir = fs.mkdtempSync(path.join(os.tmpdir(), "deskpilot-startup-recovery-"));
+await initializeStorage(startupRecoveryDir, { profile: "development", disallowProductive: true });
+createCategory({ name: "Startup Recovery Baseline", description: "Must survive active database corruption." });
+createCategory({ name: "Startup Recovery Newer", description: "Exists only after the rolling backup state." });
+const corruptedDatabasePath = getStorageInfo().databasePath;
+fs.writeFileSync(corruptedDatabasePath, "corrupted DeskPilot database");
+
+await initializeStorage(startupRecoveryDir, { profile: "development", disallowProductive: true });
+const startupRecoveryInfo = getStorageInfo().startupRecovery;
+assert(startupRecoveryInfo.status === "recovered-from-rolling", "Expected startup to recover a corrupted database");
+assert(
+  listCategories().some((category) => category.name === "Startup Recovery Baseline"),
+  "Expected startup recovery to load the valid rolling backup state"
+);
+assert(
+  !listCategories().some((category) => category.name === "Startup Recovery Newer"),
+  "Expected startup recovery not to keep data newer than the rolling backup"
+);
+assert(startupRecoveryInfo.corruptDatabaseBackupPath, "Expected startup recovery to preserve the corrupted database file");
+assert(
+  startupRecoveryInfo.corruptDatabaseBackupPath.endsWith(".sqlite.corrupt"),
+  "Expected the corrupted file not to appear as a restorable manual backup"
+);
+assert(
+  fs.readFileSync(startupRecoveryInfo.corruptDatabaseBackupPath, "utf-8") === "corrupted DeskPilot database",
+  "Expected preserved startup recovery file to contain the original corrupted data"
+);
+assert(
+  !getStorageInfo().manualBackups.some((backup) => backup.path === startupRecoveryInfo.corruptDatabaseBackupPath),
+  "Expected the corrupted file to stay out of the manual restore list"
+);
+assert(
+  fs.existsSync(getStorageInfo().rollingBackupPath),
+  "Expected startup recovery to preserve the valid rolling backup instead of overwriting it with corruption"
+);
+
+const startupFailureDir = fs.mkdtempSync(path.join(os.tmpdir(), "deskpilot-startup-failure-"));
+await initializeStorage(startupFailureDir, { profile: "development", disallowProductive: true });
+createCategory({ name: "Failure Baseline", description: "Creates the rolling backup for the failure test." });
+const failedStorageInfo = getStorageInfo();
+fs.writeFileSync(failedStorageInfo.databasePath, "corrupted active database");
+fs.writeFileSync(failedStorageInfo.rollingBackupPath, "corrupted rolling backup");
+let startupFailure = null;
+
+try {
+  await initializeStorage(startupFailureDir, { profile: "development", disallowProductive: true });
+} catch (error) {
+  startupFailure = error;
+}
+
+assert(startupFailure instanceof StorageStartupError, "Expected unusable active and rolling databases to produce a startup error");
+assert(startupFailure.activeDatabasePath === failedStorageInfo.databasePath, "Expected startup error to expose active database path");
+assert(startupFailure.rollingBackupPath === failedStorageInfo.rollingBackupPath, "Expected startup error to expose rolling backup path");
+assert(startupFailure.storageDirectory === path.dirname(failedStorageInfo.databasePath), "Expected startup error to expose storage directory");
+const startupFailurePrompt = createStorageStartupFailurePrompt(startupFailure);
+assert(startupFailurePrompt.storageDirectory === startupFailure.storageDirectory, "Expected startup dialog to open the affected storage directory");
+assert(
+  startupFailurePrompt.options.detail.includes(startupFailure.activeDatabasePath) &&
+    startupFailurePrompt.options.detail.includes(startupFailure.rollingBackupPath),
+  "Expected startup dialog to show both unusable database paths"
+);
+assert(
+  JSON.stringify(startupFailurePrompt.options.buttons) ===
+    JSON.stringify(["Export Active Database", "Export Rolling Backup", "Open Storage Folder", "Quit"]),
+  "Expected startup recovery menu to offer read-only exports, folder access and controlled quit"
+);
+const activeRecoveryExportPath = path.join(startupFailureDir, "exported-active-recovery.sqlite");
+const activeRecoveryExport = exportStorageRecoveryFile(startupFailure.activeDatabasePath, activeRecoveryExportPath);
+assert(activeRecoveryExport.sourcePath === startupFailure.activeDatabasePath, "Expected recovery export to report its source");
+assert(activeRecoveryExport.targetPath === activeRecoveryExportPath, "Expected recovery export to report its destination");
+assert(
+  fs.readFileSync(activeRecoveryExportPath, "utf-8") === "corrupted active database" &&
+    fs.readFileSync(startupFailure.activeDatabasePath, "utf-8") === "corrupted active database",
+  "Expected recovery export to copy bytes without changing the source"
+);
+assertThrows(
+  () =>
+    exportStorageRecoveryFile(startupFailure.activeDatabasePath, startupFailure.rollingBackupPath, [
+      startupFailure.activeDatabasePath,
+      startupFailure.rollingBackupPath
+    ]),
+  "Expected recovery export not to overwrite either DeskPilot source file"
+);
+assert(
+  fs.readFileSync(startupFailure.rollingBackupPath, "utf-8") === "corrupted rolling backup",
+  "Expected protected rolling backup bytes to remain unchanged after rejected export"
+);
+assert(
+  fs.readFileSync(failedStorageInfo.databasePath, "utf-8") === "corrupted active database" &&
+    fs.readFileSync(failedStorageInfo.rollingBackupPath, "utf-8") === "corrupted rolling backup",
+  "Expected startup failure to leave both unusable files untouched"
+);
+
 const extensionInfo = getExtensionInstallInfo(process.cwd());
 assert(extensionInfo.manifestPresent, "Expected browser extension manifest to be present");
 assert(extensionInfo.extensionPath.endsWith("browser-extension"), "Expected extension path to point at browser-extension");
 const extensionManifest = JSON.parse(fs.readFileSync(path.join(extensionInfo.extensionPath, "manifest.json"), "utf-8"));
+const extensionPopupHtml = fs.readFileSync(path.join(extensionInfo.extensionPath, "popup.html"), "utf-8");
 const extensionPopupScript = fs.readFileSync(path.join(extensionInfo.extensionPath, "popup.js"), "utf-8");
 
 for (const size of ["16", "32", "48", "128"]) {
@@ -774,6 +989,13 @@ for (const size of ["16", "32", "48", "128"]) {
 }
 
 assert(!extensionPopupScript.includes("/capture"), "Expected extension popup not to call legacy /capture route");
+assert(extensionPopupScript.includes(String(productiveBridgePort)), "Expected extension popup to try the Productive bridge port");
+assert(extensionPopupScript.includes(String(developmentBridgePort)), "Expected extension popup to fall back to the Development bridge port");
+assert(extensionPopupHtml.includes('id="profileBadge"'), "Expected extension popup to keep the connected data profile visible");
+assert(
+  extensionPopupScript.includes("profileBadge.dataset.profile"),
+  "Expected extension popup to style the persistent profile badge from the connected profile"
+);
 assert(extensionPopupScript.includes("/tabs/current/save"), "Expected extension popup to call current-tab route");
 assert(extensionPopupScript.includes("/windows/current/save"), "Expected extension popup to call current-window route");
 assert(extensionPopupScript.includes("/app/show"), "Expected extension popup to call app-show route");
