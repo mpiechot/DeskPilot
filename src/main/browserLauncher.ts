@@ -39,7 +39,7 @@ export function createBrowserWindowName(categoryName: string): string {
     .trim()
     .slice(0, 40);
 
-  return `DeskPilot – ${safeCategoryName || "Session"}`;
+  return safeCategoryName || "Session";
 }
 
 export function getSupportedBrowserExecutableCandidates(environment: Environment = process.env): string[] {

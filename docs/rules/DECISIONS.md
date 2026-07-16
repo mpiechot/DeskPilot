@@ -118,7 +118,7 @@ The user wants update visibility without a resident polling mechanism. Opening t
 ## 2026-07-16 - Name Restored Browser Windows After Categories
 
 Decision:
-When `Open Selected` restores a Category through the supported Chrome/Edge launch path, pass `--window-name=DeskPilot – <Category>` as a separate process argument before the saved URLs.
+When `Open Selected` restores a Category through the supported Chrome/Edge launch path, pass the Category name itself as `--window-name=<Category>` before the saved URLs. Do not add a DeskPilot prefix.
 
 Reason:
 Multiple restored browser windows are otherwise difficult to distinguish in the Windows taskbar and Alt+Tab. The Chromium launch switch can assign the initial user-visible window title without requiring shell interpolation or expanding the browser extension's permissions.

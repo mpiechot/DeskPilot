@@ -440,7 +440,7 @@ assert(
   "Expected saved category restore to launch all saved URLs together"
 );
 assert(
-  restoreLaunchPlan.args.includes("--window-name=DeskPilot – Research & Notes"),
+  restoreLaunchPlan.args.includes("--window-name=Research & Notes"),
   "Expected saved category restore to name the browser window after its Category"
 );
 assert(
@@ -448,11 +448,11 @@ assert(
   "Expected the browser window name to remain one safe process argument"
 );
 assert(
-  createBrowserWindowName("  Research\n\tNotes  ") === "DeskPilot – Research Notes",
+  createBrowserWindowName("  Research\n\tNotes  ") === "Research Notes",
   "Expected browser window names to remove control characters and normalize whitespace"
 );
 assert(
-  createBrowserWindowName("\n\t") === "DeskPilot – Session",
+  createBrowserWindowName("\n\t") === "Session",
   "Expected an empty browser window name to fall back safely"
 );
 const restoreBrowserCandidates = getSupportedBrowserExecutableCandidates({

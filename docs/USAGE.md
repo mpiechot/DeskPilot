@@ -232,7 +232,7 @@ The Session Board can be dragged horizontally from a non-interactive part of a c
 
 Open `Categories` to edit the selected category's name, description and icon or to remove it safely. Removal names the affected active-tab count and keeps the category and saved tabs available in `Recovery`.
 
-`Open Selected` starts the saved URLs in one new supported Chrome/Edge window and supplies `DeskPilot – <Category>` as its window name. This makes restored sessions distinguishable in the Windows taskbar and Alt+Tab. If no supported Chrome/Edge executable can be found, DeskPilot keeps its existing default-browser fallback; that fallback cannot assign a Chrome window name.
+`Open Selected` starts the saved URLs in one new supported Chrome/Edge window and supplies the Category name itself as the window name, without a DeskPilot prefix. This makes restored sessions distinguishable in the Windows taskbar and Alt+Tab. If no supported Chrome/Edge executable can be found, DeskPilot keeps its existing default-browser fallback; that fallback cannot assign a Chrome window name.
 
 ## Browser Extension Prototype
 

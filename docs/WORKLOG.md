@@ -878,7 +878,21 @@ Completed:
 Current status:
 - New Chrome/Edge windows restored through `Open Selected` are named after their DeskPilot Category.
 - The existing default-browser fallback still opens URLs but cannot guarantee a Chrome window name when no supported executable is found.
-- The unpublished 0.1.1 Draft Release installer does not yet include this branch and must be rebuilt after the PR is merged.
+- The unpublished 0.1.1 Draft Release installer includes the merged browser-window naming implementation.
 
 Next recommended step:
-- Merge the focused working PR after review, then rebuild and replace the unsigned 0.1.1 Draft Release installer before publication.
+- Manually install and verify the unsigned 0.1.1 Draft Release installer before publication.
+
+### Category-only browser window names
+
+Completed:
+- Removed the `DeskPilot – ` prefix from restored Chrome/Edge window names.
+- Kept the normalized Category name as one safe `--window-name` process argument.
+- Updated smoke coverage and user-facing documentation to require the Category name itself.
+
+Current status:
+- Restored supported-browser windows are titled with only their Category name.
+- The unsigned 0.1.1 Draft Release installer must be rebuilt and replaced with this direct `main` update.
+
+Next recommended step:
+- Install the replaced Draft Release asset and verify the window title with a real `Open Selected` launch.
