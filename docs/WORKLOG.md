@@ -828,3 +828,36 @@ Current status:
 
 Next recommended step:
 - Manually install the generated 0.1.1 unsigned installer, then separately decide when its public GitHub Release should be published.
+
+### Draft release staging
+
+Completed:
+- Created the GitHub Draft Release `DeskPilot 0.1.1` with tag name `v0.1.1` and target commit `5db4f2d` from working PR #20.
+- Uploaded `DeskPilot-Setup-0.1.1.exe` as `Windows installer (unsigned)`.
+- Recorded the current installer SHA-256 in the draft notes: `63665a6076c6a400f080c088c6513e40a032c7fbdd465a02ee77343a4dafdaba`.
+- Added a pre-publish checklist covering the PR merge, final `main` target, rebuild, verification, release notes and unsigned status.
+- Verified the release remains a draft, no remote `v0.1.1` tag exists yet and GitHub still reports no published latest Release.
+
+Current status:
+- The Draft Release can be edited and have assets or notes replaced without triggering DeskPilot's startup update notice.
+- The draft is an artifact/release-note staging area; GitHub Milestones remain the Jira-like mechanism for grouping tickets and tracking completion.
+
+Next recommended step:
+- Before publishing, merge PR #20, retarget or recreate the release tag from final `main`, rebuild the installer and replace the draft asset if its checksum changes.
+
+### Category click regression fix
+
+Completed:
+- Reproduced the reported regression with a real Electron mouse-down/mouse-up sequence: a stationary click on Research did not change the selected Category.
+- Identified immediate pointer capture on the category list as the cause; it retargeted the resulting click away from the Category card.
+- Delayed pointer capture until horizontal movement crosses the existing five-pixel drag threshold.
+- Added packaged-renderer assertions that a stationary mouse click selects a Category and a real horizontal drag still scrolls without changing the selected Category.
+- Ran the focused renderer regression three consecutive times successfully after the fix.
+- Verified `npm run lint`, `npm run build`, `npm run test:storage`, `npm run test:prototype`, `npm run test:installer` and `npm audit`; all passed with zero reported vulnerabilities.
+
+Current status:
+- Category cards are clickable again while horizontal drag-to-scroll remains available.
+- Version remains 0.1.1 because its Draft Release has not been published; the corrected installer must replace the existing draft asset before publication.
+
+Next recommended step:
+- Merge the focused regression-fix PR, then rebuild and replace the unsigned 0.1.1 Draft Release installer before publication.
