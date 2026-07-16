@@ -892,7 +892,7 @@ Completed:
 
 Current status:
 - Restored supported-browser windows are titled with only their Category name.
-- The unsigned 0.1.1 Draft Release installer must be rebuilt and replaced with this direct `main` update.
+- The unsigned 0.1.1 Draft Release installer was rebuilt from the direct `main` update and replaced in the unpublished draft.
 
 Next recommended step:
-- Install the replaced Draft Release asset and verify the window title with a real `Open Selected` launch.
+- Install the replaced Draft Release asset and verify the Category-only window title with a real `Open Selected` launch before publication.
