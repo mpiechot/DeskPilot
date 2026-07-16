@@ -801,3 +801,30 @@ Current status:
 
 Next recommended step:
 - Use the regenerated Productive package for a real compact-window trial and prioritize any remaining daily-use friction before expanding the cleanup workflow.
+
+### Installed-app startup update check
+
+Completed:
+- Created GitHub issue #24 for one update check at app startup and an explicit install action.
+- Scoped the mechanism to installed/packaged builds; Development and local launcher runs never contact GitHub automatically.
+- Added an idempotent update service that performs at most one request per process and compares only stable three-part semantic versions.
+- Rejected drafts, prereleases, malformed payloads and release URLs outside the public `mpiechot/DeskPilot` GitHub Release path.
+- Kept offline, rate-limit and API failures non-blocking and invisible to the local browser-session workflow.
+- Added IPC/preload update status delivery so an asynchronous startup result reaches the renderer without polling.
+- Replaced the normal header version badge with a highlighted installed-to-available version button only when a newer release exists.
+- Made the deliberate update action open the validated GitHub Release page; no automatic download, restart, install or recurring timer was added.
+- Reworked the first banner design after packaged low-height coverage showed it pushed the URL title field out of view.
+- Raised the application and installer version from 0.1.0 to 0.1.1 for the first update-aware build.
+- Added update-service smoke coverage for version comparison, one-check behavior, Development isolation and URL validation.
+- Extended packaged-renderer coverage for update visibility, version text, button action and compact-window layout safety.
+- Verified `npm run lint`, `npm run build`, `npm run test:storage`, `npm run test:prototype`, `npm run test:installer` and `npm audit`; all passed with zero reported vulnerabilities.
+- Built `dist-installer/DeskPilot-Setup-0.1.1.exe` successfully with the bundled Node 24 runtime at 105,577,991 bytes and verified its update metadata names version 0.1.1.
+- Verified the 0.1.1 installer remains explicitly `NotSigned`; the build did not create or imply an Authenticode signature.
+
+Current status:
+- Version 0.1.1 can announce future stable GitHub Releases once they are published.
+- Existing 0.1.0 installations need this one update manually because they do not contain the startup checker.
+- No GitHub Release has been created; release publication remains separately authorized work.
+
+Next recommended step:
+- Manually install the generated 0.1.1 unsigned installer, then separately decide when its public GitHub Release should be published.

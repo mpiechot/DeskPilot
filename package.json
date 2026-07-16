@@ -1,6 +1,6 @@
 {
   "name": "deskpilot",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Local desktop control panel for browser session management and workflow switching.",
   "author": "portfolio-pirat <mattzeal@gmail.com>",
@@ -25,7 +25,8 @@
     "test:extension": "node scripts/run-extension-popup-smoke.mjs",
     "test:productive-launcher": "node scripts/productive-launcher-smoke.mjs",
     "test:installer": "node scripts/installer-config-smoke.mjs",
-    "test:prototype": "npm run package:prototype && node scripts/prototype-launcher-smoke.mjs && npm run package:productive && npm run test:productive-launcher && electron scripts/prototype-renderer-smoke-app && npm run test:extension"
+    "test:update": "npm run build:electron && node scripts/update-smoke.mjs",
+    "test:prototype": "npm run package:prototype && node scripts/prototype-launcher-smoke.mjs && npm run package:productive && npm run test:productive-launcher && electron scripts/prototype-renderer-smoke-app && npm run test:extension && npm run test:update"
   },
   "dependencies": {
     "lucide-react": "0.468.0",

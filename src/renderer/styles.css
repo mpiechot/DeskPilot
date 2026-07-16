@@ -129,6 +129,31 @@ h1 {
   gap: 4px;
 }
 
+.headerUpdateAction {
+  display: inline-grid;
+  grid-template-columns: 16px auto;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #c7a35c;
+  border-radius: 7px;
+  background: #f0e4c7;
+  color: #5f4317;
+  cursor: pointer;
+  padding: 5px 7px;
+  text-align: left;
+}
+
+.headerUpdateAction span {
+  font-size: 0.7rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.headerUpdateAction svg {
+  width: 15px;
+  height: 15px;
+}
+
 .quickActions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

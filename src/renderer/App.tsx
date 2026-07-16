@@ -38,6 +38,7 @@ import {
   useState
 } from "react";
 import type {
+  AppUpdateStatus,
   BridgeStatus,
   CategoryInput,
   CategoryRecoveryResult,
@@ -170,6 +171,7 @@ function App() {
     "session" | "categories" | "archive" | "recovery" | "extension" | "display" | "safety"
   >("session");
   const [operationMessage, setOperationMessage] = useState("");
+  const [appUpdateStatus, setAppUpdateStatus] = useState<AppUpdateStatus | null>(null);
   const [bridgeStatus, setBridgeStatus] = useState<BridgeStatus | null>(null);
   const [extensionInfo, setExtensionInfo] = useState<ExtensionInstallInfo | null>(null);
   const [storageInfo, setStorageInfo] = useState<StorageBackupInfo | null>(null);
@@ -205,6 +207,7 @@ function App() {
 
   useEffect(() => {
     let isMounted = true;
+    let unsubscribeFromUpdates: () => void = () => undefined;
 
     if (!window.deskPilot) {
       setStorageStatus("fallback");
@@ -212,6 +215,21 @@ function App() {
         isMounted = false;
       };
     }
+
+    unsubscribeFromUpdates = window.deskPilot.onUpdateStatusChanged((status: AppUpdateStatus) => {
+      if (isMounted) {
+        setAppUpdateStatus(status);
+      }
+    });
+
+    window.deskPilot
+      .updateStatus()
+      .then((status: AppUpdateStatus) => {
+        if (isMounted) {
+          setAppUpdateStatus(status);
+        }
+      })
+      .catch(() => undefined);
 
     window.deskPilot
       .bridgeStatus()
@@ -283,6 +301,7 @@ function App() {
 
     return () => {
       isMounted = false;
+      unsubscribeFromUpdates();
     };
   }, []);
 
@@ -686,6 +705,19 @@ function App() {
       .catch(() => setOperationMessage("Could not open saved URLs."));
   }
 
+  function handleOpenAvailableUpdate(): void {
+    if (!window.deskPilot || appUpdateStatus?.status !== "available") {
+      return;
+    }
+
+    window.deskPilot
+      .openAvailableUpdate()
+      .then((status: AppUpdateStatus) => {
+        setAppUpdateStatus(status);
+      })
+      .catch(() => setOperationMessage("Could not open the DeskPilot update page."));
+  }
+
   function handleCreateStorageBackup(): void {
     if (!window.deskPilot) {
       setOperationMessage("Backups require the Electron app.");
@@ -1033,7 +1065,21 @@ function App() {
             <h1>Browser Sessions</h1>
           </div>
           <div className="headerMeta">
-            <div className="version">v{window.deskPilot?.version ?? "0.1.0"}</div>
+            {appUpdateStatus?.status === "available" ? (
+              <button
+                type="button"
+                className="headerUpdateAction"
+                onClick={handleOpenAvailableUpdate}
+                aria-label={`Update available: version ${appUpdateStatus.availableVersion}. Update now.`}
+              >
+                <Download aria-hidden="true" />
+                <span>
+                  Update v{appUpdateStatus.currentVersion} → v{appUpdateStatus.availableVersion}
+                </span>
+              </button>
+            ) : (
+              <div className="version">v{window.deskPilot?.version ?? "0.1.1"}</div>
+            )}
             <div
               className={
                 activeDataProfile?.id === "productive" ? "profileBadge profileBadge-productive" : "profileBadge"

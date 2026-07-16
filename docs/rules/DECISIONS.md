@@ -107,6 +107,14 @@ Persist category icons as identifiers from a curated built-in Lucide-style set. 
 Reason:
 Stable identifiers survive restart, backup and import without storing executable or external image data. A constrained monochrome set improves at-a-glance recognition while preserving DeskPilot's existing visual language.
 
+## 2026-07-16 - One Installed-App Update Check Per Start
+
+Decision:
+Installed DeskPilot builds check the public GitHub repository's latest stable Release exactly once per process start. A newer semantic version changes the header version badge into an explicit action that opens only the validated DeskPilot GitHub Release page. Development runs do not check, and no timer, automatic download or forced restart is added.
+
+Reason:
+The user wants update visibility without a resident polling mechanism. Opening the release page keeps installation deliberate while the Windows installer remains unsigned and avoids mixing network availability with DeskPilot's local session workflow.
+
 ## 2026-07-03 - Saved Tab Order
 
 Decision:

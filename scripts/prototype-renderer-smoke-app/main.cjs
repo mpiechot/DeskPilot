@@ -51,6 +51,7 @@ async function runElectronSmoke() {
   const deletedCategories = [];
   let activeCategoryId = categories[0]?.id ?? "";
   let displayPreferences = { layoutMode: "standard", displayId: null, kiosk: false };
+  let openedUpdateUrl = "";
 
   function getActiveTabs(categoryId) {
     return tabsByCategory.get(categoryId) ?? [];
@@ -88,6 +89,23 @@ async function runElectronSmoke() {
   }
 
   ipcMain.handle("bridge:status", () => ({ running: true, host: "127.0.0.1", port: 17383 }));
+  ipcMain.handle("updates:status", () => ({
+    status: "available",
+    currentVersion: "0.1.0",
+    availableVersion: "0.1.1",
+    releaseUrl: "https://github.com/mpiechot/DeskPilot/releases/tag/v0.1.1",
+    message: "DeskPilot 0.1.1 is available."
+  }));
+  ipcMain.handle("updates:open", () => {
+    openedUpdateUrl = "https://github.com/mpiechot/DeskPilot/releases/tag/v0.1.1";
+    return {
+      status: "available",
+      currentVersion: "0.1.0",
+      availableVersion: "0.1.1",
+      releaseUrl: openedUpdateUrl,
+      message: "DeskPilot 0.1.1 is available."
+    };
+  });
   ipcMain.handle("extension:install-info", () => ({
     extensionPath: path.join(prototypeRoot, "browser-extension"),
     manifestPath: path.join(prototypeRoot, "browser-extension", "manifest.json"),
@@ -392,6 +410,33 @@ async function runElectronSmoke() {
 
   await window.loadFile(path.join(prototypeRoot, "dist", "index.html"));
   console.log("Prototype renderer smoke: renderer loaded");
+
+  const updateNoticeResult = await window.webContents.executeJavaScript(`
+    new Promise((resolve) => {
+      const inspect = (attempts = 120) => {
+        const action = document.querySelector(".headerUpdateAction");
+
+        if (action) {
+          const visibleText = action.textContent;
+          action.click();
+          setTimeout(
+            () => resolve({ visibleText, actionText: action.textContent, ariaLabel: action.getAttribute("aria-label") }),
+            100
+          );
+          return;
+        }
+
+        if (attempts === 0) {
+          resolve(null);
+          return;
+        }
+
+        setTimeout(() => inspect(attempts - 1), 25);
+      };
+
+      inspect();
+    })
+  `);
 
   const categoryDragStart = await window.webContents.executeJavaScript(`
     new Promise((resolve) => {
@@ -913,6 +958,15 @@ async function runElectronSmoke() {
   `);
 
   assert(result.hasDeskPilotApi, "Expected packaged renderer to receive the Electron preload API");
+  assert(
+    updateNoticeResult?.visibleText.includes("v0.1.0") && updateNoticeResult?.visibleText.includes("v0.1.1"),
+    "Expected the startup update notice to show installed and available versions"
+  );
+  assert(updateNoticeResult?.ariaLabel.includes("Update now"), "Expected an explicit update action");
+  assert(
+    openedUpdateUrl === "https://github.com/mpiechot/DeskPilot/releases/tag/v0.1.1",
+    "Expected the update action to open the validated GitHub release page"
+  );
   assert(categoryDragWorked, "Expected horizontal category drag to reveal off-screen categories without resizing");
   if (!Object.values(categoryManagementResult).every(Boolean)) {
     console.error(JSON.stringify(categoryManagementResult, null, 2));

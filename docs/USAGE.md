@@ -48,6 +48,7 @@ Working today:
 - standalone Productive package with its own Electron runtime
 - configurable Standard/Touch layout, launch monitor and optional kiosk-like fullscreen mode
 - guarded NSIS installer and certificate-driven signing commands
+- one latest-stable-release check when an installed build starts, with an explicit GitHub installer-page action
 - local development, lint and build commands
 
 Not implemented yet:
@@ -106,6 +107,7 @@ npm run lint
 npm run build
 npm run test:storage
 npm run test:extension
+npm run test:update
 npm audit
 ```
 
@@ -176,6 +178,16 @@ npm run package:windows:signed
 ```
 
 The signed command fails closed when either value is missing. A successful unsigned test build must never be described as digitally signed.
+
+## Installed-App Update Check
+
+Only an installed/packaged DeskPilot build checks for an update. It makes one request during each process start to the public DeskPilot GitHub repository's latest stable Release. There is no timer, periodic background check, automatic download, forced restart or silent installation.
+
+When a newer stable semantic version is available, the version badge in the DeskPilot header becomes a highlighted update button showing the installed and available versions. Clicking it opens the validated DeskPilot GitHub Release page in the system browser, where the newer installer can be downloaded deliberately.
+
+Development, renderer-only and generated prototype/Productive launcher runs do not perform this request automatically. Offline, rate-limit and invalid-response failures remain silent so the local browser-session workflow continues normally.
+
+The update check first ships in version 0.1.1. An existing 0.1.0 installation therefore needs one final manual installer run before future published versions can be announced inside the app. Creating or publishing the corresponding GitHub Release remains a separate release operation.
 
 ## Display And Touch Settings
 

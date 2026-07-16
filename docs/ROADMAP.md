@@ -155,3 +155,9 @@ Expected features:
 - signed installer - signing workflow ready; certificate still required for a real signature
 - standalone runtime bundle - Productive package now includes Electron runtime
 - unsigned NSIS test installer - done
+- installed-app startup update check - done with one stable GitHub Release request and an explicit installer-page button
+- recurring/background update polling - intentionally not implemented
+- automatic update download/restart - intentionally not implemented while installers remain unsigned
+
+Recent tracking issue:
+- #24 one-time installed-app startup update check and explicit update action - done

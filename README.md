@@ -28,6 +28,7 @@ Commands:
 - `npm run lint` checks TypeScript and React source files.
 - `npm run build` builds the Electron main/preload code and renderer.
 - `npm run test:extension` loads the real extension popup in an isolated Electron smoke app and verifies a Productive current-tab save.
+- `npm run test:update` verifies stable release comparison, one startup request, Development isolation and validated release-page opening.
 - `npm run package:prototype` creates a local Windows prototype folder under `dist-prototype/DeskPilot`.
 - `npm run package:productive` creates an explicit Productive launcher folder under `dist-productive/DeskPilot Productive`.
 - `npm run package:windows` creates an unsigned local NSIS test installer under `dist-installer`.
@@ -62,5 +63,6 @@ Current state:
 - A local prototype package can be generated for double-click launch during development.
 - The Productive package includes its own Electron runtime and can run outside the repository.
 - Display settings can select Standard or Touch layout, a launch monitor and optional kiosk-like fullscreen mode.
+- Installed builds check the latest stable public GitHub Release once at app startup and highlight a newer installer in the header.
 - Starting DeskPilot again while it is already running focuses the existing instance instead of opening a second bridge.
 - Browser-extension saves refresh the visible category counts in the Electron UI.

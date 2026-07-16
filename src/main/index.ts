@@ -5,6 +5,7 @@ import {
   ipcMain,
   nativeImage,
   nativeTheme,
+  net,
   screen,
   shell,
   Tray,
@@ -59,6 +60,7 @@ import {
   exportStorageRecoveryFile,
   type StorageStartupFailurePrompt
 } from "./storageStartupFailure.js";
+import { AppUpdateService } from "./appUpdate.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, "../..");
@@ -180,6 +182,30 @@ function showOpenDialog(options: OpenDialogOptions) {
   return mainWindow ? dialog.showOpenDialog(mainWindow, options) : dialog.showOpenDialog(options);
 }
 
+function notifyUpdateStatusChanged(status: ReturnType<AppUpdateService["getStatus"]>): void {
+  for (const window of BrowserWindow.getAllWindows()) {
+    if (!window.isDestroyed()) {
+      window.webContents.send("updates:changed", status);
+    }
+  }
+}
+
+async function fetchLatestDeskPilotRelease(): Promise<unknown> {
+  const response = await net.fetch("https://api.github.com/repos/mpiechot/DeskPilot/releases/latest", {
+    headers: {
+      Accept: "application/vnd.github+json",
+      "User-Agent": `DeskPilot/${app.getVersion()}`,
+      "X-GitHub-Api-Version": "2022-11-28"
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`GitHub update check failed with ${response.status}.`);
+  }
+
+  return response.json();
+}
+
 function getDisplaySettingsInfo(): DisplaySettingsInfo {
   const primaryDisplayId = String(screen.getPrimaryDisplay().id);
 
@@ -299,12 +325,21 @@ if (!hasSingleInstanceLock) {
     }
 
     const activeDataProfile = getDataProfileInfo();
+    const appUpdateService = new AppUpdateService({
+      currentVersion: app.getVersion(),
+      enabled: app.isPackaged,
+      fetchLatestRelease: fetchLatestDeskPilotRelease,
+      openExternal: (url) => shell.openExternal(url),
+      onStatusChanged: notifyUpdateStatusChanged
+    });
     bridgeServer = startBrowserBridge({
       dataProfile: activeDataProfile,
       showApp: showMainWindow,
       onSessionsChanged: notifySessionsChanged
     });
     ipcMain.handle("bridge:status", () => getBrowserBridgeStatus(bridgeServer, activeDataProfile));
+    ipcMain.handle("updates:status", () => appUpdateService.getStatus());
+    ipcMain.handle("updates:open", () => appUpdateService.openAvailableUpdate());
     ipcMain.handle("extension:install-info", () => getExtensionInstallInfo(projectRoot));
     ipcMain.handle("storage:info", () => getStorageInfo());
     ipcMain.handle("display:settings", () => getDisplaySettingsInfo());
@@ -379,6 +414,7 @@ if (!hasSingleInstanceLock) {
 
     isStorageInitialized = true;
     createMainWindow();
+    void appUpdateService.checkAtStartup();
 
     try {
       createTray();

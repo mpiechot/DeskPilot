@@ -3,6 +3,9 @@ import type { CategoryIconName } from "./categoryIcons.js";
 
 export type DeskPilotApi = {
   version: string;
+  updateStatus: () => Promise<AppUpdateStatus>;
+  openAvailableUpdate: () => Promise<AppUpdateStatus>;
+  onUpdateStatusChanged: (callback: (status: AppUpdateStatus) => void) => () => void;
   bridgeStatus: () => Promise<BridgeStatus>;
   extensionInstallInfo: () => Promise<ExtensionInstallInfo>;
   storageInfo: () => Promise<StorageBackupInfo>;
@@ -48,6 +51,22 @@ export type BridgeStatus = {
   port: number;
   allowedOrigins: string[];
   dataProfile?: DataProfileInfo;
+};
+
+export type AppUpdateStatusValue =
+  | "disabled"
+  | "not-checked"
+  | "checking"
+  | "up-to-date"
+  | "available"
+  | "unavailable";
+
+export type AppUpdateStatus = {
+  status: AppUpdateStatusValue;
+  currentVersion: string;
+  availableVersion?: string;
+  releaseUrl?: string;
+  message: string;
 };
 
 export type ExtensionInstallInfo = {

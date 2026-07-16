@@ -2,7 +2,15 @@ import { contextBridge, ipcRenderer } from "electron";
 import type { DeskPilotApi } from "../shared/deskPilotApi.js" with { "resolution-mode": "import" };
 
 const deskPilot: DeskPilotApi = {
-  version: "0.1.0",
+  version: "0.1.1",
+  updateStatus: () => ipcRenderer.invoke("updates:status"),
+  openAvailableUpdate: () => ipcRenderer.invoke("updates:open"),
+  onUpdateStatusChanged: (callback) => {
+    const listener = (_event: Electron.IpcRendererEvent, status: Parameters<typeof callback>[0]) => callback(status);
+
+    ipcRenderer.on("updates:changed", listener);
+    return () => ipcRenderer.removeListener("updates:changed", listener);
+  },
   bridgeStatus: () => ipcRenderer.invoke("bridge:status"),
   extensionInstallInfo: () => ipcRenderer.invoke("extension:install-info"),
   storageInfo: () => ipcRenderer.invoke("storage:info"),
