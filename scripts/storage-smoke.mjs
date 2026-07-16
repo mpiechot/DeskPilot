@@ -50,6 +50,7 @@ import {
   startBrowserBridge
 } from "../dist-electron/main/browserBridge.js";
 import {
+  createBrowserWindowName,
   createBrowserWindowLaunchPlan,
   getSupportedBrowserExecutableCandidates
 } from "../dist-electron/main/browserLauncher.js";
@@ -221,10 +222,11 @@ assertTabOrder(
 const orderedRestoreUrls = listTabs(orderCategory.id).map((item) => item.url);
 const orderedRestoreLaunchPlan = createBrowserWindowLaunchPlan(
   orderedRestoreUrls,
-  "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+  "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+  orderCategory.name
 );
 assert(
-  JSON.stringify(orderedRestoreLaunchPlan.args.slice(1)) === JSON.stringify(orderedRestoreUrls),
+  JSON.stringify(orderedRestoreLaunchPlan.args.slice(2)) === JSON.stringify(orderedRestoreUrls),
   "Expected saved category restore launch plan to preserve Tab Order"
 );
 
@@ -372,10 +374,11 @@ assertTabOrder(
 );
 const reorderedRestoreLaunchPlan = createBrowserWindowLaunchPlan(
   listTabs(boardTargetCategory.id).map((item) => item.url),
-  "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+  "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+  boardTargetCategory.name
 );
 assert(
-  reorderedRestoreLaunchPlan.args[1] === "https://example.com/board-beta",
+  reorderedRestoreLaunchPlan.args[2] === "https://example.com/board-beta",
   "Expected reordered Session Board category restore to use the updated order"
 );
 
@@ -425,7 +428,8 @@ assert(selectedDisplayBounds.width === 1180 && selectedDisplayBounds.height === 
 
 const restoreLaunchPlan = createBrowserWindowLaunchPlan(
   ["https://example.com/one", "https://example.com/two"],
-  "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+  "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+  "Research & Notes"
 );
 assert(
   restoreLaunchPlan.args[0] === "--new-window",
@@ -434,6 +438,22 @@ assert(
 assert(
   restoreLaunchPlan.args.includes("https://example.com/one") && restoreLaunchPlan.args.includes("https://example.com/two"),
   "Expected saved category restore to launch all saved URLs together"
+);
+assert(
+  restoreLaunchPlan.args.includes("--window-name=DeskPilot – Research & Notes"),
+  "Expected saved category restore to name the browser window after its Category"
+);
+assert(
+  restoreLaunchPlan.args.filter((argument) => argument.includes("Research & Notes")).length === 1,
+  "Expected the browser window name to remain one safe process argument"
+);
+assert(
+  createBrowserWindowName("  Research\n\tNotes  ") === "DeskPilot – Research Notes",
+  "Expected browser window names to remove control characters and normalize whitespace"
+);
+assert(
+  createBrowserWindowName("\n\t") === "DeskPilot – Session",
+  "Expected an empty browser window name to fall back safely"
 );
 const restoreBrowserCandidates = getSupportedBrowserExecutableCandidates({
   ProgramFiles: "C:\\Program Files",

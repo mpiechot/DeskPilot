@@ -863,3 +863,22 @@ Current status:
 
 Next recommended step:
 - Manually install and verify the corrected unsigned 0.1.1 Draft Release installer before publication.
+
+### Named restored browser windows
+
+Completed:
+- Added the selected Category name to the Chrome/Edge restore launch plan as the separate argument `--window-name=DeskPilot – <Category>`.
+- Kept `--new-window` and stored URL order intact.
+- Sanitized control characters and whitespace defensively and retained a `DeskPilot – Session` fallback for invalid empty input.
+- Passed the active Category name from the `categories:open` IPC handler rather than deriving it from a tab title.
+- Added storage smoke coverage for the exact launch argument, safe single-argument handling, sanitization and fallback behavior.
+- Added packaged-main coverage ensuring `Open Selected` passes the Category name to the browser launcher.
+- Verified `npm run lint`, `npm run build`, `npm run test:storage`, `npm run test:prototype`, `npm run test:installer` and `npm audit`; all passed with zero reported vulnerabilities.
+
+Current status:
+- New Chrome/Edge windows restored through `Open Selected` are named after their DeskPilot Category.
+- The existing default-browser fallback still opens URLs but cannot guarantee a Chrome window name when no supported executable is found.
+- The unpublished 0.1.1 Draft Release installer does not yet include this branch and must be rebuilt after the PR is merged.
+
+Next recommended step:
+- Merge the focused working PR after review, then rebuild and replace the unsigned 0.1.1 Draft Release installer before publication.

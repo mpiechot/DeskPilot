@@ -68,6 +68,7 @@ Expected features:
 - create/edit/delete categories - initial pass done with soft-delete
 - open category URLs in browser - initial pass done
 - open saved category as a new browser window instead of reusing an existing browser window - initial pass done with Chrome/Edge launcher
+- name restored Chrome/Edge windows after their DeskPilot Category - done with Chromium's `--window-name` launch argument
 
 Recent tracking issues:
 - #21 horizontal category drag navigation - done

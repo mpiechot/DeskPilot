@@ -18,7 +18,7 @@ Working today:
 - assign each category a persisted monochrome icon from the built-in icon picker
 - restore removed categories
 - save http/https URLs into a selected category
-- open saved URLs from the selected category together in saved order in a new Chrome/Edge browser window
+- open saved URLs from the selected category together in saved order in a new Chrome/Edge browser window named after the Category
 - view saved tabs under each category on the Session Board
 - move saved tabs between categories with mouse-first drag and drop
 - reorder saved tabs within a category with mouse-first drag and drop
@@ -231,6 +231,8 @@ The expected display shape is wide and not very tall. The UI should therefore pr
 The Session Board can be dragged horizontally from a non-interactive part of a category card. Buttons, inputs and saved-tab drag handles keep their own behavior. The scrollbar remains available as a fallback.
 
 Open `Categories` to edit the selected category's name, description and icon or to remove it safely. Removal names the affected active-tab count and keeps the category and saved tabs available in `Recovery`.
+
+`Open Selected` starts the saved URLs in one new supported Chrome/Edge window and supplies `DeskPilot – <Category>` as its window name. This makes restored sessions distinguishable in the Windows taskbar and Alt+Tab. If no supported Chrome/Edge executable can be found, DeskPilot keeps its existing default-browser fallback; that fallback cannot assign a Chrome window name.
 
 ## Browser Extension Prototype
 

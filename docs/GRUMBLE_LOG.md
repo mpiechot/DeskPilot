@@ -84,3 +84,6 @@ Capturing the pointer during `pointerdown` also retargets a stationary click to 
 
 Update-check note:
 An update banner is not free space on a 390-pixel-high control panel. The first separate banner pushed the URL title field below the usable renderer height, so the final update action reuses the existing header version position. Keep update failures non-blocking and resist turning a once-at-start requirement into a timer disguised as convenience.
+
+Browser window-name note:
+Chrome exposes window naming in its UI and as the Chromium `--window-name` startup switch, but not through the `chrome.windows` extension API. DeskPilot can therefore name windows it launches through the explicit Chrome/Edge executable path, while the default-browser fallback cannot guarantee a name.
