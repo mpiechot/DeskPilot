@@ -824,7 +824,7 @@ Completed:
 Current status:
 - Version 0.1.1 can announce future stable GitHub Releases once they are published.
 - Existing 0.1.0 installations need this one update manually because they do not contain the startup checker.
-- No GitHub Release has been created; release publication remains separately authorized work.
+- A GitHub Draft Release exists; it remains unpublished and does not trigger the startup update check.
 
 Next recommended step:
 - Manually install the generated 0.1.1 unsigned installer, then separately decide when its public GitHub Release should be published.
@@ -832,9 +832,11 @@ Next recommended step:
 ### Draft release staging
 
 Completed:
-- Created the GitHub Draft Release `DeskPilot 0.1.1` with tag name `v0.1.1` and target commit `5db4f2d` from working PR #20.
+- Created the GitHub Draft Release `DeskPilot 0.1.1` with tag name `v0.1.1`.
 - Uploaded `DeskPilot-Setup-0.1.1.exe` as `Windows installer (unsigned)`.
-- Recorded the current installer SHA-256 in the draft notes: `63665a6076c6a400f080c088c6513e40a032c7fbdd465a02ee77343a4dafdaba`.
+- After merging regression-fix PR #25, retargeted the Draft Release to final `main` merge commit `c20ac74`.
+- Rebuilt the installer from that merge commit and replaced the draft asset at 105,577,779 bytes.
+- Recorded the corrected installer SHA-256 in the draft notes: `8bc08bcd1ea38c48d70c2c5a90c779bd8182df0800bf0c2b54d297d9c9f2e253`.
 - Added a pre-publish checklist covering the PR merge, final `main` target, rebuild, verification, release notes and unsigned status.
 - Verified the release remains a draft, no remote `v0.1.1` tag exists yet and GitHub still reports no published latest Release.
 
@@ -843,7 +845,7 @@ Current status:
 - The draft is an artifact/release-note staging area; GitHub Milestones remain the Jira-like mechanism for grouping tickets and tracking completion.
 
 Next recommended step:
-- Before publishing, merge PR #20, retarget or recreate the release tag from final `main`, rebuild the installer and replace the draft asset if its checksum changes.
+- Manually install the corrected Draft Release installer over 0.1.0, verify category click and drag behavior, then explicitly publish the draft when ready.
 
 ### Category click regression fix
 
@@ -857,7 +859,7 @@ Completed:
 
 Current status:
 - Category cards are clickable again while horizontal drag-to-scroll remains available.
-- Version remains 0.1.1 because its Draft Release has not been published; the corrected installer must replace the existing draft asset before publication.
+- Version remains 0.1.1 because its Draft Release has not been published; the corrected installer now replaces the original draft asset.
 
 Next recommended step:
-- Merge the focused regression-fix PR, then rebuild and replace the unsigned 0.1.1 Draft Release installer before publication.
+- Manually install and verify the corrected unsigned 0.1.1 Draft Release installer before publication.
