@@ -776,3 +776,28 @@ Current status:
 
 Next recommended step:
 - Decide whether Sleep List is a renamed Archive view, a temporary state with different restore behavior, or a distinct workflow; implement only after that product distinction is explicit.
+
+## 2026-07-16
+
+### Category navigation and personalization session
+
+Completed:
+- Confirmed draft PR #20 is the single open DeskPilot working pull request and has no reported checks, reviews or unresolved review threads.
+- Created GitHub issues #21, #22 and #23 for horizontal category drag navigation, visible category management and monochrome category icons.
+- Added pointer-based horizontal panning to the category board while excluding buttons, inputs and saved-tab drag rows from the gesture.
+- Suppressed the card click generated after a completed pan and kept the native horizontal scrollbar available.
+- Added a selected-category management surface to Categories mode for renaming, description editing, icon selection and recoverable removal.
+- Expanded the removal warning with the active-tab count and an explicit Recovery explanation.
+- Added a curated monochrome icon picker that reuses the existing card colors and defaults safely to the original folder icon.
+- Persisted stable category icon identifiers in SQLite and normalized missing or unknown legacy values to the folder icon.
+- Extended storage smoke coverage for create/update, restart persistence and legacy fallback.
+- Extended packaged-renderer smoke coverage with real mouse panning plus category rename, icon change, soft removal and Recovery restoration.
+- Verified `npm run build`, `npm run lint`, `npm run test:storage`, `npm run test:prototype`, `npm run test:installer` and `npm audit`; all passed and the audit reported zero vulnerabilities.
+
+Current status:
+- Categories beyond the compact window width can be reached without resizing DeskPilot.
+- Category rename, safe removal and icon assignment are visible together in Categories mode.
+- Existing categories retain the original folder appearance until the user chooses another monochrome icon.
+
+Next recommended step:
+- Use the regenerated Productive package for a real compact-window trial and prioritize any remaining daily-use friction before expanding the cleanup workflow.

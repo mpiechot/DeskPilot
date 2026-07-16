@@ -14,6 +14,8 @@ Working today:
 - visible active profile and Productive cutover status in the control panel
 - one-time Productive cutover from the old prototype database when Productive storage is first created
 - create, rename and remove active categories
+- drag the horizontal category board to reach categories beyond the current window width
+- assign each category a persisted monochrome icon from the built-in icon picker
 - restore removed categories
 - save http/https URLs into a selected category
 - open saved URLs from the selected category together in saved order in a new Chrome/Edge browser window
@@ -214,6 +216,10 @@ The expected display shape is wide and not very tall. The UI should therefore pr
 - compact status text
 - dense category tiles that remain readable at low height
 
+The Session Board can be dragged horizontally from a non-interactive part of a category card. Buttons, inputs and saved-tab drag handles keep their own behavior. The scrollbar remains available as a fallback.
+
+Open `Categories` to edit the selected category's name, description and icon or to remove it safely. Removal names the affected active-tab count and keeps the category and saved tabs available in `Recovery`.
+
 ## Browser Extension Prototype
 
 An unpacked Chrome/Edge-compatible prototype lives in `browser-extension/`.
@@ -268,6 +274,7 @@ Restoring or importing a backup creates a new safety backup before replacing the
 
 Removing a category currently performs a soft delete. The category is hidden from the active list, but the row remains in the local database for recovery-oriented future work.
 Removed categories can be restored from the Recovery mode in the control panel.
+Category icons are stored as stable built-in identifiers. Existing or unknown legacy values fall back to the original folder icon without changing the monochrome card style.
 Removing a saved URL also performs a soft delete. Removed URLs for the selected category can be restored from Recovery mode.
 
 Future storage work must preserve these rules:

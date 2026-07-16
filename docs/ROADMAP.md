@@ -59,13 +59,20 @@ In progress. Default categories now load from local SQLite storage.
 
 Expected features:
 - SQLite storage - initial pass done
-- categories - create/read/update/soft-delete done, default set includes Entertainment
+- categories - create/read/update/soft-delete done, with a visible selected-category management surface
+- category navigation - horizontal drag-to-scroll done for compact windows
+- category icons - persisted monochrome built-in icon picker done, with folder fallback for existing data
 - category recovery - initial pass done
 - saved URLs - manual save/open/list/soft-delete done
 - URL recovery - initial pass done
 - create/edit/delete categories - initial pass done with soft-delete
 - open category URLs in browser - initial pass done
 - open saved category as a new browser window instead of reusing an existing browser window - initial pass done with Chrome/Edge launcher
+
+Recent tracking issues:
+- #21 horizontal category drag navigation - done
+- #22 visible category rename and safe removal - done
+- #23 persisted monochrome category icon picker - done
 
 ## v0.3 - Browser Extension
 
@@ -124,7 +131,7 @@ Goal:
 Make DeskPilot pleasant on a small touch display.
 
 Status:
-Started. Standard/Touch layout, persisted monitor selection, launch-on-selected-display and optional kiosk-like fullscreen are implemented.
+Started. Standard/Touch layout, persisted monitor selection, launch-on-selected-display, optional kiosk-like fullscreen and horizontal category drag navigation are implemented.
 
 Expected features:
 - touch-sized buttons

@@ -36,7 +36,19 @@ async function runElectronSmoke() {
   const tabsByCategory = new Map();
   const deletedTabsByCategory = new Map();
   const archivedTabsByCategory = new Map();
-  const categories = defaultCategories.map((category) => ({ ...category }));
+  const categories = [
+    ...defaultCategories.map((category) => ({ ...category })),
+    ...Array.from({ length: 6 }, (_value, index) => ({
+      id: `overflow-${index + 1}`,
+      name: `Overflow ${index + 1}`,
+      description: "Horizontal category navigation fixture.",
+      icon: "folder",
+      tabCount: 0,
+      lastSavedLabel: "Not saved yet",
+      status: "empty"
+    }))
+  ];
+  const deletedCategories = [];
   let activeCategoryId = categories[0]?.id ?? "";
   let displayPreferences = { layoutMode: "standard", displayId: null, kiosk: false };
 
@@ -172,7 +184,57 @@ async function runElectronSmoke() {
 
     return activeCategoryId;
   });
-  ipcMain.handle("categories:deleted", () => []);
+  ipcMain.handle("categories:create", (_event, input) => {
+    categories.push({
+      id: `smoke-category-${Date.now()}`,
+      name: input.name,
+      description: input.description,
+      icon: input.icon || "folder",
+      tabCount: 0,
+      lastSavedLabel: "Not saved yet",
+      status: "empty"
+    });
+    return categories;
+  });
+  ipcMain.handle("categories:update", (_event, id, input) => {
+    const index = categories.findIndex((category) => category.id === id);
+
+    if (index >= 0) {
+      categories[index] = {
+        ...categories[index],
+        name: input.name,
+        description: input.description,
+        icon: input.icon || categories[index].icon || "folder"
+      };
+    }
+
+    return categories;
+  });
+  ipcMain.handle("categories:delete", (_event, id) => {
+    const index = categories.findIndex((category) => category.id === id);
+
+    if (index >= 0) {
+      deletedCategories.push(categories[index]);
+      categories.splice(index, 1);
+    }
+
+    if (!categories.some((category) => category.id === activeCategoryId)) {
+      activeCategoryId = categories[0]?.id ?? "";
+    }
+
+    return categories;
+  });
+  ipcMain.handle("categories:deleted", () => deletedCategories);
+  ipcMain.handle("categories:restore", (_event, id) => {
+    const index = deletedCategories.findIndex((category) => category.id === id);
+
+    if (index >= 0) {
+      categories.push(deletedCategories[index]);
+      deletedCategories.splice(index, 1);
+    }
+
+    return { categories, deletedCategories };
+  });
   ipcMain.handle("tabs:list", (_event, categoryId) => getActiveTabs(categoryId));
   ipcMain.handle("tabs:deleted", (_event, categoryId) => getDeletedTabs(categoryId));
   ipcMain.handle("tabs:archived", (_event, categoryId) => getArchivedTabs(categoryId));
@@ -330,6 +392,71 @@ async function runElectronSmoke() {
 
   await window.loadFile(path.join(prototypeRoot, "dist", "index.html"));
   console.log("Prototype renderer smoke: renderer loaded");
+
+  const categoryDragStart = await window.webContents.executeJavaScript(`
+    new Promise((resolve) => {
+      const inspect = (attempts = 120) => {
+        const list = document.querySelector(".categoryList");
+
+        if (list && list.scrollWidth > list.clientWidth) {
+          const rect = list.getBoundingClientRect();
+          list.scrollLeft = 0;
+          resolve({
+            x: Math.round(rect.right - 36),
+            y: Math.round(rect.top + 24),
+            targetX: Math.round(rect.left + 36),
+            initialScrollLeft: list.scrollLeft
+          });
+          return;
+        }
+
+        if (attempts === 0) {
+          resolve(null);
+          return;
+        }
+
+        setTimeout(() => inspect(attempts - 1), 25);
+      };
+
+      inspect();
+    })
+  `);
+
+  if (categoryDragStart) {
+    window.webContents.sendInputEvent({
+      type: "mouseMove",
+      x: categoryDragStart.x,
+      y: categoryDragStart.y,
+      movementX: 0,
+      movementY: 0
+    });
+    window.webContents.sendInputEvent({
+      type: "mouseDown",
+      x: categoryDragStart.x,
+      y: categoryDragStart.y,
+      button: "left",
+      clickCount: 1
+    });
+    window.webContents.sendInputEvent({
+      type: "mouseMove",
+      x: categoryDragStart.targetX,
+      y: categoryDragStart.y,
+      movementX: categoryDragStart.targetX - categoryDragStart.x,
+      movementY: 0
+    });
+    window.webContents.sendInputEvent({
+      type: "mouseUp",
+      x: categoryDragStart.targetX,
+      y: categoryDragStart.y,
+      button: "left",
+      clickCount: 1
+    });
+  }
+
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  const categoryDragWorked = Boolean(categoryDragStart) && (await window.webContents.executeJavaScript(`
+    document.querySelector(".categoryList").scrollLeft > 100
+  `));
 
   setTimeout(() => {
     setActiveTabs("entertainment", [
@@ -683,7 +810,120 @@ async function runElectronSmoke() {
     })
   `);
 
+  const categoryManagementResult = await window.webContents.executeJavaScript(`
+    new Promise((resolve) => {
+      const findButton = (text) =>
+        Array.from(document.querySelectorAll("button")).find((button) => button.textContent.trim().includes(text));
+      const findCard = (text) =>
+        Array.from(document.querySelectorAll(".categoryCard")).find((card) => card.textContent.includes(text));
+      let stage = "open category management";
+      const setInputValue = (input, value) => {
+        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
+        const previous = input.value;
+        setter.call(input, value);
+        input._valueTracker?.setValue(previous);
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+      };
+      const waitFor = (predicate, callback, attempts = 120) => {
+        if (predicate()) {
+          callback();
+          return;
+        }
+
+        if (attempts === 0) {
+          resolve({
+            categoryRenameWorked: false,
+            categoryIconWorked: false,
+            categoryRemovalWorked: false,
+            categoryRecoveryWorked: false,
+            stage,
+            selectedName: document.querySelector('input[aria-label="Selected category name"]')?.value,
+            selectedIcon: document.querySelector('.managedCategoryForm button[aria-pressed="true"]')?.getAttribute("aria-label"),
+            renamedCardIcon: findCard("Navigation Tools")?.querySelector(".categoryIcon")?.dataset.categoryIcon,
+            bodyText: document.body.textContent
+          });
+          return;
+        }
+
+        setTimeout(() => waitFor(predicate, callback, attempts - 1), 25);
+      };
+
+      findCard("Overflow 6").click();
+      findButton("Categories").click();
+      waitFor(
+        () => document.querySelector('input[aria-label="Selected category name"]')?.value === "Overflow 6",
+        () => {
+          const nameInput = document.querySelector('input[aria-label="Selected category name"]');
+          const descriptionInput = document.querySelector('input[aria-label="Selected category description"]');
+          setInputValue(nameInput, "Navigation Tools");
+          setInputValue(descriptionInput, "Managed without resizing the window.");
+          document.querySelector('.managedCategoryForm button[aria-label="Code icon"]').click();
+          stage = "select category icon";
+          waitFor(
+            () => document.querySelector('.managedCategoryForm button[aria-label="Code icon"]')?.getAttribute("aria-pressed") === "true",
+            () => {
+              findButton("Save changes").click();
+              stage = "save renamed category and icon";
+              waitFor(
+                () => Boolean(findCard("Navigation Tools")?.querySelector('[data-category-icon="code"]')),
+                () => {
+                  const renamedCard = findCard("Navigation Tools");
+                  const categoryRenameWorked = renamedCard?.textContent.includes("Managed without resizing the window.");
+                  const categoryIconWorked = Boolean(renamedCard?.querySelector('[data-category-icon="code"]'));
+                  let confirmationMessage = "";
+                  window.confirm = (message) => {
+                    confirmationMessage = message;
+                    return true;
+                  };
+                  findButton("Remove").click();
+                  stage = "remove category";
+                  waitFor(
+                    () => !findCard("Navigation Tools"),
+                    () => {
+                      const categoryRemovalWorked =
+                        confirmationMessage.includes("Navigation Tools") && confirmationMessage.includes("Recovery");
+                      findButton("Recovery").click();
+                      stage = "show category in Recovery";
+                      waitFor(
+                        () => Boolean(findButton("Restore Navigation Tools")),
+                        () => {
+                          findButton("Restore Navigation Tools").click();
+                          stage = "restore category";
+                          waitFor(
+                            () => Boolean(findCard("Navigation Tools")?.querySelector('[data-category-icon="code"]')),
+                            () => resolve({
+                              categoryRenameWorked,
+                              categoryIconWorked,
+                              categoryRemovalWorked,
+                              categoryRecoveryWorked: true
+                            })
+                          );
+                        }
+                      );
+                    }
+                  );
+                }
+              );
+            }
+          );
+        }
+      );
+    })
+  `);
+
   assert(result.hasDeskPilotApi, "Expected packaged renderer to receive the Electron preload API");
+  assert(categoryDragWorked, "Expected horizontal category drag to reveal off-screen categories without resizing");
+  if (!Object.values(categoryManagementResult).every(Boolean)) {
+    console.error(JSON.stringify(categoryManagementResult, null, 2));
+  }
+  assert(categoryManagementResult.categoryRenameWorked, "Expected Categories mode to rename the selected category");
+  assert(categoryManagementResult.categoryIconWorked, "Expected Categories mode to apply a monochrome category icon");
+  assert(
+    categoryManagementResult.categoryRemovalWorked,
+    "Expected category removal to require a Recovery-aware confirmation"
+  );
+  assert(categoryManagementResult.categoryRecoveryWorked, "Expected a removed category and its icon to be recoverable");
   if (!result.extensionRefreshUpdatedCategoryCount) {
     console.error(JSON.stringify({ entertainmentCardText: result.entertainmentCardText, bodyText: result.bodyText }, null, 2));
   }

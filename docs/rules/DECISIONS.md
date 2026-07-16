@@ -99,6 +99,14 @@ Generate the Productive launcher into its own `dist-productive/DeskPilot Product
 Reason:
 Productive use should not require a console, but it must remain a deliberate choice. Separate output folders preserve the profile safety boundary and make the selected data profile visible before DeskPilot starts.
 
+## 2026-07-16 - Stable Monochrome Category Icons
+
+Decision:
+Persist category icons as identifiers from a curated built-in Lucide-style set. Keep the existing single foreground color and category-icon background, and use the folder icon as the migration and unknown-value fallback.
+
+Reason:
+Stable identifiers survive restart, backup and import without storing executable or external image data. A constrained monochrome set improves at-a-glance recognition while preserving DeskPilot's existing visual language.
+
 ## 2026-07-03 - Saved Tab Order
 
 Decision:

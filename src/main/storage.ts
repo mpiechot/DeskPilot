@@ -2,6 +2,12 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import initSqlJs, { type Database, type SqlJsStatic } from "sql.js";
+import {
+  categoryIconOptions,
+  defaultCategoryIcon,
+  normalizeCategoryIcon,
+  type CategoryIconName
+} from "../shared/categoryIcons.js";
 import { defaultCategories, type SessionCategory } from "../shared/sessions.js";
 import type {
   CaptureMode,
@@ -258,13 +264,14 @@ export function createCategory(input: CategoryInput): SessionCategory[] {
 
   db.run(
     `
-      INSERT INTO categories (id, name, description, position)
-      VALUES ($id, $name, $description, $position)
+      INSERT INTO categories (id, name, description, icon, position)
+      VALUES ($id, $name, $description, $icon, $position)
     `,
     {
       $id: id,
       $name: normalized.name,
       $description: normalized.description,
+      $icon: normalized.icon,
       $position: position
     }
   );
@@ -276,21 +283,23 @@ export function createCategory(input: CategoryInput): SessionCategory[] {
 
 export function updateCategory(id: string, input: CategoryInput): SessionCategory[] {
   const db = getDatabase();
-  const normalized = normalizeCategoryInput(input);
   const safeId = normalizeCategoryId(id);
+  const normalized = normalizeCategoryInput(input, getStoredCategoryIcon(db, safeId));
 
   db.run(
     `
       UPDATE categories
       SET name = $name,
           description = $description,
+          icon = $icon,
           updated_at = CURRENT_TIMESTAMP
       WHERE id = $id AND deleted_at IS NULL
     `,
     {
       $id: safeId,
       $name: normalized.name,
-      $description: normalized.description
+      $description: normalized.description,
+      $icon: normalized.icon
     }
   );
 
@@ -914,6 +923,7 @@ function listCategoryRows(whereClause: string): SessionCategory[] {
       c.id,
       c.name,
       c.description,
+      c.icon,
       c.position,
       c.is_favorite,
       COUNT(t.id) AS tab_count,
@@ -975,8 +985,10 @@ function migrate(db: Database): void {
   `);
 
   ensureColumn(db, "categories", "position", "INTEGER NOT NULL DEFAULT 0");
+  ensureColumn(db, "categories", "icon", "TEXT");
   ensureColumn(db, "session_tabs", "position", "INTEGER NOT NULL DEFAULT 0");
   ensureColumn(db, "session_tabs", "archived_at", "TEXT");
+  normalizeCategoryIcons(db);
   normalizeTabPositions(db);
 }
 
@@ -1042,8 +1054,8 @@ function normalizeTabPositions(db: Database): void {
 
 function seedDefaultCategories(db: Database): void {
   const statement = db.prepare(`
-    INSERT INTO categories (id, name, description, position)
-    VALUES ($id, $name, $description, $position)
+    INSERT INTO categories (id, name, description, icon, position)
+    VALUES ($id, $name, $description, $icon, $position)
     ON CONFLICT(id) DO NOTHING
   `);
 
@@ -1053,6 +1065,7 @@ function seedDefaultCategories(db: Database): void {
         $id: category.id,
         $name: category.name,
         $description: category.description,
+        $icon: category.icon,
         $position: index
       });
     });
@@ -1132,9 +1145,13 @@ function assertActiveCategoryExists(db: Database, id: string): void {
   }
 }
 
-function normalizeCategoryInput(input: CategoryInput): CategoryInput {
+function normalizeCategoryInput(
+  input: CategoryInput,
+  fallbackIcon: CategoryIconName = defaultCategoryIcon
+): CategoryInput & { icon: CategoryIconName } {
   const name = input.name.trim();
   const description = input.description.trim();
+  const icon = normalizeCategoryIcon(input.icon ?? fallbackIcon);
 
   if (!name) {
     throw new Error("Category name is required.");
@@ -1148,7 +1165,19 @@ function normalizeCategoryInput(input: CategoryInput): CategoryInput {
     throw new Error("Category description must be 140 characters or less.");
   }
 
-  return { name, description };
+  return { name, description, icon };
+}
+
+function getStoredCategoryIcon(db: Database, id: string): CategoryIconName {
+  const result = db.exec("SELECT icon FROM categories WHERE id = $id AND deleted_at IS NULL LIMIT 1", {
+    $id: id
+  });
+
+  if (result.length === 0 || result[0].values.length === 0) {
+    throw new Error("DeskPilot category not found.");
+  }
+
+  return normalizeCategoryIcon(result[0].values[0][0]);
 }
 
 function normalizeCategoryId(id: string): string {
@@ -1375,6 +1404,16 @@ function getNextTabPosition(db: Database, categoryId: string): number {
   }
 
   return Number(result[0].values[0][0]);
+}
+
+function normalizeCategoryIcons(db: Database): void {
+  const allowedIcons = categoryIconOptions.map((option) => `'${option.name}'`).join(", ");
+
+  db.run(`
+    UPDATE categories
+    SET icon = '${defaultCategoryIcon}'
+    WHERE icon IS NULL OR TRIM(icon) = '' OR icon NOT IN (${allowedIcons})
+  `);
 }
 
 function getArchivedTabCategoryId(db: Database, id: string): string | null {
@@ -1724,6 +1763,7 @@ function mapCategoryRow(row: CategoryRow): SessionCategory {
     id: row.id,
     name: row.name,
     description: row.description,
+    icon: normalizeCategoryIcon(row.icon),
     tabCount,
     lastSavedLabel: row.last_saved_at ? "Saved" : "Not saved yet",
     status: tabCount > 0 ? "ready" : "empty"

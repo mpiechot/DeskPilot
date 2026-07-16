@@ -75,18 +75,25 @@ assert(getActiveCategoryId() === "projects", "Expected active category selection
 
 let categories = createCategory({
   name: "Writing",
-  description: "Drafting, notes and publishing."
+  description: "Drafting, notes and publishing.",
+  icon: "book-open"
 });
 const writing = categories.find((category) => category.name === "Writing");
 assert(writing, "Expected Writing category after create");
+assert(writing.icon === "book-open", "Expected a new category to persist its selected icon");
 
 categories = updateCategory(writing.id, {
   name: "Writing Desk",
-  description: "Drafting, notes and publishing context."
+  description: "Drafting, notes and publishing context.",
+  icon: "briefcase"
 });
 assert(
   categories.some((category) => category.name === "Writing Desk"),
   "Expected renamed Writing Desk category after update"
+);
+assert(
+  categories.some((category) => category.id === writing.id && category.icon === "briefcase"),
+  "Expected editing a category to persist its selected icon"
 );
 
 setActiveCategoryId(writing.id);
@@ -167,6 +174,10 @@ archiveTab(archivedTabId);
 await initializeStorage(dir, { profile: "development", disallowProductive: true });
 assert(listTabs(recreatedWriting.id).length === 0, "Expected archived tab to stay out of the active Session after restart");
 assert(listArchivedTabs(recreatedWriting.id).length === 1, "Expected archived tab to survive storage restart");
+assert(
+  listCategories().find((category) => category.id === recreatedWriting.id)?.icon === "briefcase",
+  "Expected a category icon to survive storage restart"
+);
 unarchiveTab(archivedTabId);
 const permanentDeleteTab = addTab({
   categoryId: recreatedWriting.id,
@@ -225,6 +236,9 @@ assertTabOrder(
 );
 
 await rewriteSqliteDatabase(databasePath, (db) => {
+  db.run("UPDATE categories SET icon = 'legacy-unknown-icon' WHERE id = $categoryId", {
+    $categoryId: recreatedWriting.id
+  });
   db.run("UPDATE session_tabs SET position = 0 WHERE category_id = $categoryId", {
     $categoryId: orderCategory.id
   });
@@ -233,6 +247,10 @@ await rewriteSqliteDatabase(databasePath, (db) => {
   db.run("UPDATE session_tabs SET saved_at = '2026-01-01T00:00:03.000Z' WHERE title = 'Order Gamma'");
 });
 await initializeStorage(dir, { profile: "development", disallowProductive: true });
+assert(
+  listCategories().find((category) => category.id === recreatedWriting.id)?.icon === "folder",
+  "Expected an unknown legacy category icon to fall back safely to folder"
+);
 assertTabOrder(
   listTabs(orderCategory.id),
   ["Order Alpha", "Order Beta", "Order Gamma"],

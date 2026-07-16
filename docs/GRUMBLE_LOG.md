@@ -75,3 +75,6 @@ An installer generator can call `signtool.exe` without producing a real Authenti
 
 Installer archive note:
 The current installer intentionally leaves app files unpacked because the browser extension must remain a real load-unpacked directory and sql.js must locate its WASM file reliably. electron-builder warns about disabled ASAR; enabling it later requires explicit unpack paths and end-to-end verification of both extension discovery and SQLite startup.
+
+Category gesture note:
+A draggable category board and draggable saved tabs share the same surface. Category panning must start only outside buttons, form controls and draggable tab rows, and it must suppress the click generated after a real pan; otherwise navigation creates accidental selections or steals the existing tab workflow.

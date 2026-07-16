@@ -1,12 +1,21 @@
 import {
   AlertTriangle,
   Archive,
+  BookOpen,
+  Briefcase,
   CheckCircle2,
+  Clapperboard,
+  Code2,
   DatabaseBackup,
   Download,
   ExternalLink,
+  FlaskConical,
   FolderOpen,
+  Gamepad2,
+  Globe2,
   GripVertical,
+  Inbox,
+  Lightbulb,
   PanelTopOpen,
   Pencil,
   Plus,
@@ -16,9 +25,18 @@ import {
   ShieldCheck,
   Trash2,
   Upload,
+  Wrench,
+  type LucideIcon,
   X
 } from "lucide-react";
-import { type DragEvent, type FormEvent, useEffect, useState } from "react";
+import {
+  type DragEvent,
+  type FormEvent,
+  type PointerEvent as ReactPointerEvent,
+  useEffect,
+  useRef,
+  useState
+} from "react";
 import type {
   BridgeStatus,
   CategoryInput,
@@ -33,8 +51,63 @@ import type {
   StorageRestoreResult,
   WindowPreferences
 } from "../shared/deskPilotApi";
+import {
+  categoryIconOptions,
+  defaultCategoryIcon,
+  type CategoryIconName
+} from "../shared/categoryIcons";
 import { defaultCategories, type SessionCategory } from "../shared/sessions";
 import "./styles.css";
+
+const categoryIconComponents: Record<CategoryIconName, LucideIcon> = {
+  folder: FolderOpen,
+  briefcase: Briefcase,
+  "book-open": BookOpen,
+  flask: FlaskConical,
+  clapperboard: Clapperboard,
+  gamepad: Gamepad2,
+  code: Code2,
+  inbox: Inbox,
+  globe: Globe2,
+  wrench: Wrench,
+  lightbulb: Lightbulb
+};
+
+function CategoryGlyph({ icon }: { icon: CategoryIconName }) {
+  const Icon = categoryIconComponents[icon] ?? FolderOpen;
+  return <Icon aria-hidden="true" />;
+}
+
+function CategoryIconPicker({
+  value,
+  onChange,
+  label
+}: {
+  value: CategoryIconName;
+  onChange: (icon: CategoryIconName) => void;
+  label: string;
+}) {
+  return (
+    <fieldset className="categoryIconPicker">
+      <legend>{label}</legend>
+      <div className="categoryIconOptions">
+        {categoryIconOptions.map((option) => (
+          <button
+            type="button"
+            className={value === option.name ? "categoryIconOption categoryIconOption-selected" : "categoryIconOption"}
+            key={option.name}
+            onClick={() => onChange(option.name)}
+            aria-label={`${option.label} icon`}
+            aria-pressed={value === option.name}
+            title={option.label}
+          >
+            <CategoryGlyph icon={option.name} />
+          </button>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
 
 function statusLabel(status: SessionCategory["status"]): string {
   if (status === "ready") {
@@ -74,9 +147,18 @@ function getUrlHost(value: string): string {
 function App() {
   const [categories, setCategories] = useState<SessionCategory[]>(defaultCategories);
   const [storageStatus, setStorageStatus] = useState<"loading" | "ready" | "fallback" | "error">("loading");
-  const [categoryDraft, setCategoryDraft] = useState<CategoryInput>({ name: "", description: "" });
+  const [categoryDraft, setCategoryDraft] = useState<CategoryInput>({
+    name: "",
+    description: "",
+    icon: defaultCategoryIcon
+  });
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
-  const [editDraft, setEditDraft] = useState<CategoryInput>({ name: "", description: "" });
+  const [editDraft, setEditDraft] = useState<CategoryInput>({ name: "", description: "", icon: defaultCategoryIcon });
+  const [managedCategoryDraft, setManagedCategoryDraft] = useState<CategoryInput>({
+    name: defaultCategories[0]?.name ?? "",
+    description: defaultCategories[0]?.description ?? "",
+    icon: defaultCategories[0]?.icon ?? defaultCategoryIcon
+  });
   const [selectedCategoryId, setSelectedCategoryId] = useState(defaultCategories[0]?.id ?? "");
   const [deletedCategories, setDeletedCategories] = useState<SessionCategory[]>([]);
   const [deletedTabs, setDeletedTabs] = useState<SessionTab[]>([]);
@@ -98,6 +180,28 @@ function App() {
     kiosk: false
   });
   const [draggedTab, setDraggedTab] = useState<{ id: string; categoryId: string } | null>(null);
+  const [isCategoryListDragging, setIsCategoryListDragging] = useState(false);
+  const categoryListDrag = useRef<{
+    pointerId: number;
+    startX: number;
+    startScrollLeft: number;
+    moved: boolean;
+  } | null>(null);
+  const suppressCategoryClick = useRef(false);
+  const selectedCategory = categories.find((category) => category.id === selectedCategoryId) ?? null;
+
+  useEffect(() => {
+    if (!selectedCategory) {
+      setManagedCategoryDraft({ name: "", description: "", icon: defaultCategoryIcon });
+      return;
+    }
+
+    setManagedCategoryDraft({
+      name: selectedCategory.name,
+      description: selectedCategory.description,
+      icon: selectedCategory.icon
+    });
+  }, [selectedCategory]);
 
   useEffect(() => {
     let isMounted = true;
@@ -393,6 +497,65 @@ function App() {
 
   function getBoardTabs(categoryId: string): SessionTab[] {
     return boardTabsByCategory[categoryId] ?? [];
+  }
+
+  function handleCategoryListPointerDown(event: ReactPointerEvent<HTMLElement>): void {
+    const target = event.target instanceof Element ? event.target : null;
+    const interactiveTarget = target?.closest("button, input, textarea, select, a, [draggable='true']");
+
+    if (event.button !== 0 || interactiveTarget || event.currentTarget.scrollWidth <= event.currentTarget.clientWidth) {
+      return;
+    }
+
+    categoryListDrag.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startScrollLeft: event.currentTarget.scrollLeft,
+      moved: false
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function handleCategoryListPointerMove(event: ReactPointerEvent<HTMLElement>): void {
+    const drag = categoryListDrag.current;
+
+    if (!drag || drag.pointerId !== event.pointerId) {
+      return;
+    }
+
+    const distance = event.clientX - drag.startX;
+
+    if (!drag.moved && Math.abs(distance) >= 5) {
+      drag.moved = true;
+      setIsCategoryListDragging(true);
+    }
+
+    if (drag.moved) {
+      event.preventDefault();
+      event.currentTarget.scrollLeft = drag.startScrollLeft - distance;
+    }
+  }
+
+  function finishCategoryListDrag(event: ReactPointerEvent<HTMLElement>): void {
+    const drag = categoryListDrag.current;
+
+    if (!drag || drag.pointerId !== event.pointerId) {
+      return;
+    }
+
+    suppressCategoryClick.current = drag.moved;
+    categoryListDrag.current = null;
+    setIsCategoryListDragging(false);
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+
+    if (drag.moved) {
+      window.setTimeout(() => {
+        suppressCategoryClick.current = false;
+      }, 0);
+    }
   }
 
   function handleBoardDragStart(event: DragEvent<HTMLElement>, tab: SessionTab): void {
@@ -753,7 +916,7 @@ function App() {
       ?.createCategory(categoryDraft)
       .then((nextCategories: SessionCategory[]) => {
         updateCategories(nextCategories);
-        setCategoryDraft({ name: "", description: "" });
+        setCategoryDraft({ name: "", description: "", icon: defaultCategoryIcon });
         setOperationMessage("Category added.");
       })
       .catch(handleStorageError);
@@ -761,13 +924,13 @@ function App() {
 
   function startEditingCategory(category: SessionCategory): void {
     setEditingCategoryId(category.id);
-    setEditDraft({ name: category.name, description: category.description });
+    setEditDraft({ name: category.name, description: category.description, icon: category.icon });
     setOperationMessage("");
   }
 
   function cancelEditingCategory(): void {
     setEditingCategoryId(null);
-    setEditDraft({ name: "", description: "" });
+    setEditDraft({ name: "", description: "", icon: defaultCategoryIcon });
   }
 
   function saveCategoryEdit(id: string): void {
@@ -791,10 +954,38 @@ function App() {
       .catch(handleStorageError);
   }
 
+  function saveManagedCategory(event: FormEvent<HTMLFormElement>): void {
+    event.preventDefault();
+
+    if (!selectedCategory || !managedCategoryDraft.name.trim()) {
+      setOperationMessage("Category name cannot be empty.");
+      return;
+    }
+
+    if (!isStorageWritable) {
+      setOperationMessage("Category changes require the Electron app.");
+      return;
+    }
+
+    window.deskPilot
+      ?.updateCategory(selectedCategory.id, managedCategoryDraft)
+      .then((nextCategories: SessionCategory[]) => {
+        updateCategories(nextCategories);
+        setOperationMessage("Category updated.");
+      })
+      .catch(handleStorageError);
+  }
+
   function removeCategory(id: string): void {
     const category = categories.find((item) => item.id === id);
 
-    if (!category || !window.confirm(`Remove "${category.name}" from active categories?`)) {
+    if (
+      !category ||
+      !window.confirm(
+        `Remove "${category.name}" and hide its ${category.tabCount} active tab${category.tabCount === 1 ? "" : "s"}? ` +
+          "The category and its saved tabs remain available in Recovery."
+      )
+    ) {
       return;
     }
 
@@ -970,28 +1161,83 @@ function App() {
             </section>
           </section>
         ) : controlMode === "categories" ? (
-          <form className="categoryForm" onSubmit={handleCreateCategory}>
-            <input
-              aria-label="Category name"
-              maxLength={40}
-              onChange={(event) => setCategoryDraft({ ...categoryDraft, name: event.target.value })}
-              placeholder="New category"
-              type="text"
-              value={categoryDraft.name}
-            />
-            <input
-              aria-label="Category description"
-              maxLength={140}
-              onChange={(event) => setCategoryDraft({ ...categoryDraft, description: event.target.value })}
-              placeholder="Short description"
-              type="text"
-              value={categoryDraft.description}
-            />
-            <button type="submit" className="addCategoryAction">
-              <Plus aria-hidden="true" />
-              Add Category
-            </button>
-          </form>
+          <section className="categoryManagementPanel" aria-label="Category management">
+            {selectedCategory ? (
+              <form className="categoryForm managedCategoryForm" onSubmit={saveManagedCategory}>
+                <div className="categoryManagementHeading">
+                  <strong>Selected category</strong>
+                  <span>{selectedCategory.tabCount} active tabs</span>
+                </div>
+                <input
+                  aria-label="Selected category name"
+                  maxLength={40}
+                  onChange={(event) => setManagedCategoryDraft({ ...managedCategoryDraft, name: event.target.value })}
+                  type="text"
+                  value={managedCategoryDraft.name}
+                />
+                <input
+                  aria-label="Selected category description"
+                  maxLength={140}
+                  onChange={(event) =>
+                    setManagedCategoryDraft({ ...managedCategoryDraft, description: event.target.value })
+                  }
+                  type="text"
+                  value={managedCategoryDraft.description}
+                />
+                <CategoryIconPicker
+                  label="Category icon"
+                  value={managedCategoryDraft.icon ?? defaultCategoryIcon}
+                  onChange={(icon) => setManagedCategoryDraft({ ...managedCategoryDraft, icon })}
+                />
+                <div className="categoryManagementActions">
+                  <button type="submit" className="addCategoryAction compactCategoryAction">
+                    <Save aria-hidden="true" />
+                    Save changes
+                  </button>
+                  <button
+                    type="button"
+                    className="removeCategoryAction"
+                    onClick={() => removeCategory(selectedCategory.id)}
+                  >
+                    <Trash2 aria-hidden="true" />
+                    Remove
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <span className="emptyRecoveryText">Create a category to start.</span>
+            )}
+            <form className="categoryForm newCategoryForm" onSubmit={handleCreateCategory}>
+              <div className="categoryManagementHeading">
+                <strong>New category</strong>
+              </div>
+              <input
+                aria-label="Category name"
+                maxLength={40}
+                onChange={(event) => setCategoryDraft({ ...categoryDraft, name: event.target.value })}
+                placeholder="New category"
+                type="text"
+                value={categoryDraft.name}
+              />
+              <input
+                aria-label="Category description"
+                maxLength={140}
+                onChange={(event) => setCategoryDraft({ ...categoryDraft, description: event.target.value })}
+                placeholder="Short description"
+                type="text"
+                value={categoryDraft.description}
+              />
+              <CategoryIconPicker
+                label="Category icon"
+                value={categoryDraft.icon ?? defaultCategoryIcon}
+                onChange={(icon) => setCategoryDraft({ ...categoryDraft, icon })}
+              />
+              <button type="submit" className="addCategoryAction compactCategoryAction">
+                <Plus aria-hidden="true" />
+                Add Category
+              </button>
+            </form>
+          </section>
         ) : controlMode === "archive" ? (
           <section className="recoveryList" aria-label={`Archived URLs in ${selectedCategoryName()}`}>
             <p>Archived URLs in {selectedCategoryName()}</p>
@@ -1217,7 +1463,22 @@ function App() {
         </footer>
       </aside>
 
-      <section className="categoryList" aria-label="Session categories">
+      <section
+        className={isCategoryListDragging ? "categoryList categoryList-dragging" : "categoryList"}
+        aria-label="Session categories. Drag horizontally to browse."
+        title="Drag horizontally to browse categories"
+        onClickCapture={(event) => {
+          if (suppressCategoryClick.current) {
+            event.preventDefault();
+            event.stopPropagation();
+            suppressCategoryClick.current = false;
+          }
+        }}
+        onPointerCancel={finishCategoryListDrag}
+        onPointerDown={handleCategoryListPointerDown}
+        onPointerMove={handleCategoryListPointerMove}
+        onPointerUp={finishCategoryListDrag}
+      >
         {categories.map((category) => {
           const boardTabs = getBoardTabs(category.id);
 
@@ -1228,8 +1489,8 @@ function App() {
             key={category.id}
             onClick={() => setSelectedCategoryId(category.id)}
           >
-            <div className="categoryIcon">
-              <FolderOpen aria-hidden="true" />
+            <div className="categoryIcon" data-category-icon={category.icon}>
+              <CategoryGlyph icon={category.icon} />
             </div>
             <div className="categoryBody">
               {editingCategoryId === category.id ? (
@@ -1246,6 +1507,11 @@ function App() {
                     maxLength={140}
                     onChange={(event) => setEditDraft({ ...editDraft, description: event.target.value })}
                     value={editDraft.description}
+                  />
+                  <CategoryIconPicker
+                    label="Category icon"
+                    value={editDraft.icon ?? defaultCategoryIcon}
+                    onChange={(icon) => setEditDraft({ ...editDraft, icon })}
                   />
                   <div className="cardActions">
                     <button

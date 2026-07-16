@@ -1,4 +1,5 @@
 import type { SessionCategory } from "./sessions.js";
+import type { CategoryIconName } from "./categoryIcons.js";
 
 export type DeskPilotApi = {
   version: string;
@@ -38,6 +39,7 @@ export type DeskPilotApi = {
 export type CategoryInput = {
   name: string;
   description: string;
+  icon?: CategoryIconName;
 };
 
 export type BridgeStatus = {
@@ -159,6 +161,7 @@ export type CategoryRow = {
   id: string;
   name: string;
   description: string;
+  icon: string | null;
   position: number;
   is_favorite: number;
   tab_count: number;

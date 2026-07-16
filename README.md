@@ -43,6 +43,8 @@ Current state:
 - The app shows the active data profile and Productive cutover status in the UI.
 - Productive storage copies existing prototype data once when it is first created and leaves the source untouched.
 - Categories and saved URLs use soft-delete recovery flows.
+- The horizontal category board can be panned by dragging, so off-screen categories remain reachable in the compact window.
+- Categories can be created, renamed, safely removed and assigned a persisted icon from a monochrome built-in set.
 - Saved URLs have persisted tab positions and are restored in that stored order.
 - The Session Board shows saved tabs under each category.
 - Saved tabs can be moved between categories and reordered with mouse-first drag and drop.
