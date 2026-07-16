@@ -844,3 +844,20 @@ Current status:
 
 Next recommended step:
 - Before publishing, merge PR #20, retarget or recreate the release tag from final `main`, rebuild the installer and replace the draft asset if its checksum changes.
+
+### Category click regression fix
+
+Completed:
+- Reproduced the reported regression with a real Electron mouse-down/mouse-up sequence: a stationary click on Research did not change the selected Category.
+- Identified immediate pointer capture on the category list as the cause; it retargeted the resulting click away from the Category card.
+- Delayed pointer capture until horizontal movement crosses the existing five-pixel drag threshold.
+- Added packaged-renderer assertions that a stationary mouse click selects a Category and a real horizontal drag still scrolls without changing the selected Category.
+- Ran the focused renderer regression three consecutive times successfully after the fix.
+- Verified `npm run lint`, `npm run build`, `npm run test:storage`, `npm run test:prototype`, `npm run test:installer` and `npm audit`; all passed with zero reported vulnerabilities.
+
+Current status:
+- Category cards are clickable again while horizontal drag-to-scroll remains available.
+- Version remains 0.1.1 because its Draft Release has not been published; the corrected installer must replace the existing draft asset before publication.
+
+Next recommended step:
+- Merge the focused regression-fix PR, then rebuild and replace the unsigned 0.1.1 Draft Release installer before publication.

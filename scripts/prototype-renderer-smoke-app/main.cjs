@@ -438,6 +438,65 @@ async function runElectronSmoke() {
     })
   `);
 
+  const categoryClickPoint = await window.webContents.executeJavaScript(`
+    new Promise((resolve) => {
+      const inspect = (attempts = 120) => {
+        const card = document.querySelector('[data-category-id="research"]');
+
+        if (card) {
+          const rect = card.getBoundingClientRect();
+          resolve({
+            x: Math.round(rect.left + rect.width / 2),
+            y: Math.round(rect.top + 24)
+          });
+          return;
+        }
+
+        if (attempts === 0) {
+          resolve(null);
+          return;
+        }
+
+        setTimeout(() => inspect(attempts - 1), 25);
+      };
+
+      inspect();
+    })
+  `);
+
+  if (categoryClickPoint) {
+    window.webContents.sendInputEvent({
+      type: "mouseMove",
+      x: categoryClickPoint.x,
+      y: categoryClickPoint.y,
+      movementX: 0,
+      movementY: 0
+    });
+    window.webContents.sendInputEvent({
+      type: "mouseDown",
+      x: categoryClickPoint.x,
+      y: categoryClickPoint.y,
+      button: "left",
+      clickCount: 1
+    });
+    window.webContents.sendInputEvent({
+      type: "mouseUp",
+      x: categoryClickPoint.x,
+      y: categoryClickPoint.y,
+      button: "left",
+      clickCount: 1
+    });
+  }
+
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  const categoryClickWorked = Boolean(categoryClickPoint) && (await window.webContents.executeJavaScript(`
+    document.querySelector('.categoryCard-selected')?.dataset.categoryId === "research"
+  `));
+
+  await window.webContents.executeJavaScript(`
+    document.querySelector('[data-category-id="work"]').click()
+  `);
+
   const categoryDragStart = await window.webContents.executeJavaScript(`
     new Promise((resolve) => {
       const inspect = (attempts = 120) => {
@@ -502,6 +561,9 @@ async function runElectronSmoke() {
   const categoryDragWorked = Boolean(categoryDragStart) && (await window.webContents.executeJavaScript(`
     document.querySelector(".categoryList").scrollLeft > 100
   `));
+  const categoryDragPreservedSelection = await window.webContents.executeJavaScript(`
+    document.querySelector('.categoryCard-selected')?.dataset.categoryId === "work"
+  `);
 
   setTimeout(() => {
     setActiveTabs("entertainment", [
@@ -958,6 +1020,7 @@ async function runElectronSmoke() {
   `);
 
   assert(result.hasDeskPilotApi, "Expected packaged renderer to receive the Electron preload API");
+  assert(categoryClickWorked, "Expected a stationary mouse click to select a category");
   assert(
     updateNoticeResult?.visibleText.includes("v0.1.0") && updateNoticeResult?.visibleText.includes("v0.1.1"),
     "Expected the startup update notice to show installed and available versions"
@@ -968,6 +1031,7 @@ async function runElectronSmoke() {
     "Expected the update action to open the validated GitHub release page"
   );
   assert(categoryDragWorked, "Expected horizontal category drag to reveal off-screen categories without resizing");
+  assert(categoryDragPreservedSelection, "Expected horizontal category drag not to select another category");
   if (!Object.values(categoryManagementResult).every(Boolean)) {
     console.error(JSON.stringify(categoryManagementResult, null, 2));
   }

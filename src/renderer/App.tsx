@@ -532,7 +532,6 @@ function App() {
       startScrollLeft: event.currentTarget.scrollLeft,
       moved: false
     };
-    event.currentTarget.setPointerCapture(event.pointerId);
   }
 
   function handleCategoryListPointerMove(event: ReactPointerEvent<HTMLElement>): void {
@@ -547,6 +546,7 @@ function App() {
     if (!drag.moved && Math.abs(distance) >= 5) {
       drag.moved = true;
       setIsCategoryListDragging(true);
+      event.currentTarget.setPointerCapture(event.pointerId);
     }
 
     if (drag.moved) {

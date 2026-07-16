@@ -79,5 +79,8 @@ The current installer intentionally leaves app files unpacked because the browse
 Category gesture note:
 A draggable category board and draggable saved tabs share the same surface. Category panning must start only outside buttons, form controls and draggable tab rows, and it must suppress the click generated after a real pan; otherwise navigation creates accidental selections or steals the existing tab workflow.
 
+Category pointer-capture note:
+Capturing the pointer during `pointerdown` also retargets a stationary click to the category list, making cards look unclickable. Delay pointer capture until horizontal movement crosses the drag threshold, and keep executable coverage for both a real click and a real drag rather than relying on programmatic `.click()` calls.
+
 Update-check note:
 An update banner is not free space on a 390-pixel-high control panel. The first separate banner pushed the URL title field below the usable renderer height, so the final update action reuses the existing header version position. Keep update failures non-blocking and resist turning a once-at-start requirement into a timer disguised as convenience.
