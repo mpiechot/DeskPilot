@@ -30,6 +30,23 @@ Tracking issues:
 - #17 Productive MVP: reorder saved tabs within a category with app drag and drop - done
 - #18 Productive MVP: evaluate and implement per-tab open controls on the Session Board - done
 
+## Post-MVP Architecture Research
+
+Goal:
+Prepare DeskPilot's transition from a browser-session control panel into a broader local PC helper without committing to an untested touchscreen or plugin architecture.
+
+Status:
+Research complete; implementation direction is intentionally waiting for a Grill session and a real target-hardware touch/focus test.
+
+Research results:
+- [#28 touchscreen input isolation and keyboard-free workflows](research/0028-touchscreen-input-isolation.md) - complete, with target-hardware validation gate documented
+- [#29 modular DeskPilot shell and system-control layer](research/0029-modular-deskpilot-shell.md) - complete, with multiple navigation/module/action designs compared
+
+Recommended next decision step:
+- Grill the open product and architecture questions in both research notes.
+- Select the target touchscreen topology before implementing foreground hotkeys.
+- Convert only the selected direction into small implementation tickets.
+
 ## v0.1 - Control Panel Skeleton
 
 Goal:

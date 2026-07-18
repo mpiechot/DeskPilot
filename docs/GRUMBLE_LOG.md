@@ -87,3 +87,9 @@ An update banner is not free space on a 390-pixel-high control panel. The first 
 
 Browser window-name note:
 Chrome exposes window naming in its UI and as the Chromium `--window-name` startup switch, but not through the `chrome.windows` extension API. DeskPilot can therefore name windows it launches through the explicit Chrome/Edge executable path, while the default-browser fallback cannot guarantee a name.
+
+Touch isolation research note:
+"Touch input" is not one Windows guarantee. Correct monitor mapping, pointer-to-mouse promotion, global cursor position, foreground-window activation and eventual hotkey targeting are separate behaviors. Do not declare the direct-touch architecture solved from a simulated click or a single API description; measure all of them on the real controller after reboot and reconnect.
+
+Plugin temptation note:
+Calling future areas "Pilots" makes a plugin system sound inevitable long before it is useful. DeskPilot currently has one real domain module. Keep future Pilots compiled and keep user extensibility declarative until two genuine implementations prove that a wider seam earns its maintenance and security cost.

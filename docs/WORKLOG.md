@@ -896,3 +896,29 @@ Current status:
 
 Next recommended step:
 - Install the replaced Draft Release asset and verify the Category-only window title with a real `Open Selected` launch before publication.
+
+## 2026-07-18
+
+### Touchscreen isolation and modular shell research
+
+Completed:
+- Created and researched GitHub tickets #28 and #29 as linked decision topics.
+- Inspected the current Electron window, React renderer, preload interface, SQLite backup model, loopback browser bridge and browser-extension input surface.
+- Inventoried every current DeskPilot workflow that still requires text input and separated daily touch actions from infrequent PC configuration.
+- Inspected the local Windows input environment: two monitors are present, but Windows reports pen/tablet capability and no integrated or external touch digitizer, so no real finger-touch claim was made.
+- Researched Windows touch-to-mouse promotion, pointer/window activation, Electron focusability, touch-keyboard behavior and input-injection constraints from primary platform documentation.
+- Wrote `docs/research/0028-touchscreen-input-isolation.md` with nine architecture options, a comparative matrix, two recommended deployment topologies, a target-hardware test matrix and Grill questions.
+- Researched top/left/bottom navigation, Pilot registry choices, typed action models, action execution safety, hotkey targeting, persistence and incremental migration.
+- Wrote `docs/research/0029-modular-deskpilot-shell.md` with navigation wireframes, four module-extension options, deep-module seams, a typed action model, a recoverable SQLite design, security constraints and Grill questions.
+- Recommended a conditional direct-touch architecture: one DeskPilot host with a non-focusable keyboard-free Control Surface and a focusable PC Configuration Surface if the real hardware preserves the cursor; otherwise use a separately paired touch device and local PC host agent.
+- Recommended DeskPilot as the product shell, BrowserPilot as the current domain, SystemPilot as the default domain and a fixed compile-time registry instead of a speculative code-plugin system.
+
+Current status:
+- The research is implementation-oriented but deliberately does not choose unresolved product preferences on the user's behalf.
+- No product code or stored user data changed.
+- A real touchscreen/controller is still required to decide whether a directly attached display can preserve both cursor position and foreground focus.
+
+Next recommended step:
+- Run the planned Grill session over both research notes.
+- Choose the hardware topology, Pilot meaning, navigation placement, first SystemPilot action kinds and foreground-hotkey target semantics.
+- Create only the implementation tickets selected by that session, beginning with the touch/focus diagnostic if direct attachment remains a candidate.
