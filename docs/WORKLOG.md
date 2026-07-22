@@ -922,3 +922,20 @@ Next recommended step:
 - Run the planned Grill session over both research notes.
 - Choose the hardware topology, Pilot meaning, navigation placement, first SystemPilot action kinds and foreground-hotkey target semantics.
 - Create only the implementation tickets selected by that session, beginning with the touch/focus diagnostic if direct attachment remains a candidate.
+
+## 2026-07-22
+
+### Productive browser-session trial accepted
+
+Completed:
+- The user used the current DeskPilot build for a real browser-session trial and reports that the workflow was successful.
+- Cleared the pending real-use validation blocker for the Productive MVP browser-session scope.
+- Recorded that no additional blocker was reported for the current save, organization, restore or daily-use flow.
+- Kept the separate touchscreen research boundary explicit: successful desktop use does not prove cursor or foreground-focus isolation on real touch hardware.
+
+Current status:
+- The current browser-session workflow is ready to serve as the stable foundation for the next architecture decision.
+- Research tickets #28 and #29 are being prepared for a Grill session; no implementation tickets should be derived until that discussion selects a direction.
+
+Next recommended step:
+- Run the Grill session using the decision handoffs in #28 and #29 and the matching repository research notes.

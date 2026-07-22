@@ -3,6 +3,7 @@
 - GitHub ticket: [#28](https://github.com/mpiechot/DeskPilot/issues/28)
 - Status: Research complete; target-hardware validation still required
 - Date: 2026-07-18
+- Grill handoff: ready for product and architecture decision; do not create implementation tickets from this note before the session.
 
 ## Purpose
 
@@ -14,6 +15,8 @@ This report deliberately separates:
 - observations from the current DeskPilot implementation;
 - plausible designs that still require a hardware proof;
 - product decisions to resolve in the planned Grill session.
+
+The current browser-session/Productive MVP trial has since been confirmed successful by the user. That clears the separate real-use validation blocker for the existing workflow, but it does not count as a real-touch result and does not close the cursor/focus hardware gate in this research.
 
 ## Executive conclusion
 
@@ -502,6 +505,8 @@ One hardware model passing is enough for the user's fixed desk installation, but
 - do not become a generic SystemPilot editor.
 
 ## Grill questions
+
+The Grill session should end with explicit decisions, not only preferences. Record the selected topology, the required isolation guarantees, the home of each text-entry workflow, and the conditions under which the fallback topology is activated. Then derive only the smallest implementation tickets that directly implement those decisions.
 
 ### Hardware and deployment
 

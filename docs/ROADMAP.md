@@ -6,7 +6,7 @@ Goal:
 Make DeskPilot safe and useful as the user's real local browser-session system while development continues separately.
 
 Status:
-Started. The planned Productive MVP implementation slices are now on the working PR branch. Daily Trial Hardening now includes an automated Productive extension-popup save check; the next step remains a real productive trial, quality-gate feedback and any stabilization that falls out of that trial before calling 1.0 complete.
+The Productive MVP browser-session workflow has passed a real user trial. The former real-use validation blocker is cleared: no blocker was reported for saving, organizing, restoring or using the current productive workflow. Touchscreen cursor/focus isolation remains a separate post-MVP hardware decision and is not implied by this result.
 
 Expected features:
 1. Hard separation between Productive and Development data profiles - done.
@@ -43,7 +43,7 @@ Research results:
 - [#29 modular DeskPilot shell and system-control layer](research/0029-modular-deskpilot-shell.md) - complete, with multiple navigation/module/action designs compared
 
 Recommended next decision step:
-- Grill the open product and architecture questions in both research notes.
+- Grill the open product and architecture questions in both research notes; the notes and GitHub tickets are prepared as a decision handoff.
 - Select the target touchscreen topology before implementing foreground hotkeys.
 - Convert only the selected direction into small implementation tickets.
 

@@ -4,10 +4,13 @@
 - Related research: [Research 0028](0028-touchscreen-input-isolation.md)
 - Status: Research complete; product choices remain for Grill session
 - Date: 2026-07-18
+- Grill handoff: ready for product and architecture decision; do not create implementation tickets from this note before the session.
 
 ## Purpose
 
 Define plausible upper-layer designs that make DeskPilot a desktop control surface rather than only a browser-session manager. Compare navigation, module, action-execution, persistence, extension, deployment, and migration choices without locking the project into speculative infrastructure.
+
+The current browser-session/Productive MVP trial has since been confirmed successful by the user. The existing BrowserPilot workflow can therefore be treated as the stable baseline while the Grill session decides how far the broader shell should proceed. This validation does not decide the separate touch cursor/focus gate from Research 0028.
 
 ## Executive conclusion
 
@@ -732,6 +735,8 @@ Reject. The extension is ideal for browser context capture and poor as the persi
 10. Defer foreground hotkeys until the input-isolation gate is resolved.
 
 ## Grill questions
+
+The Grill session should produce a small approved specification: shell and Pilot vocabulary, navigation placement, first SystemPilot action kinds, execution/confirmation rules, persistence and recovery scope, and the migration boundary for BrowserPilot. Only those approved decisions should become implementation tickets; the alternatives and unresolved questions should remain explicitly rejected or deferred.
 
 ### Product meaning
 
