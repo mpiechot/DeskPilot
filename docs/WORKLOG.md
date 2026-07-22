@@ -939,3 +939,20 @@ Current status:
 
 Next recommended step:
 - Run the Grill session using the decision handoffs in #28 and #29 and the matching repository research notes.
+
+## 2026-07-23
+
+### Pilot shell and theme Grill session paused
+
+Completed:
+- Converted the research discussion into a documented Grill-with-docs session.
+- Recorded the agreed product shape: DeskPilot Shell with BrowserPilot, DesktopPilot, EnvironmentPilot and shell-level Settings.
+- Recorded responsive icon-only navigation, Default Theme fallback behavior, and the rule to encapsulate BrowserPilot before generalizing shared concepts.
+- Added the fixed semantic navigation-icon decision and saved the current resume point in `docs/GRILL_SESSION_2026-07-22_PILOT_SHELL_AND_THEMES.md`.
+
+Current status:
+- The previous PR #30 direction is not accepted and must be rewritten after the Grill session.
+- No implementation tickets should be derived until the remaining product decisions are resolved.
+
+Next recommended step:
+- Resume the Grill at open question 1: define the visual and interaction contract every Pilot must satisfy inside the DeskPilot Shell.

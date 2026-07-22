@@ -67,3 +67,39 @@ _Avoid_: Release day, manual switch
 **Daily Trial Hardening**:
 A planning milestone focused on making the current save, restore, manage, backup, and recovery loop reliable enough for productive use before adding larger workflows.
 _Avoid_: Stability sprint, polish pass
+
+**DeskPilot Shell**:
+The product-level application layer that provides responsive navigation, shared presentation, and access to the active Pilot or Settings.
+_Avoid_: Plugin host, generic dashboard
+
+**Pilot Navigation**:
+The compact responsive shell navigation that exposes Pilots and Settings as icon-only controls at the edge of the available display area.
+_Avoid_: Main menu, labeled sidebar, plugin list
+
+**Pilot**:
+A named DeskPilot product area with its own user-facing purpose and view, reached through the DeskPilot Shell.
+_Avoid_: Plugin, arbitrary action group, page
+
+**BrowserPilot**:
+The Pilot that owns the complete existing browser-session workflow, including Categories, the Session Board, saved tabs, archive/recovery, browser capture, restore, and related safety functions.
+_Avoid_: Session view, browser extension, temporary MVP module
+
+**DesktopPilot**:
+A planned Pilot for user-defined hotkeys intended for general desktop use.
+_Avoid_: Generic Windows automation, SystemPilot
+
+**EnvironmentPilot**:
+A planned Pilot for user-defined hotkeys that control the user's physical or environmental desk setup, such as lighting or desk height.
+_Avoid_: DesktopPilot, device plugin
+
+**Settings**:
+The shell-level area that uses the same main content region as a Pilot and contains product-wide configuration, with optional sections for individual Pilots.
+_Avoid_: Settings Pilot, hidden preferences, BrowserPilot configuration
+
+**Theme**:
+A complete declarative presentation definition for DeskPilot, covering visual tokens, backgrounds, typography, navigation styling, assets, component states, and optional animation and sound behavior.
+_Avoid_: Color scheme, CSS skin, plugin
+
+**Default Theme**:
+The complete fallback Theme that represents the current DeskPilot appearance. Other Themes override only explicitly defined presentation values; missing values inherit from the Default Theme, while undefined animations and sounds do nothing.
+_Avoid_: Browser default, incomplete base theme
