@@ -972,3 +972,21 @@ Current status:
 
 Next recommended step:
 - Rewrite Research #28 from the confirmed decisions, then derive small direct-touch implementation slices beginning with display discovery/diagnostics, Touch Mode switching, and warning/acceptance persistence. Keep the separate-device fallback deferred.
+
+### Shell implementation issue breakdown
+
+Completed:
+- Applied the `to-issues` workflow directly to the confirmed shell/theme Grill result; no separate PRD was required.
+- Created GitHub issue #31 for the DeskPilot Shell and preserved BrowserPilot workflow.
+- Created GitHub issue #32 for DesktopPilot and EnvironmentPilot empty states, blocked by #31.
+- Created GitHub issue #33 for moving Display and Safety controls into shell-level Settings, blocked by #31.
+- Created GitHub issue #34 for the declarative Default Theme foundation, blocked by #31 and #33.
+- Applied the `ready-for-agent` label to all four issues and linked parent #29 in each issue body.
+- Kept touch hardware and the separate touch-device fallback out of this shell ticket sequence.
+
+Current status:
+- Issue #31 is the next implementation starting point.
+- The four issues use `Parent` and `Blocked by` references because the available GitHub connector has no native issue-relationship mutation.
+
+Next recommended step:
+- Implement #31 on the existing working branch/PR before starting the dependent slices.

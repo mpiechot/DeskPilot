@@ -36,16 +36,20 @@ Goal:
 Prepare DeskPilot's transition from a browser-session control panel into a broader local PC helper without committing to an untested touchscreen or plugin architecture.
 
 Status:
-Research complete; implementation direction is intentionally waiting for a Grill session and a real target-hardware touch/focus test.
+Shell and theme decisions are complete for implementation. Touch hardware remains a separate decision stream and is intentionally not part of the shell implementation tickets.
 
 Research results:
 - [#28 touchscreen input isolation and keyboard-free workflows](research/0028-touchscreen-input-isolation.md) - complete, with target-hardware validation gate documented
 - [#29 modular DeskPilot shell and system-control layer](research/0029-modular-deskpilot-shell.md) - complete, with multiple navigation/module/action designs compared
 
-Recommended next decision step:
-- Grill the open product and architecture questions in both research notes; the notes and GitHub tickets are prepared as a decision handoff.
-- Select the target touchscreen topology before implementing foreground hotkeys.
-- Convert only the selected direction into small implementation tickets.
+Shell implementation tickets:
+- #31 introduce the DeskPilot Shell and preserve the BrowserPilot workflow - ready-for-agent
+- #32 add DesktopPilot and EnvironmentPilot empty states - blocked by #31
+- #33 move Display and Safety controls into shell-level Settings - blocked by #31
+- #34 introduce the declarative Default Theme foundation - blocked by #31 and #33
+
+Recommended next implementation step:
+- Start with #31. Keep the separate touch-input research and fallback architecture out of this shell ticket sequence.
 
 ## v0.1 - Control Panel Skeleton
 
