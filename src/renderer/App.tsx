@@ -123,6 +123,10 @@ function statusLabel(status: SessionCategory["status"]): string {
   return "Empty";
 }
 
+function savedTabsLabel(tabCount: number): string {
+  return `${tabCount} saved tab${tabCount === 1 ? "" : "s"}`;
+}
+
 function formatBackupSize(sizeBytes: number): string {
   if (sizeBytes < 1024) {
     return `${sizeBytes} B`;
@@ -1585,13 +1589,17 @@ function BrowserPilot({ onOperationMessage }: { onOperationMessage: (message: st
                 <>
                   <div className="categoryTitleRow">
                     <h2>{category.name}</h2>
-                    <span className={`status status-${category.status}`}>{statusLabel(category.status)}</span>
+                    {category.status !== "empty" ? (
+                      <span className={`status status-${category.status}`}>{statusLabel(category.status)}</span>
+                    ) : null}
                   </div>
                   <p>{category.description}</p>
-                  <div className="categoryMeta">
-                    <span>{category.tabCount} tabs</span>
-                    <span>{category.lastSavedLabel}</span>
-                  </div>
+                  {category.tabCount > 0 ? (
+                    <div className="categoryMeta">
+                      <span>{savedTabsLabel(category.tabCount)}</span>
+                      <span>{category.lastSavedLabel}</span>
+                    </div>
+                  ) : null}
                   <div
                     className="sessionBoardList"
                     data-category-id={category.id}
@@ -1600,7 +1608,7 @@ function BrowserPilot({ onOperationMessage }: { onOperationMessage: (message: st
                     role="list"
                     aria-label={`Saved tabs in ${category.name}`}
                   >
-                    {boardTabs.length === 0 ? <span className="sessionBoardEmpty">No saved tabs</span> : null}
+                    {boardTabs.length === 0 ? <span className="sessionBoardEmpty">No saved tabs yet</span> : null}
                     {boardTabs.map((tab, index) => (
                       <div
                         className={

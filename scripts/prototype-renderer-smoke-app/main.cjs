@@ -535,6 +535,20 @@ async function runElectronSmoke() {
     })
   `);
 
+  const emptyCategorySummaryResult = await window.webContents.executeJavaScript(`
+    (() => {
+      const workCard = document.querySelector('.categoryCard[data-category-id="work"]');
+      const emptyStateMessage = workCard?.querySelector('.sessionBoardEmpty');
+
+      return {
+        emptyStateMessage: emptyStateMessage?.textContent,
+        duplicateEmptySummaryHidden: !workCard?.querySelector('.status, .categoryMeta'),
+        duplicateEmptyTextHidden:
+          !workCard?.textContent?.includes("0 tabs") && !workCard?.textContent?.includes("Not saved yet")
+      };
+    })()
+  `);
+
   if (categoryClickPoint) {
     window.webContents.sendInputEvent({
       type: "mouseMove",
@@ -779,7 +793,7 @@ async function runElectronSmoke() {
       waitForText("Database recovered from the automatic rolling backup. Review Safety for details.", () => {
         waitForCondition(
           () =>
-            getCategoryCardText("Entertainment").includes("1 tabs") &&
+            getCategoryCardText("Entertainment").includes("1 saved tab") &&
             getCategoryCardText("Entertainment").includes("External Extension Save"),
           () => {
         waitForText("Target: Work", () => {
@@ -922,7 +936,7 @@ async function runElectronSmoke() {
 
                 resolve({
                   hasDeskPilotApi: Boolean(window.deskPilot),
-                  extensionRefreshUpdatedCategoryCount: getCategoryCardText("Entertainment").includes("1 tabs"),
+                  extensionRefreshUpdatedCategoryCount: getCategoryCardText("Entertainment").includes("1 saved tab"),
                   sessionBoardShowsSavedTabs: getCategoryCardText("Entertainment").includes("External Extension Save"),
                   sessionBoardMoveWorked: getCategoryCardText("Work").includes("Project title"),
                   sessionBoardReorderWorked:
@@ -1106,6 +1120,9 @@ async function runElectronSmoke() {
   assert(responsiveNavigationResult.navigationUsesHorizontalLayout, "Expected compact navigation to use a horizontal rail");
   assert(toastResult.errorMessageVisible, "Expected shell-owned Toast Messages to show BrowserPilot errors");
   assert(toastResult.copyActionVisible, "Expected error Toast Messages to provide copyable details");
+  assert(emptyCategorySummaryResult.emptyStateMessage === "No saved tabs yet", "Expected one clear empty-category message");
+  assert(emptyCategorySummaryResult.duplicateEmptySummaryHidden, "Expected the empty category to hide duplicate status and metadata");
+  assert(emptyCategorySummaryResult.duplicateEmptyTextHidden, "Expected the empty category to hide duplicate tab-count text");
   assert(categoryClickWorked, "Expected a stationary mouse click to select a category");
   assert(
     updateNoticeResult?.visibleText.includes("v0.1.0") && updateNoticeResult?.visibleText.includes("v0.1.1"),
