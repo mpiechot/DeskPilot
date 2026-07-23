@@ -11,6 +11,7 @@ Working today:
 - responsive icon-only Pilot Navigation with a visually distinct vertical wide-display rail and compact horizontal layout
 - small DeskPilot version and active data-profile metadata in the navigation footer
 - a monochrome, themeable BrowserPilot SVG icon
+- a real DeskPilot icon in the Windows notification area, installer and shortcuts
 - shell-owned Toast Messages with copyable error details
 - Electron desktop shell
 - React control-panel UI

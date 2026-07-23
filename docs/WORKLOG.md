@@ -1023,6 +1023,23 @@ Current status:
 Next recommended step:
 - Implement #32 for the DesktopPilot and EnvironmentPilot empty states, then continue with shell-level Settings in #33.
 
+### Windows tray and application icon fix (#31 feedback)
+
+Completed:
+- Replaced the unsupported inline SVG data URL with the existing DeskPilot PNG asset for the Windows tray icon.
+- Added a real `assets/deskpilot.ico` containing Windows icon sizes for the installer and shortcuts.
+- Configured electron-builder to use the DeskPilot ICO and kept the shared PNG inside the packaged application files.
+- Changed tray initialization to report an unavailable asset instead of silently swallowing the error.
+- Added `npm run test:tray`, which verifies Electron loads a non-empty 32x32 tray image, and extended installer configuration smoke coverage for the ICO.
+- Verified `npm run test:installer` and `npm run test:tray`.
+
+Current status:
+- Windows now has a concrete DeskPilot icon path for the notification area and packaged application branding.
+- No browser-session data or storage behavior changed.
+
+Next recommended step:
+- Implement #32 for the DesktopPilot and EnvironmentPilot empty states, then continue with shell-level Settings in #33.
+
 ### BrowserPilot empty-category summary refinement (#31 feedback)
 
 Completed:
