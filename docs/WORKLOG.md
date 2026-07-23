@@ -907,9 +907,9 @@ Completed:
 - Inventoried every current DeskPilot workflow that still requires text input and separated daily touch actions from infrequent PC configuration.
 - Inspected the local Windows input environment: two monitors are present, but Windows reports pen/tablet capability and no integrated or external touch digitizer, so no real finger-touch claim was made.
 - Researched Windows touch-to-mouse promotion, pointer/window activation, Electron focusability, touch-keyboard behavior and input-injection constraints from primary platform documentation.
-- Wrote `docs/research/0028-touchscreen-input-isolation.md` with nine architecture options, a comparative matrix, two recommended deployment topologies, a target-hardware test matrix and Grill questions.
+- Captured the initial touchscreen-isolation research with nine architecture options, a comparative matrix, two recommended deployment topologies, a target-hardware test matrix and Grill questions; the exploration was later superseded by the direct-touch Grill decisions.
 - Researched top/left/bottom navigation, Pilot registry choices, typed action models, action execution safety, hotkey targeting, persistence and incremental migration.
-- Wrote `docs/research/0029-modular-deskpilot-shell.md` with navigation wireframes, four module-extension options, deep-module seams, a typed action model, a recoverable SQLite design, security constraints and Grill questions.
+- Captured the initial modular-shell research with navigation wireframes, module-extension options, deep-module seams, a typed action model, a recoverable SQLite design, security constraints and Grill questions; the exploration was later superseded by the shell/theme Grill decisions.
 - Recommended a conditional direct-touch architecture: one DeskPilot host with a non-focusable keyboard-free Control Surface and a focusable PC Configuration Surface if the real hardware preserves the cursor; otherwise use a separately paired touch device and local PC host agent.
 - Recommended DeskPilot as the product shell, BrowserPilot as the current domain, SystemPilot as the default domain and a fixed compile-time registry instead of a speculative code-plugin system.
 
@@ -938,11 +938,11 @@ Current status:
 - Research tickets #28 and #29 are being prepared for a Grill session; no implementation tickets should be derived until that discussion selects a direction.
 
 Next recommended step:
-- Run the Grill session using the decision handoffs in #28 and #29 and the matching repository research notes.
+- Use the two Grill session documents as the decision record for the working PR and implementation slicing.
 
 ## 2026-07-23
 
-### Pilot shell and theme Grill session paused
+### Pilot shell and theme Grill session completed
 
 Completed:
 - Converted the research discussion into a documented Grill-with-docs session.
@@ -951,11 +951,11 @@ Completed:
 - Added the fixed semantic navigation-icon decision and saved the current resume point in `docs/GRILL_SESSION_2026-07-22_PILOT_SHELL_AND_THEMES.md`.
 
 Current status:
-- The previous PR #30 direction is not accepted and must be rewritten after the Grill session.
-- No implementation tickets should be derived until the remaining product decisions are resolved.
+- The shell and theme decisions are complete and are recorded in the Grill session document.
+- The former research alternatives are not implementation scope; issues #31–#34 capture the approved implementation slices.
 
 Next recommended step:
-- Resume the Grill at open question 1: define the visual and interaction contract every Pilot must satisfy inside the DeskPilot Shell.
+- Implement issue #31, then continue with the dependent shell slices only after its acceptance criteria are met.
 
 ### Touch input isolation Grill session completed for direct-touch MVP
 
@@ -967,11 +967,11 @@ Completed:
 - Deferred the separate-device fallback implementation and detailed elevated-application configuration guidance until evidence shows they are needed.
 
 Current status:
-- The direct-touch product scope is decision-complete for the next research rewrite and implementation slicing.
+- The direct-touch product scope is decision-complete for the direct-touch MVP and is recorded in the Grill session document.
 - No product code or stored user data changed during the Grill session.
 
 Next recommended step:
-- Rewrite Research #28 from the confirmed decisions, then derive small direct-touch implementation slices beginning with display discovery/diagnostics, Touch Mode switching, and warning/acceptance persistence. Keep the separate-device fallback deferred.
+- Keep direct-touch implementation separate from the shell ticket sequence until a hardware-focused implementation slice is explicitly selected; keep the separate-device fallback deferred.
 
 ### Shell implementation issue breakdown
 
@@ -990,3 +990,18 @@ Current status:
 
 Next recommended step:
 - Implement #31 on the existing working branch/PR before starting the dependent slices.
+
+### Working PR realignment after the Grill sessions
+
+Completed:
+- Removed the superseded Research #28 and #29 result documents from the working branch.
+- Kept the two Grill session documents as the authoritative decision record for this PR.
+- Aligned the Roadmap, Context and Worklog with the approved implementation issues #31–#34.
+- Preserved the direct-touch decisions while keeping hardware fallback implementation out of the shell ticket sequence.
+
+Current status:
+- PR #30 now represents the confirmed Grill-session outcome rather than the earlier research exploration.
+- No product code or stored user data changed in this cleanup.
+
+Next recommended step:
+- Implement issue #31 on this working PR and use its quality gate for the first shell slice.

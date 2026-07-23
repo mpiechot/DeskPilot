@@ -2,10 +2,10 @@
 
 - Date: 2026-07-23
 - Status: Complete for the direct-touch MVP scope; fallback topics remain deferred
-- Research: [0028-touchscreen-input-isolation.md](research/0028-touchscreen-input-isolation.md)
+- Decision context: [Research #28](https://github.com/mpiechot/DeskPilot/issues/28)
 - Related shell session: [Pilot Shell And Themes](GRILL_SESSION_2026-07-22_PILOT_SHELL_AND_THEMES.md)
 
-This document records the product decisions for touchscreen input isolation separately from the completed Pilot Shell and Themes session. Research #28 remains a research handoff; this session turns its unresolved product choices into explicit decisions before implementation tickets are derived.
+This document is the source of truth for the direct-touch MVP decisions from the touchscreen Grill session. Research #28 is retained only as decision context; its former research alternatives are not part of the working PR result.
 
 ## Confirmed decisions
 

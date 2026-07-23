@@ -38,9 +38,10 @@ Prepare DeskPilot's transition from a browser-session control panel into a broad
 Status:
 Shell and theme decisions are complete for implementation. Touch hardware remains a separate decision stream and is intentionally not part of the shell implementation tickets.
 
-Research results:
-- [#28 touchscreen input isolation and keyboard-free workflows](research/0028-touchscreen-input-isolation.md) - complete, with target-hardware validation gate documented
-- [#29 modular DeskPilot shell and system-control layer](research/0029-modular-deskpilot-shell.md) - complete, with multiple navigation/module/action designs compared
+Grill results:
+- [Pilot Shell And Themes](GRILL_SESSION_2026-07-22_PILOT_SHELL_AND_THEMES.md) - complete; the confirmed shell/theme decisions are the source for implementation
+- [Touch Input Isolation](GRILL_SESSION_2026-07-23_TOUCH_INPUT_ISOLATION.md) - complete for the direct-touch MVP; fallback topics remain deferred
+- Research tickets [#28](https://github.com/mpiechot/DeskPilot/issues/28) and [#29](https://github.com/mpiechot/DeskPilot/issues/29) remain decision context, not implementation scope
 
 Shell implementation tickets:
 - #31 introduce the DeskPilot Shell and preserve the BrowserPilot workflow - ready-for-agent

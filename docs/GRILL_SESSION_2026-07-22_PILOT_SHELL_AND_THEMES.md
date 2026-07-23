@@ -3,10 +3,11 @@
 - Date: 2026-07-22
 - Last updated: 2026-07-23
 - Status: Complete for the shell and theme scope; touch decisions continue in a separate Grill session
-- Related tickets: [#28](https://github.com/mpiechot/DeskPilot/issues/28), [#29](https://github.com/mpiechot/DeskPilot/issues/29)
-- Working PR under review: [#30](https://github.com/mpiechot/DeskPilot/pull/30)
+- Decision context: [#28](https://github.com/mpiechot/DeskPilot/issues/28), [#29](https://github.com/mpiechot/DeskPilot/issues/29)
+- Resulting implementation issues: [#31](https://github.com/mpiechot/DeskPilot/issues/31), [#32](https://github.com/mpiechot/DeskPilot/issues/32), [#33](https://github.com/mpiechot/DeskPilot/issues/33), [#34](https://github.com/mpiechot/DeskPilot/issues/34)
+- Working PR: [#30](https://github.com/mpiechot/DeskPilot/pull/30)
 
-This document records the decisions made during the Grill session outside the GitHub tickets. The previous PR direction is not treated as accepted; the research tickets and PR will be rewritten after the session reaches shared understanding. Touch-input decisions are intentionally recorded in the separate touch-input Grill session.
+This document is the decision record for the shell and theme Grill session. The confirmed decisions in this document, together with the separate touch-input Grill session, are the source of truth for the working PR. The former research alternatives are intentionally not part of the PR result.
 
 ## Confirmed decisions
 
@@ -92,4 +93,4 @@ Shell and theme decisions are complete. Continue touch-input decisions in the se
 
 ## Ticket outcome
 
-When the Grill session is complete, update Research #28 and #29 with their separate results. Derive implementation tickets only from confirmed decisions, separating shell extraction, responsive navigation, Default Theme translation, Settings, Pilot empty states, and later Pilot-specific behavior into small vertical slices.
+The shell and theme result is represented by implementation issues #31–#34: shell extraction and BrowserPilot preservation, Pilot empty states, shell-level Settings, and the declarative Default Theme foundation. Issue #31 is the next implementation slice; the later issues remain dependent on it. The former research alternatives and unresolved proposals are not implementation scope for this PR.
