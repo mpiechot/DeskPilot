@@ -896,3 +896,112 @@ Current status:
 
 Next recommended step:
 - Install the replaced Draft Release asset and verify the Category-only window title with a real `Open Selected` launch before publication.
+
+## 2026-07-18
+
+### Touchscreen isolation and modular shell research
+
+Completed:
+- Created and researched GitHub tickets #28 and #29 as linked decision topics.
+- Inspected the current Electron window, React renderer, preload interface, SQLite backup model, loopback browser bridge and browser-extension input surface.
+- Inventoried every current DeskPilot workflow that still requires text input and separated daily touch actions from infrequent PC configuration.
+- Inspected the local Windows input environment: two monitors are present, but Windows reports pen/tablet capability and no integrated or external touch digitizer, so no real finger-touch claim was made.
+- Researched Windows touch-to-mouse promotion, pointer/window activation, Electron focusability, touch-keyboard behavior and input-injection constraints from primary platform documentation.
+- Captured the initial touchscreen-isolation research with nine architecture options, a comparative matrix, two recommended deployment topologies, a target-hardware test matrix and Grill questions; the exploration was later superseded by the direct-touch Grill decisions.
+- Researched top/left/bottom navigation, Pilot registry choices, typed action models, action execution safety, hotkey targeting, persistence and incremental migration.
+- Captured the initial modular-shell research with navigation wireframes, module-extension options, deep-module seams, a typed action model, a recoverable SQLite design, security constraints and Grill questions; the exploration was later superseded by the shell/theme Grill decisions.
+- Recommended a conditional direct-touch architecture: one DeskPilot host with a non-focusable keyboard-free Control Surface and a focusable PC Configuration Surface if the real hardware preserves the cursor; otherwise use a separately paired touch device and local PC host agent.
+- Recommended DeskPilot as the product shell, BrowserPilot as the current domain, SystemPilot as the default domain and a fixed compile-time registry instead of a speculative code-plugin system.
+
+Current status:
+- The research is implementation-oriented but deliberately does not choose unresolved product preferences on the user's behalf.
+- No product code or stored user data changed.
+- A real touchscreen/controller is still required to decide whether a directly attached display can preserve both cursor position and foreground focus.
+
+Next recommended step:
+- Run the planned Grill session over both research notes.
+- Choose the hardware topology, Pilot meaning, navigation placement, first SystemPilot action kinds and foreground-hotkey target semantics.
+- Create only the implementation tickets selected by that session, beginning with the touch/focus diagnostic if direct attachment remains a candidate.
+
+## 2026-07-22
+
+### Productive browser-session trial accepted
+
+Completed:
+- The user used the current DeskPilot build for a real browser-session trial and reports that the workflow was successful.
+- Cleared the pending real-use validation blocker for the Productive MVP browser-session scope.
+- Recorded that no additional blocker was reported for the current save, organization, restore or daily-use flow.
+- Kept the separate touchscreen research boundary explicit: successful desktop use does not prove cursor or foreground-focus isolation on real touch hardware.
+
+Current status:
+- The current browser-session workflow is ready to serve as the stable foundation for the next architecture decision.
+- Research tickets #28 and #29 are being prepared for a Grill session; no implementation tickets should be derived until that discussion selects a direction.
+
+Next recommended step:
+- Use the two Grill session documents as the decision record for the working PR and implementation slicing.
+
+## 2026-07-23
+
+### Pilot shell and theme Grill session completed
+
+Completed:
+- Converted the research discussion into a documented Grill-with-docs session.
+- Recorded the agreed product shape: DeskPilot Shell with BrowserPilot, DesktopPilot, EnvironmentPilot and shell-level Settings.
+- Recorded responsive icon-only navigation, Default Theme fallback behavior, and the rule to encapsulate BrowserPilot before generalizing shared concepts.
+- Added the fixed semantic navigation-icon decision and saved the current resume point in `docs/GRILL_SESSION_2026-07-22_PILOT_SHELL_AND_THEMES.md`.
+
+Current status:
+- The shell and theme decisions are complete and are recorded in the Grill session document.
+- The former research alternatives are not implementation scope; issues #31–#34 capture the approved implementation slices.
+
+Next recommended step:
+- Implement issue #31, then continue with the dependent shell slices only after its acceptance criteria are met.
+
+### Touch input isolation Grill session completed for direct-touch MVP
+
+Completed:
+- Moved the touch-input discussion into the separate `docs/GRILL_SESSION_2026-07-23_TOUCH_INPUT_ISOLATION.md` session instead of mixing it into the completed shell/theme session.
+- Confirmed hard cursor and foreground-focus isolation requirements, general Windows-touchscreen support through a capability/isolation test matrix, and a conditional direct-touch versus separate-device topology.
+- Defined the Touch Control Surface, PC Configuration Surface, touch discovery, Touch Mode switching, normal-display preference, disconnection behavior, visual warnings, user acceptance, status presentation, and Windows lock-screen behavior.
+- Confirmed that all functions remain available in the warning state; the warning communicates use at the user's own risk and does not act as a feature lockout.
+- Deferred the separate-device fallback implementation and detailed elevated-application configuration guidance until evidence shows they are needed.
+
+Current status:
+- The direct-touch product scope is decision-complete for the direct-touch MVP and is recorded in the Grill session document.
+- No product code or stored user data changed during the Grill session.
+
+Next recommended step:
+- Keep direct-touch implementation separate from the shell ticket sequence until a hardware-focused implementation slice is explicitly selected; keep the separate-device fallback deferred.
+
+### Shell implementation issue breakdown
+
+Completed:
+- Applied the `to-issues` workflow directly to the confirmed shell/theme Grill result; no separate PRD was required.
+- Created GitHub issue #31 for the DeskPilot Shell and preserved BrowserPilot workflow.
+- Created GitHub issue #32 for DesktopPilot and EnvironmentPilot empty states, blocked by #31.
+- Created GitHub issue #33 for moving Display and Safety controls into shell-level Settings, blocked by #31.
+- Created GitHub issue #34 for the declarative Default Theme foundation, blocked by #31 and #33.
+- Applied the `ready-for-agent` label to all four issues and linked parent #29 in each issue body.
+- Kept touch hardware and the separate touch-device fallback out of this shell ticket sequence.
+
+Current status:
+- Issue #31 is the next implementation starting point.
+- The four issues use `Parent` and `Blocked by` references because the available GitHub connector has no native issue-relationship mutation.
+
+Next recommended step:
+- Implement #31 on the existing working branch/PR before starting the dependent slices.
+
+### Working PR realignment after the Grill sessions
+
+Completed:
+- Removed the superseded Research #28 and #29 result documents from the working branch.
+- Kept the two Grill session documents as the authoritative decision record for this PR.
+- Aligned the Roadmap, Context and Worklog with the approved implementation issues #31–#34.
+- Preserved the direct-touch decisions while keeping hardware fallback implementation out of the shell ticket sequence.
+
+Current status:
+- PR #30 now represents the confirmed Grill-session outcome rather than the earlier research exploration.
+- No product code or stored user data changed in this cleanup.
+
+Next recommended step:
+- Implement issue #31 on this working PR and use its quality gate for the first shell slice.

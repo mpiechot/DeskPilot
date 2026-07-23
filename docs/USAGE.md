@@ -4,7 +4,7 @@ This document explains how to run the current DeskPilot development build.
 
 ## Current State
 
-DeskPilot is a functional Productive MVP moving into post-MVP cleanup workflows.
+DeskPilot is a functional Productive MVP. Its current browser-session workflow has also passed a real local use trial and is now the stable foundation for post-MVP cleanup and architecture decisions.
 
 Working today:
 - Electron desktop shell

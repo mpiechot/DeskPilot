@@ -6,7 +6,7 @@ Goal:
 Make DeskPilot safe and useful as the user's real local browser-session system while development continues separately.
 
 Status:
-Started. The planned Productive MVP implementation slices are now on the working PR branch. Daily Trial Hardening now includes an automated Productive extension-popup save check; the next step remains a real productive trial, quality-gate feedback and any stabilization that falls out of that trial before calling 1.0 complete.
+The Productive MVP browser-session workflow has passed a real user trial. The former real-use validation blocker is cleared: no blocker was reported for saving, organizing, restoring or using the current productive workflow. Touchscreen cursor/focus isolation remains a separate post-MVP hardware decision and is not implied by this result.
 
 Expected features:
 1. Hard separation between Productive and Development data profiles - done.
@@ -29,6 +29,28 @@ Tracking issues:
 - #16 Productive MVP: move saved tabs between categories with app drag and drop - done
 - #17 Productive MVP: reorder saved tabs within a category with app drag and drop - done
 - #18 Productive MVP: evaluate and implement per-tab open controls on the Session Board - done
+
+## Post-MVP Architecture Research
+
+Goal:
+Prepare DeskPilot's transition from a browser-session control panel into a broader local PC helper without committing to an untested touchscreen or plugin architecture.
+
+Status:
+Shell and theme decisions are complete for implementation. Touch hardware remains a separate decision stream and is intentionally not part of the shell implementation tickets.
+
+Grill results:
+- [Pilot Shell And Themes](GRILL_SESSION_2026-07-22_PILOT_SHELL_AND_THEMES.md) - complete; the confirmed shell/theme decisions are the source for implementation
+- [Touch Input Isolation](GRILL_SESSION_2026-07-23_TOUCH_INPUT_ISOLATION.md) - complete for the direct-touch MVP; fallback topics remain deferred
+- Research tickets [#28](https://github.com/mpiechot/DeskPilot/issues/28) and [#29](https://github.com/mpiechot/DeskPilot/issues/29) remain decision context, not implementation scope
+
+Shell implementation tickets:
+- #31 introduce the DeskPilot Shell and preserve the BrowserPilot workflow - ready-for-agent
+- #32 add DesktopPilot and EnvironmentPilot empty states - blocked by #31
+- #33 move Display and Safety controls into shell-level Settings - blocked by #31
+- #34 introduce the declarative Default Theme foundation - blocked by #31 and #33
+
+Recommended next implementation step:
+- Start with #31. Keep the separate touch-input research and fallback architecture out of this shell ticket sequence.
 
 ## v0.1 - Control Panel Skeleton
 
