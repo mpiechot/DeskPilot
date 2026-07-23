@@ -956,3 +956,19 @@ Current status:
 
 Next recommended step:
 - Resume the Grill at open question 1: define the visual and interaction contract every Pilot must satisfy inside the DeskPilot Shell.
+
+### Touch input isolation Grill session completed for direct-touch MVP
+
+Completed:
+- Moved the touch-input discussion into the separate `docs/GRILL_SESSION_2026-07-23_TOUCH_INPUT_ISOLATION.md` session instead of mixing it into the completed shell/theme session.
+- Confirmed hard cursor and foreground-focus isolation requirements, general Windows-touchscreen support through a capability/isolation test matrix, and a conditional direct-touch versus separate-device topology.
+- Defined the Touch Control Surface, PC Configuration Surface, touch discovery, Touch Mode switching, normal-display preference, disconnection behavior, visual warnings, user acceptance, status presentation, and Windows lock-screen behavior.
+- Confirmed that all functions remain available in the warning state; the warning communicates use at the user's own risk and does not act as a feature lockout.
+- Deferred the separate-device fallback implementation and detailed elevated-application configuration guidance until evidence shows they are needed.
+
+Current status:
+- The direct-touch product scope is decision-complete for the next research rewrite and implementation slicing.
+- No product code or stored user data changed during the Grill session.
+
+Next recommended step:
+- Rewrite Research #28 from the confirmed decisions, then derive small direct-touch implementation slices beginning with display discovery/diagnostics, Touch Mode switching, and warning/acceptance persistence. Keep the separate-device fallback deferred.
