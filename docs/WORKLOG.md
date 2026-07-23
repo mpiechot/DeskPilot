@@ -1005,3 +1005,20 @@ Current status:
 
 Next recommended step:
 - Implement issue #31 on this working PR and use its quality gate for the first shell slice.
+
+### DeskPilot Shell implementation (#31)
+
+Completed:
+- Added a real `DeskPilotShell` boundary around the existing BrowserPilot renderer without changing browser-session data ownership.
+- Added responsive, icon-only Pilot Navigation with BrowserPilot as the selected default Pilot.
+- Renamed the existing browser-session surface as BrowserPilot while preserving its Session Board, category, archive, recovery, extension, display and safety workflows.
+- Added shell-owned transient Toast Messages with copyable details for BrowserPilot errors.
+- Extended the packaged Electron renderer smoke test for shell ownership, BrowserPilot reachability, responsive navigation and copyable Toast behavior.
+- Verified `npm run lint`, `npm run build` and `npm run test:prototype`.
+
+Current status:
+- Issue #31 acceptance criteria are implemented on the new working branch.
+- No product data migration or storage ownership change was introduced.
+
+Next recommended step:
+- Implement #32 for the DesktopPilot and EnvironmentPilot empty states, then continue with shell-level Settings in #33.

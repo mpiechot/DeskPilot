@@ -44,13 +44,13 @@ Grill results:
 - Research tickets [#28](https://github.com/mpiechot/DeskPilot/issues/28) and [#29](https://github.com/mpiechot/DeskPilot/issues/29) remain decision context, not implementation scope
 
 Shell implementation tickets:
-- #31 introduce the DeskPilot Shell and preserve the BrowserPilot workflow - ready-for-agent
+- #31 introduce the DeskPilot Shell and preserve the BrowserPilot workflow - done
 - #32 add DesktopPilot and EnvironmentPilot empty states - blocked by #31
 - #33 move Display and Safety controls into shell-level Settings - blocked by #31
 - #34 introduce the declarative Default Theme foundation - blocked by #31 and #33
 
 Recommended next implementation step:
-- Start with #31. Keep the separate touch-input research and fallback architecture out of this shell ticket sequence.
+- Continue with #32, then #33. Keep the separate touch-input research and fallback architecture out of this shell ticket sequence.
 
 ## v0.1 - Control Panel Skeleton
 

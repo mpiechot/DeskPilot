@@ -7,6 +7,9 @@ This document explains how to run the current DeskPilot development build.
 DeskPilot is a functional Productive MVP. Its current browser-session workflow has also passed a real local use trial and is now the stable foundation for post-MVP cleanup and architecture decisions.
 
 Working today:
+- DeskPilot Shell with BrowserPilot as the current fully functional Pilot
+- responsive icon-only Pilot Navigation with a vertical wide-display rail and compact horizontal layout
+- shell-owned Toast Messages with copyable error details
 - Electron desktop shell
 - React control-panel UI
 - default browser-session categories loaded from local SQLite storage: Work, Research, Entertainment, Projects, Later / Inbox

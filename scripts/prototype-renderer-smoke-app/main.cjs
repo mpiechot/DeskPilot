@@ -411,6 +411,59 @@ async function runElectronSmoke() {
   await window.loadFile(path.join(prototypeRoot, "dist", "index.html"));
   console.log("Prototype renderer smoke: renderer loaded");
 
+  const shellNavigationResult = await window.webContents.executeJavaScript(`
+    (() => {
+      const shell = document.querySelector(".deskPilotShell");
+      const navigation = shell?.querySelector('[aria-label="Pilot Navigation"]');
+      const browserPilotButton = navigation?.querySelector('[data-pilot-id="browser"]');
+      const browserPilotContent = document.querySelector('[data-pilot="browser"]');
+
+      browserPilotButton?.click();
+
+      return {
+        shellPresent: Boolean(shell),
+        navigationPresent: Boolean(navigation),
+        browserPilotNavigationPresent: Boolean(browserPilotButton),
+        browserPilotNavigationIconOnly: Boolean(browserPilotButton?.querySelector("svg")) && !browserPilotButton?.textContent?.trim(),
+        browserPilotSelected: browserPilotButton?.getAttribute("aria-current") === "page",
+        browserPilotReachable: browserPilotContent?.getAttribute("aria-label") === "BrowserPilot",
+        browserSessionPreserved: document.querySelector("h1")?.textContent === "Browser Sessions"
+      };
+    })()
+  `);
+
+  window.setSize(600, 800);
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  const responsiveNavigationResult = await window.webContents.executeJavaScript(`
+    (() => {
+      const shell = document.querySelector(".deskPilotShell");
+      const navigation = document.querySelector('[aria-label="Pilot Navigation"]');
+      const shellStyle = shell ? getComputedStyle(shell) : null;
+      const navigationStyle = navigation ? getComputedStyle(navigation) : null;
+
+      return {
+        smallViewport: window.matchMedia("(max-width: 760px)").matches,
+        shellUsesSingleColumn: shellStyle?.gridTemplateColumns !== "64px",
+        navigationUsesHorizontalLayout: navigationStyle?.gridTemplateRows === "48px"
+      };
+    })()
+  `);
+  window.setSize(1180, 390);
+  await new Promise((resolve) => setTimeout(resolve, 100));
+
+  const toastResult = await window.webContents.executeJavaScript(`
+    new Promise((resolve) => {
+      document.querySelector(".secondaryAction")?.click();
+      setTimeout(() => {
+        const toast = document.querySelector(".shellToast");
+        resolve({
+          errorMessageVisible: toast?.textContent?.includes("Paste a URL before saving it.") ?? false,
+          copyActionVisible: Boolean(toast?.querySelector(".shellToastCopy"))
+        });
+      }, 100);
+    })
+  `);
+
   const updateNoticeResult = await window.webContents.executeJavaScript(`
     new Promise((resolve) => {
       const inspect = (attempts = 120) => {
@@ -1020,6 +1073,18 @@ async function runElectronSmoke() {
   `);
 
   assert(result.hasDeskPilotApi, "Expected packaged renderer to receive the Electron preload API");
+  assert(shellNavigationResult.shellPresent, "Expected DeskPilot to render through the DeskPilot Shell");
+  assert(shellNavigationResult.navigationPresent, "Expected the Shell to own Pilot Navigation");
+  assert(shellNavigationResult.browserPilotNavigationPresent, "Expected BrowserPilot to be reachable from Pilot Navigation");
+  assert(shellNavigationResult.browserPilotNavigationIconOnly, "Expected Pilot Navigation to use icon-only controls");
+  assert(shellNavigationResult.browserPilotSelected, "Expected BrowserPilot to be the selected default Pilot");
+  assert(shellNavigationResult.browserPilotReachable, "Expected the BrowserPilot content surface to be reachable");
+  assert(shellNavigationResult.browserSessionPreserved, "Expected BrowserPilot to preserve the existing browser-session surface");
+  assert(responsiveNavigationResult.smallViewport, "Expected the smoke viewport to exercise the compact navigation layout");
+  assert(responsiveNavigationResult.shellUsesSingleColumn, "Expected compact navigation to use a single shell column");
+  assert(responsiveNavigationResult.navigationUsesHorizontalLayout, "Expected compact navigation to use a horizontal rail");
+  assert(toastResult.errorMessageVisible, "Expected shell-owned Toast Messages to show BrowserPilot errors");
+  assert(toastResult.copyActionVisible, "Expected error Toast Messages to provide copyable details");
   assert(categoryClickWorked, "Expected a stationary mouse click to select a category");
   assert(
     updateNoticeResult?.visibleText.includes("v0.1.0") && updateNoticeResult?.visibleText.includes("v0.1.1"),

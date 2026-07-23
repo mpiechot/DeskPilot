@@ -58,6 +58,7 @@ import {
   type CategoryIconName
 } from "../shared/categoryIcons";
 import { defaultCategories, type SessionCategory } from "../shared/sessions";
+import { DeskPilotShell } from "./shell";
 import "./styles.css";
 
 const categoryIconComponents: Record<CategoryIconName, LucideIcon> = {
@@ -145,7 +146,7 @@ function getUrlHost(value: string): string {
   }
 }
 
-function App() {
+function BrowserPilot({ onOperationMessage }: { onOperationMessage: (message: string) => void }) {
   const [categories, setCategories] = useState<SessionCategory[]>(defaultCategories);
   const [storageStatus, setStorageStatus] = useState<"loading" | "ready" | "fallback" | "error">("loading");
   const [categoryDraft, setCategoryDraft] = useState<CategoryInput>({
@@ -332,6 +333,10 @@ function App() {
   }, [selectedCategoryId]);
 
   useEffect(() => {
+    onOperationMessage(operationMessage);
+  }, [onOperationMessage, operationMessage]);
+
+  useEffect(() => {
     if (!window.deskPilot || storageStatus !== "ready" || !selectedCategoryId) {
       return;
     }
@@ -426,9 +431,7 @@ function App() {
       : activeDataProfile
         ? `${activeDataProfile.label} data profile is active.`
         : "Local SQLite storage is active.";
-  const storageMessage = operationMessage
-    ? operationMessage
-    : storageStatus === "ready"
+  const storageMessage = storageStatus === "ready"
       ? storageReadyMessage
       : storageStatus === "fallback"
         ? "Browser preview is using fallback categories."
@@ -1057,11 +1060,15 @@ function App() {
   }
 
   return (
-    <main className={displaySettings?.preferences.layoutMode === "touch" ? "shell shell-touch" : "shell"}>
+    <main
+      className={displaySettings?.preferences.layoutMode === "touch" ? "shell shell-touch" : "shell"}
+      data-pilot="browser"
+      aria-label="BrowserPilot"
+    >
       <aside className="controlRail" aria-label="DeskPilot controls">
         <header className="appHeader">
           <div>
-            <p className="eyebrow">DeskPilot</p>
+            <p className="eyebrow">BrowserPilot</p>
             <h1>Browser Sessions</h1>
           </div>
           <div className="headerMeta">
@@ -1690,6 +1697,16 @@ function App() {
         })}
       </section>
     </main>
+  );
+}
+
+function App() {
+  const [operationMessage, setOperationMessage] = useState("");
+
+  return (
+    <DeskPilotShell toastMessage={operationMessage}>
+      <BrowserPilot onOperationMessage={setOperationMessage} />
+    </DeskPilotShell>
   );
 }
 
