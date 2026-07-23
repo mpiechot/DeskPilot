@@ -22,21 +22,25 @@ body {
 
 .deskPilotShell {
   display: grid;
-  grid-template-columns: 64px minmax(0, 1fr);
+  grid-template-columns: 76px minmax(0, 1fr);
   min-height: 100vh;
-  gap: 12px;
-  padding: 12px;
+  gap: 14px;
+  padding: 14px;
 }
 
 .pilotNavigation {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
   align-content: start;
   justify-items: center;
   gap: 16px;
   min-width: 0;
-  min-height: calc(100vh - 24px);
-  padding: 8px 4px;
+  min-height: calc(100vh - 28px);
+  padding: 12px 8px;
+  border: 1px solid #1b3026;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #294438, #1f342b);
+  box-shadow: 0 10px 24px rgba(31, 52, 43, 0.2);
 }
 
 .pilotNavigationBrand,
@@ -49,9 +53,10 @@ body {
 }
 
 .pilotNavigationBrand {
-  border: 1px solid #b9c9b8;
-  background: #26352f;
-  color: #fffaf0;
+  border: 1px solid #90b29b;
+  background: #dcecdf;
+  box-shadow: 0 2px 8px rgba(13, 31, 23, 0.18);
+  color: #1f3a2c;
   font-size: 0.72rem;
   font-weight: 900;
   letter-spacing: 0.04em;
@@ -64,17 +69,17 @@ body {
 }
 
 .pilotNavigationItem {
-  border: 1px solid #c9c0b2;
-  background: rgba(255, 250, 240, 0.74);
-  color: #4f5852;
+  border: 1px solid rgba(205, 232, 211, 0.42);
+  background: rgba(255, 250, 240, 0.08);
+  color: #dcecdf;
   cursor: pointer;
 }
 
 .pilotNavigationItem-active {
-  border-color: #789282;
-  background: #e7efe5;
-  color: #243d32;
-  box-shadow: 0 0 0 2px rgba(120, 146, 130, 0.18);
+  border-color: #c2e2c9;
+  background: #426850;
+  color: #fffaf0;
+  box-shadow: 0 0 0 3px rgba(194, 226, 201, 0.2), 0 3px 10px rgba(13, 31, 23, 0.22);
 }
 
 .pilotNavigationGlyph,
@@ -83,13 +88,39 @@ body {
   height: 23px;
 }
 
+.pilotNavigationMeta {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  color: #b9d1be;
+  font-size: 0.56rem;
+  line-height: 1.15;
+  text-align: center;
+}
+
+.pilotNavigationMeta strong {
+  color: #f2faef;
+  font-size: 0.6rem;
+  font-weight: 900;
+}
+
+.pilotNavigationMeta span {
+  overflow-wrap: anywhere;
+}
+
+.pilotNavigationMeta-productive span:last-child {
+  color: #f0d79c;
+}
+
 .deskPilotShellContent {
   min-width: 0;
   min-height: 0;
+  padding: 2px 0 2px 14px;
+  border-left: 1px solid #b6c8b9;
 }
 
 .deskPilotShellContent > .shell {
-  min-height: calc(100vh - 24px);
+  min-height: calc(100vh - 32px);
   padding: 0;
 }
 
@@ -220,34 +251,6 @@ h1 {
   color: #1c2025;
   font-size: 1.45rem;
   line-height: 1.1;
-}
-
-.version {
-  border: 1px solid #d7d0c2;
-  border-radius: 999px;
-  padding: 6px 10px;
-  color: #61635f;
-  font-size: 0.8rem;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.profileBadge {
-  border: 1px solid #b9c9b8;
-  border-radius: 999px;
-  background: #e7efe5;
-  color: #243d32;
-  padding: 5px 9px;
-  font-size: 0.68rem;
-  font-weight: 900;
-  line-height: 1;
-  white-space: nowrap;
-}
-
-.profileBadge-productive {
-  border-color: #c7a35c;
-  background: #f0e4c7;
-  color: #5f4317;
 }
 
 .headerMeta {
@@ -1286,16 +1289,29 @@ h2 {
   }
 
   .pilotNavigation {
-    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-columns: auto minmax(0, 1fr) auto;
     grid-template-rows: 1fr;
     min-height: auto;
     padding: 0;
+    border-radius: 14px;
   }
 
   .pilotNavigationItems {
     display: flex;
     align-items: center;
     gap: 8px;
+  }
+
+  .pilotNavigationMeta {
+    width: auto;
+    padding: 0 10px 0 2px;
+    text-align: right;
+  }
+
+  .deskPilotShellContent {
+    padding: 8px 0 0;
+    border-top: 1px solid #b6c8b9;
+    border-left: 0;
   }
 
   .deskPilotShellContent > .shell {

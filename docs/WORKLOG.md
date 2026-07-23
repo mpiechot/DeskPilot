@@ -1022,3 +1022,20 @@ Current status:
 
 Next recommended step:
 - Implement #32 for the DesktopPilot and EnvironmentPilot empty states, then continue with shell-level Settings in #33.
+
+### DeskPilot Shell visual refinement (#31 feedback)
+
+Completed:
+- Increased the visual separation between the dark Pilot Navigation rail and the BrowserPilot content surface, including a responsive divider in the compact layout.
+- Moved the DeskPilot version and active Development/Productive data profile into a small Shell-owned navigation footer.
+- Reduced the BrowserPilot content header to one clear `BrowserPilot` heading.
+- Replaced the generic globe glyph with a monochrome, `currentColor`-driven BrowserPilot SVG icon that can follow the active theme.
+- Extended the packaged renderer smoke test for the metadata footer, heading hierarchy, custom icon contract and visual shell separation.
+- Re-verified `npm run lint`, `npm run build` and `npm run test:prototype`.
+
+Current status:
+- PR #35 now contains the visual feedback refinement on top of the issue #31 shell implementation.
+- BrowserPilot data ownership and all existing browser-session workflows remain unchanged.
+
+Next recommended step:
+- Implement #32 for the DesktopPilot and EnvironmentPilot empty states, then continue with shell-level Settings in #33.

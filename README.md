@@ -39,7 +39,8 @@ More detailed run and verification notes live in `docs/USAGE.md`.
 
 Current state:
 - The DeskPilot Shell now hosts BrowserPilot as the first fully functional Pilot.
-- Pilot Navigation is icon-only and switches between vertical rail and compact horizontal layout responsively.
+- Pilot Navigation is icon-only, visually separated from Pilot content, and switches between vertical rail and compact horizontal layout responsively.
+- The navigation keeps DeskPilot's version and active data profile visible in a small footer and uses a styleable monochrome BrowserPilot SVG icon.
 - Shell-owned Toast Messages keep BrowserPilot errors visible and provide copyable details.
 - The Electron control panel exists in a wide, low touch-display layout.
 - Categories and saved URLs are stored locally in a SQLite database.

@@ -8,7 +8,9 @@ DeskPilot is a functional Productive MVP. Its current browser-session workflow h
 
 Working today:
 - DeskPilot Shell with BrowserPilot as the current fully functional Pilot
-- responsive icon-only Pilot Navigation with a vertical wide-display rail and compact horizontal layout
+- responsive icon-only Pilot Navigation with a visually distinct vertical wide-display rail and compact horizontal layout
+- small DeskPilot version and active data-profile metadata in the navigation footer
+- a monochrome, themeable BrowserPilot SVG icon
 - shell-owned Toast Messages with copyable error details
 - Electron desktop shell
 - React control-panel UI
@@ -53,6 +55,8 @@ Working today:
 - guarded NSIS installer and certificate-driven signing commands
 - one latest-stable-release check when an installed build starts, with an explicit GitHub installer-page action
 - local development, lint and build commands
+
+The BrowserPilot surface is labelled once as `BrowserPilot`; the navigation and its metadata belong to DeskPilot Shell.
 
 Not implemented yet:
 - packaged extension installation flow

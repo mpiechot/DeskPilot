@@ -417,6 +417,11 @@ async function runElectronSmoke() {
       const navigation = shell?.querySelector('[aria-label="Pilot Navigation"]');
       const browserPilotButton = navigation?.querySelector('[data-pilot-id="browser"]');
       const browserPilotContent = document.querySelector('[data-pilot="browser"]');
+      const shellContent = shell?.querySelector('[aria-label="DeskPilot content"]');
+      const shellMetadata = navigation?.querySelector('[data-shell-meta]');
+      const browserPilotIcon = browserPilotButton?.querySelector('[data-icon="browser-pilot"]');
+      const navigationStyle = navigation ? getComputedStyle(navigation) : null;
+      const contentStyle = shellContent ? getComputedStyle(shellContent) : null;
 
       browserPilotButton?.click();
 
@@ -425,9 +430,22 @@ async function runElectronSmoke() {
         navigationPresent: Boolean(navigation),
         browserPilotNavigationPresent: Boolean(browserPilotButton),
         browserPilotNavigationIconOnly: Boolean(browserPilotButton?.querySelector("svg")) && !browserPilotButton?.textContent?.trim(),
+        browserPilotUsesCustomStyleableIcon:
+          browserPilotIcon?.getAttribute("stroke") === "currentColor" && browserPilotIcon?.getAttribute("data-icon") === "browser-pilot",
         browserPilotSelected: browserPilotButton?.getAttribute("aria-current") === "page",
         browserPilotReachable: browserPilotContent?.getAttribute("aria-label") === "BrowserPilot",
-        browserSessionPreserved: document.querySelector("h1")?.textContent === "Browser Sessions"
+        browserPilotHasSingleHeading:
+          document.querySelectorAll("h1").length === 1 && document.querySelector("h1")?.textContent === "BrowserPilot",
+        shellMetadataVisible:
+          shellMetadata?.textContent?.includes("DeskPilot") &&
+          shellMetadata?.textContent?.includes("v0.1.1") &&
+          shellMetadata?.textContent?.includes("Development"),
+        navigationVisuallySeparated:
+          Boolean(navigationStyle && contentStyle) &&
+          navigationStyle?.backgroundImage !== "none" &&
+          contentStyle?.borderLeftStyle === "solid",
+        navigationBackgroundImage: navigationStyle?.backgroundImage,
+        contentBorderLeftStyle: contentStyle?.borderLeftStyle
       };
     })()
   `);
@@ -1077,9 +1095,12 @@ async function runElectronSmoke() {
   assert(shellNavigationResult.navigationPresent, "Expected the Shell to own Pilot Navigation");
   assert(shellNavigationResult.browserPilotNavigationPresent, "Expected BrowserPilot to be reachable from Pilot Navigation");
   assert(shellNavigationResult.browserPilotNavigationIconOnly, "Expected Pilot Navigation to use icon-only controls");
+  assert(shellNavigationResult.browserPilotUsesCustomStyleableIcon, "Expected BrowserPilot to use a custom currentColor SVG icon");
   assert(shellNavigationResult.browserPilotSelected, "Expected BrowserPilot to be the selected default Pilot");
   assert(shellNavigationResult.browserPilotReachable, "Expected the BrowserPilot content surface to be reachable");
-  assert(shellNavigationResult.browserSessionPreserved, "Expected BrowserPilot to preserve the existing browser-session surface");
+  assert(shellNavigationResult.browserPilotHasSingleHeading, "Expected BrowserPilot to use one clear page heading");
+  assert(shellNavigationResult.shellMetadataVisible, "Expected the Shell navigation to show DeskPilot version and data profile metadata");
+  assert(shellNavigationResult.navigationVisuallySeparated, "Expected Pilot Navigation to be visually separated from Pilot content");
   assert(responsiveNavigationResult.smallViewport, "Expected the smoke viewport to exercise the compact navigation layout");
   assert(responsiveNavigationResult.shellUsesSingleColumn, "Expected compact navigation to use a single shell column");
   assert(responsiveNavigationResult.navigationUsesHorizontalLayout, "Expected compact navigation to use a horizontal rail");

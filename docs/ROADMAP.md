@@ -44,7 +44,7 @@ Grill results:
 - Research tickets [#28](https://github.com/mpiechot/DeskPilot/issues/28) and [#29](https://github.com/mpiechot/DeskPilot/issues/29) remain decision context, not implementation scope
 
 Shell implementation tickets:
-- #31 introduce the DeskPilot Shell and preserve the BrowserPilot workflow - done
+- #31 introduce the DeskPilot Shell and preserve the BrowserPilot workflow - done; navigation hierarchy and BrowserPilot visual identity refined
 - #32 add DesktopPilot and EnvironmentPilot empty states - blocked by #31
 - #33 move Display and Safety controls into shell-level Settings - blocked by #31
 - #34 introduce the declarative Default Theme foundation - blocked by #31 and #33

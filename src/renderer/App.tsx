@@ -1068,8 +1068,7 @@ function BrowserPilot({ onOperationMessage }: { onOperationMessage: (message: st
       <aside className="controlRail" aria-label="DeskPilot controls">
         <header className="appHeader">
           <div>
-            <p className="eyebrow">BrowserPilot</p>
-            <h1>Browser Sessions</h1>
+            <h1>BrowserPilot</h1>
           </div>
           <div className="headerMeta">
             {appUpdateStatus?.status === "available" ? (
@@ -1084,16 +1083,7 @@ function BrowserPilot({ onOperationMessage }: { onOperationMessage: (message: st
                   Update v{appUpdateStatus.currentVersion} → v{appUpdateStatus.availableVersion}
                 </span>
               </button>
-            ) : (
-              <div className="version">v{window.deskPilot?.version ?? "0.1.1"}</div>
-            )}
-            <div
-              className={
-                activeDataProfile?.id === "productive" ? "profileBadge profileBadge-productive" : "profileBadge"
-              }
-            >
-              {activeDataProfile?.label ?? "Profile"}
-            </div>
+            ) : null}
             <div className={bridgeStatus?.running ? "bridgeStatus bridgeStatus-ready" : "bridgeStatus"}>{bridgeStatusText}</div>
           </div>
         </header>
