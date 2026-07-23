@@ -1045,12 +1045,29 @@ Next recommended step:
 Completed:
 - Removed the repeated empty-category indicators from the Session Board cards.
 - Empty categories now show one clear message: `No saved tabs yet`.
-- Non-empty categories retain useful information with singular/plural wording such as `1 saved tab` or `2 saved tabs`, plus the last saved label.
+- Non-empty categories retain useful information with singular/plural wording such as `1 saved tab` or `2 saved tabs`.
 - Extended the packaged renderer smoke test to protect the single empty-state message and the updated saved-tab wording.
 - Verified `npm run lint`, `npm run build` and `npm run test:prototype`.
 
 Current status:
 - The category cards no longer repeat `Empty`, `0 tabs`, `Not saved yet` and `No saved tabs` for the same state.
+- No browser-session data or storage behavior changed.
+
+Next recommended step:
+- Implement #32 for the DesktopPilot and EnvironmentPilot empty states, then continue with shell-level Settings in #33.
+
+### BrowserPilot category summary consistency (#31 feedback)
+
+Completed:
+- Removed the redundant `Ready` and `Saved` fields from the BrowserPilot category model and cards.
+- Kept the single useful populated-card summary, such as `1 saved tab` or `5 saved tabs`.
+- Kept `No saved tabs yet` as the single empty-category message.
+- Documented that BrowserPilot currently has no separate unsaved-tab state.
+- Extended the packaged renderer smoke test to protect the consistent populated-card summary.
+- Verified `npm run lint`, `npm run build` and `npm run test:prototype`.
+
+Current status:
+- Empty and populated category cards now use the same summary rule without redundant status labels.
 - No browser-session data or storage behavior changed.
 
 Next recommended step:

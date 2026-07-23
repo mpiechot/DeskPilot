@@ -28,6 +28,10 @@ _Avoid_: Sort order, save time order
 The app view where categories show their saved tabs and support drag-and-drop organization between categories and within each category.
 _Avoid_: Sidebar list, extension popup
 
+**Category Card Summary**:
+The compact summary shown on a Session Board category card: an empty category shows `No saved tabs yet`, while a populated category shows its saved-tab count. It does not introduce a separate `Ready`, `Saved`, or `Unsaved` state.
+_Avoid_: Readiness badge, save-state indicator, live-tab count
+
 **Productive Use**:
 Using DeskPilot as the user's real local browser-session system, where saved windows and tabs must remain trustworthy independently of ongoing development.
 _Avoid_: Demo use, smoke test

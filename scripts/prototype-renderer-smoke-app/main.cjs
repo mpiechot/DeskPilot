@@ -43,9 +43,7 @@ async function runElectronSmoke() {
       name: `Overflow ${index + 1}`,
       description: "Horizontal category navigation fixture.",
       icon: "folder",
-      tabCount: 0,
-      lastSavedLabel: "Not saved yet",
-      status: "empty"
+      tabCount: 0
     }))
   ];
   const deletedCategories = [];
@@ -73,9 +71,7 @@ async function runElectronSmoke() {
     if (categoryIndex >= 0) {
       categories[categoryIndex] = {
         ...categories[categoryIndex],
-        status: storedTabs.length > 0 ? "ready" : "empty",
-        tabCount: storedTabs.length,
-        lastSavedLabel: storedTabs.length > 0 ? "Just now" : "Not saved yet"
+        tabCount: storedTabs.length
       };
     }
   }
@@ -208,9 +204,7 @@ async function runElectronSmoke() {
       name: input.name,
       description: input.description,
       icon: input.icon || "folder",
-      tabCount: 0,
-      lastSavedLabel: "Not saved yet",
-      status: "empty"
+      tabCount: 0
     });
     return categories;
   });
@@ -938,6 +932,10 @@ async function runElectronSmoke() {
                   hasDeskPilotApi: Boolean(window.deskPilot),
                   extensionRefreshUpdatedCategoryCount: getCategoryCardText("Entertainment").includes("1 saved tab"),
                   sessionBoardShowsSavedTabs: getCategoryCardText("Entertainment").includes("External Extension Save"),
+                  populatedCategorySummaryConsistent:
+                    !getCategoryCard("Entertainment").querySelector(".status") &&
+                    getCategoryCard("Entertainment").querySelector(".categoryMeta")?.textContent.trim() === "1 saved tab" &&
+                    !getCategoryCardText("Entertainment").includes("Saved"),
                   sessionBoardMoveWorked: getCategoryCardText("Work").includes("Project title"),
                   sessionBoardReorderWorked:
                     workBoardTitles.includes("Work second") &&

@@ -111,18 +111,6 @@ function CategoryIconPicker({
   );
 }
 
-function statusLabel(status: SessionCategory["status"]): string {
-  if (status === "ready") {
-    return "Ready";
-  }
-
-  if (status === "needs-review") {
-    return "Review";
-  }
-
-  return "Empty";
-}
-
 function savedTabsLabel(tabCount: number): string {
   return `${tabCount} saved tab${tabCount === 1 ? "" : "s"}`;
 }
@@ -1589,15 +1577,11 @@ function BrowserPilot({ onOperationMessage }: { onOperationMessage: (message: st
                 <>
                   <div className="categoryTitleRow">
                     <h2>{category.name}</h2>
-                    {category.status !== "empty" ? (
-                      <span className={`status status-${category.status}`}>{statusLabel(category.status)}</span>
-                    ) : null}
                   </div>
                   <p>{category.description}</p>
                   {category.tabCount > 0 ? (
                     <div className="categoryMeta">
                       <span>{savedTabsLabel(category.tabCount)}</span>
-                      <span>{category.lastSavedLabel}</span>
                     </div>
                   ) : null}
                   <div

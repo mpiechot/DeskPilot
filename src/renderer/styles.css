@@ -987,28 +987,6 @@ h2 {
   line-height: 1.35;
 }
 
-.status {
-  border-radius: 999px;
-  padding: 4px 8px;
-  font-size: 0.7rem;
-  font-weight: 800;
-}
-
-.status-empty {
-  background: #ece6dc;
-  color: #6d6356;
-}
-
-.status-ready {
-  background: #dcebdc;
-  color: #23452f;
-}
-
-.status-needs-review {
-  background: #f2e0c8;
-  color: #654518;
-}
-
 .categoryMeta {
   display: flex;
   flex-direction: column;
