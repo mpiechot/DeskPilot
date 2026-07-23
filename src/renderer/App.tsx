@@ -138,7 +138,397 @@ function getUrlHost(value: string): string {
   }
 }
 
-function BrowserPilot({ onOperationMessage }: { onOperationMessage: (message: string) => void }) {
+function SettingsPilot({
+  onOperationMessage,
+  onStorageRestore,
+  onDisplayLayoutModeChange
+}: {
+  onOperationMessage: (message: string) => void;
+  onStorageRestore: (result: StorageRestoreResult) => void;
+  onDisplayLayoutModeChange: (layoutMode: WindowPreferences["layoutMode"]) => void;
+}) {
+  const [settingsMode, setSettingsMode] = useState<"display" | "safety" | "theme">("display");
+  const [storageInfo, setStorageInfo] = useState<StorageBackupInfo | null>(null);
+  const [displaySettings, setDisplaySettings] = useState<DisplaySettingsInfo | null>(null);
+  const [displayDraft, setDisplayDraft] = useState<WindowPreferences>({
+    layoutMode: "standard",
+    displayId: null,
+    kiosk: false
+  });
+
+  useEffect(() => {
+    if (!window.deskPilot) {
+      return;
+    }
+
+    window.deskPilot
+      .storageInfo()
+      .then((info: StorageBackupInfo) => setStorageInfo(info))
+      .catch(() => onOperationMessage("Could not load storage settings."));
+
+    window.deskPilot
+      .displaySettings()
+      .then((info: DisplaySettingsInfo) => {
+        setDisplaySettings(info);
+        setDisplayDraft(info.preferences);
+        onDisplayLayoutModeChange(info.preferences.layoutMode);
+      })
+      .catch(() => onOperationMessage("Could not load display settings."));
+  }, [onDisplayLayoutModeChange, onOperationMessage]);
+
+  const latestManualBackup = storageInfo?.manualBackups[0] ?? null;
+  const activeDataProfile = storageInfo?.dataProfile ?? null;
+  const startupRecovery = storageInfo?.startupRecovery ?? null;
+  const storageMessage = !window.deskPilot
+    ? "Settings require the Electron app."
+    : startupRecovery?.status === "recovered-from-rolling"
+      ? "Database recovered from the automatic rolling backup."
+      : activeDataProfile
+        ? `${activeDataProfile.label} data profile is active.`
+        : "Local SQLite storage is active.";
+
+  function handleBackupError(): void {
+    onOperationMessage("Could not create backup. Existing data was left untouched.");
+  }
+
+  function handleCreateStorageBackup(): void {
+    if (!window.deskPilot) {
+      onOperationMessage("Backups require the Electron app.");
+      return;
+    }
+
+    window.deskPilot
+      .createStorageBackup()
+      .then((info: StorageBackupInfo) => {
+        setStorageInfo(info);
+        onOperationMessage("Created local database backup.");
+      })
+      .catch(handleBackupError);
+  }
+
+  function handleRestoreStorageBackup(fileName: string): void {
+    if (!window.deskPilot) {
+      onOperationMessage("Restoring backups requires the Electron app.");
+      return;
+    }
+
+    if (!window.confirm(`Restore "${fileName}"? DeskPilot will create a safety backup before replacing active data.`)) {
+      return;
+    }
+
+    window.deskPilot
+      .restoreStorageBackup(fileName)
+      .then((result: StorageRestoreResult) => {
+        setStorageInfo(result.storageInfo);
+        onStorageRestore(result);
+        onOperationMessage(`Restored backup. Safety backup: ${result.safetyBackupFileName}.`);
+      })
+      .catch(() => onOperationMessage("Could not restore backup. Existing data was left untouched."));
+  }
+
+  function handleRestoreRollingBackup(): void {
+    if (!window.deskPilot) {
+      onOperationMessage("Restoring backups requires the Electron app.");
+      return;
+    }
+
+    if (!storageInfo?.rollingBackup) {
+      onOperationMessage("No automatic rolling backup is available yet.");
+      return;
+    }
+
+    if (!window.confirm("Restore the latest automatic rolling backup? DeskPilot will preserve the current data in a safety backup first.")) {
+      return;
+    }
+
+    window.deskPilot
+      .restoreRollingStorageBackup()
+      .then((result: StorageRestoreResult) => {
+        setStorageInfo(result.storageInfo);
+        onStorageRestore(result);
+        onOperationMessage(`Restored automatic backup. Safety backup: ${result.safetyBackupFileName}.`);
+      })
+      .catch(() => onOperationMessage("Could not restore automatic backup. Existing data was left untouched."));
+  }
+
+  function handleExportStorageBackup(fileName?: string): void {
+    if (!window.deskPilot) {
+      onOperationMessage("Export requires the Electron app.");
+      return;
+    }
+
+    window.deskPilot
+      .exportStorageBackup(fileName)
+      .then((result: StorageExportResult | null) => {
+        if (!result) {
+          onOperationMessage("Export canceled.");
+          return;
+        }
+
+        setStorageInfo(result.storageInfo);
+        onOperationMessage(`Exported backup to ${result.filePath}.`);
+      })
+      .catch(() => onOperationMessage("Could not export backup."));
+  }
+
+  function handleImportStorageBackup(): void {
+    if (!window.deskPilot) {
+      onOperationMessage("Import requires the Electron app.");
+      return;
+    }
+
+    if (!window.confirm("Importing a backup replaces active data after creating a safety backup. Continue?")) {
+      return;
+    }
+
+    window.deskPilot
+      .importStorageBackup()
+      .then((result: StorageRestoreResult | null) => {
+        if (!result) {
+          onOperationMessage("Import canceled.");
+          return;
+        }
+
+        setStorageInfo(result.storageInfo);
+        onStorageRestore(result);
+        onOperationMessage(`Imported backup. Safety backup: ${result.safetyBackupFileName}.`);
+      })
+      .catch(() => onOperationMessage("Could not import backup. Existing data was left untouched."));
+  }
+
+  function handleSaveDisplayPreferences(): void {
+    if (!window.deskPilot) {
+      onOperationMessage("Display settings require the Electron app.");
+      return;
+    }
+
+    window.deskPilot
+      .updateDisplayPreferences(displayDraft)
+      .then((info: DisplaySettingsInfo) => {
+        setDisplaySettings(info);
+        setDisplayDraft(info.preferences);
+        onDisplayLayoutModeChange(info.preferences.layoutMode);
+        onOperationMessage("Display settings applied.");
+      })
+      .catch(() => onOperationMessage("Could not apply display settings."));
+  }
+
+  return (
+    <main className="settingsShell" aria-label="Settings">
+      <section className="settingsContent">
+        <header className="settingsHeader">
+          <div>
+            <span className="pilotEmptyStateEyebrow">DeskPilot-wide configuration</span>
+            <h1>Settings</h1>
+          </div>
+          <span className="settingsProfileLabel">{activeDataProfile?.label ?? "Development"}</span>
+        </header>
+
+        <div className="modeSwitch settingsModeSwitch" role="tablist" aria-label="Settings sections">
+          <button
+            type="button"
+            className={settingsMode === "display" ? "modeButton modeButton-active" : "modeButton"}
+            onClick={() => setSettingsMode("display")}
+            aria-selected={settingsMode === "display"}
+          >
+            Display
+          </button>
+          <button
+            type="button"
+            className={settingsMode === "safety" ? "modeButton modeButton-active" : "modeButton"}
+            onClick={() => setSettingsMode("safety")}
+            aria-selected={settingsMode === "safety"}
+          >
+            Safety
+          </button>
+          <button
+            type="button"
+            className={settingsMode === "theme" ? "modeButton modeButton-active" : "modeButton"}
+            onClick={() => setSettingsMode("theme")}
+            aria-selected={settingsMode === "theme"}
+          >
+            Theme
+          </button>
+        </div>
+
+        {settingsMode === "display" ? (
+          <section className="displayPanel settingsPanel" aria-label="Display settings">
+            <div className="settingsSectionIntro">
+              <strong>Display</strong>
+              <span>Choose how DeskPilot appears and where it launches.</span>
+            </div>
+            <label>
+              Layout
+              <select
+                aria-label="DeskPilot layout"
+                value={displayDraft.layoutMode}
+                onChange={(event) =>
+                  setDisplayDraft({ ...displayDraft, layoutMode: event.target.value as WindowPreferences["layoutMode"] })
+                }
+              >
+                <option value="standard">Standard</option>
+                <option value="touch">Touch</option>
+              </select>
+            </label>
+            <label>
+              Launch display
+              <select
+                aria-label="DeskPilot launch display"
+                value={displayDraft.displayId ?? ""}
+                onChange={(event) => setDisplayDraft({ ...displayDraft, displayId: event.target.value || null })}
+              >
+                <option value="">Current / system default</option>
+                {displaySettings?.displays.map((display) => (
+                  <option value={display.id} key={display.id}>
+                    {display.label} · {display.width}×{display.height}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="displayCheckbox">
+              <input
+                type="checkbox"
+                checked={displayDraft.kiosk}
+                onChange={(event) => setDisplayDraft({ ...displayDraft, kiosk: event.target.checked })}
+              />
+              Kiosk-like fullscreen mode
+            </label>
+            <small>Kiosk mode can always be left by quitting DeskPilot from the tray menu.</small>
+            <button type="button" className="addCategoryAction" onClick={handleSaveDisplayPreferences}>
+              Apply Display Settings
+            </button>
+          </section>
+        ) : settingsMode === "safety" ? (
+          <section className="safetyPanel settingsPanel" aria-label="Storage safety">
+            <div
+              className={
+                activeDataProfile?.id === "productive" ? "profileSummary profileSummary-productive" : "profileSummary"
+              }
+            >
+              <strong>{activeDataProfile ? `${activeDataProfile.label} profile` : "Data profile"}</strong>
+              <span>{activeDataProfile?.description ?? "Profile status unavailable."}</span>
+              <small>{activeDataProfile?.cutover.message ?? "Cutover status unavailable."}</small>
+            </div>
+            {startupRecovery?.status === "recovered-from-rolling" ? (
+              <div className="startupRecoveryNotice" role="status">
+                <AlertTriangle aria-hidden="true" />
+                <div>
+                  <strong>Recovered at startup</strong>
+                  <span>{startupRecovery.message}</span>
+                  <small>
+                    Preserved corrupted file: <code>{startupRecovery.corruptDatabaseBackupPath}</code>
+                  </small>
+                </div>
+              </div>
+            ) : null}
+            <div className="backupActionGrid">
+              <button type="button" className="backupAction" onClick={handleCreateStorageBackup}>
+                <DatabaseBackup aria-hidden="true" />
+                Create Backup
+              </button>
+              <button type="button" className="backupAction secondaryBackupAction" onClick={() => handleExportStorageBackup()}>
+                <Download aria-hidden="true" />
+                Export Current
+              </button>
+              <button type="button" className="backupAction secondaryBackupAction" onClick={handleImportStorageBackup}>
+                <Upload aria-hidden="true" />
+                Import Backup
+              </button>
+            </div>
+            <div className="backupPathBox">
+              <strong>Database</strong>
+              <code>{storageInfo?.databasePath ?? "Electron storage path unavailable"}</code>
+            </div>
+            <div className="backupPathBox">
+              <strong>Manual backups</strong>
+              <code>{storageInfo?.manualBackupDirectory ?? "No backup directory yet"}</code>
+            </div>
+            <div className="rollingBackupSection">
+              <div className="backupListHeader">
+                <p>Automatic rolling backup</p>
+                <span>{storageInfo?.rollingBackup ? "Ready" : "Pending"}</span>
+              </div>
+              <div className="backupListItem">
+                <div className="backupListItemText">
+                  <span title={storageInfo?.rollingBackup?.path}>{storageInfo?.rollingBackup?.fileName ?? "Not created yet"}</span>
+                  <small>
+                    {storageInfo?.rollingBackup
+                      ? `${formatBackupSize(storageInfo.rollingBackup.sizeBytes)} - ${formatBackupTime(storageInfo.rollingBackup.createdAt)}`
+                      : "DeskPilot creates this after the first database update."}
+                  </small>
+                </div>
+                <div className="backupListActions">
+                  <button
+                    type="button"
+                    onClick={handleRestoreRollingBackup}
+                    title="Restore automatic rolling backup"
+                    disabled={!storageInfo?.rollingBackup}
+                  >
+                    <RotateCcw aria-hidden="true" />
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className="backupList">
+              <div className="backupListHeader">
+                <p>Manual backups</p>
+                <span>{storageInfo?.manualBackups.length ?? 0}</span>
+              </div>
+              {!latestManualBackup ? <span className="emptyRecoveryText">None</span> : null}
+              {storageInfo?.manualBackups.map((backup) => (
+                <div className="backupListItem" key={backup.fileName}>
+                  <div className="backupListItemText">
+                    <span title={backup.path}>{backup.fileName}</span>
+                    <small>
+                      {formatBackupSize(backup.sizeBytes)} - {formatBackupTime(backup.createdAt)}
+                    </small>
+                  </div>
+                  <div className="backupListActions">
+                    <button type="button" onClick={() => handleRestoreStorageBackup(backup.fileName)} title="Restore backup">
+                      <RotateCcw aria-hidden="true" />
+                    </button>
+                    <button type="button" onClick={() => handleExportStorageBackup(backup.fileName)} title="Export backup">
+                      <Download aria-hidden="true" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : (
+          <section className="settingsThemePanel settingsPanel" aria-label="Theme settings">
+            <div className="pilotEmptyStateIcon" aria-hidden="true">
+              <Lightbulb />
+            </div>
+            <strong>Theme selection</strong>
+            <p>The theme surface is reserved here. Additional visual themes will be added without changing BrowserPilot data or workflows.</p>
+            <label>
+              Current theme
+              <select aria-label="DeskPilot theme" disabled>
+                <option>Default Theme</option>
+              </select>
+            </label>
+          </section>
+        )}
+
+        <footer className="safetyNote">
+          <ShieldCheck aria-hidden="true" />
+          <span>{storageMessage}</span>
+        </footer>
+      </section>
+    </main>
+  );
+}
+
+function BrowserPilot({
+  onOperationMessage,
+  storageRestoreResult,
+  layoutMode
+}: {
+  onOperationMessage: (message: string) => void;
+  storageRestoreResult: StorageRestoreResult | null;
+  layoutMode: WindowPreferences["layoutMode"];
+}) {
   const [categories, setCategories] = useState<SessionCategory[]>(defaultCategories);
   const [storageStatus, setStorageStatus] = useState<"loading" | "ready" | "fallback" | "error">("loading");
   const [categoryDraft, setCategoryDraft] = useState<CategoryInput>({
@@ -160,20 +550,11 @@ function BrowserPilot({ onOperationMessage }: { onOperationMessage: (message: st
   const [tabs, setTabs] = useState<SessionTab[]>([]);
   const [boardTabsByCategory, setBoardTabsByCategory] = useState<Record<string, SessionTab[]>>({});
   const [tabDraft, setTabDraft] = useState<SessionTabInput>({ categoryId: selectedCategoryId, url: "", title: "" });
-  const [controlMode, setControlMode] = useState<
-    "session" | "categories" | "archive" | "recovery" | "extension" | "display" | "safety"
-  >("session");
+  const [controlMode, setControlMode] = useState<"session" | "categories" | "archive" | "recovery" | "extension">("session");
   const [operationMessage, setOperationMessage] = useState("");
   const [appUpdateStatus, setAppUpdateStatus] = useState<AppUpdateStatus | null>(null);
   const [bridgeStatus, setBridgeStatus] = useState<BridgeStatus | null>(null);
   const [extensionInfo, setExtensionInfo] = useState<ExtensionInstallInfo | null>(null);
-  const [storageInfo, setStorageInfo] = useState<StorageBackupInfo | null>(null);
-  const [displaySettings, setDisplaySettings] = useState<DisplaySettingsInfo | null>(null);
-  const [displayDraft, setDisplayDraft] = useState<WindowPreferences>({
-    layoutMode: "standard",
-    displayId: null,
-    kiosk: false
-  });
   const [draggedTab, setDraggedTab] = useState<{ id: string; categoryId: string } | null>(null);
   const [isCategoryListDragging, setIsCategoryListDragging] = useState(false);
   const categoryListDrag = useRef<{
@@ -238,25 +619,6 @@ function BrowserPilot({ onOperationMessage }: { onOperationMessage: (message: st
       .then((info: ExtensionInstallInfo) => {
         if (isMounted) {
           setExtensionInfo(info);
-        }
-      })
-      .catch(() => undefined);
-
-    window.deskPilot
-      .storageInfo()
-      .then((info: StorageBackupInfo) => {
-        if (isMounted) {
-          setStorageInfo(info);
-        }
-      })
-      .catch(() => undefined);
-
-    window.deskPilot
-      .displaySettings()
-      .then((info: DisplaySettingsInfo) => {
-        if (isMounted) {
-          setDisplaySettings(info);
-          setDisplayDraft(info.preferences);
         }
       })
       .catch(() => undefined);
@@ -413,23 +775,21 @@ function BrowserPilot({ onOperationMessage }: { onOperationMessage: (message: st
     };
   }, [selectedCategoryId]);
 
+  useEffect(() => {
+    if (!storageRestoreResult) {
+      return;
+    }
+
+    setCategories(storageRestoreResult.categories);
+    setDeletedCategories(storageRestoreResult.deletedCategories);
+    setSelectedCategoryId(storageRestoreResult.selectedCategoryId);
+    setTabs(storageRestoreResult.tabs);
+    setDeletedTabs(storageRestoreResult.deletedTabs);
+    setArchivedTabs(storageRestoreResult.archivedTabs);
+    setStorageStatus("ready");
+  }, [storageRestoreResult]);
+
   const isStorageWritable = storageStatus === "ready" && Boolean(window.deskPilot);
-  const latestManualBackup = storageInfo?.manualBackups[0] ?? null;
-  const activeDataProfile = storageInfo?.dataProfile ?? null;
-  const startupRecovery = storageInfo?.startupRecovery ?? null;
-  const storageReadyMessage =
-    startupRecovery?.status === "recovered-from-rolling"
-      ? "Database recovered from the automatic rolling backup. Review Safety for details."
-      : activeDataProfile
-        ? `${activeDataProfile.label} data profile is active.`
-        : "Local SQLite storage is active.";
-  const storageMessage = storageStatus === "ready"
-      ? storageReadyMessage
-      : storageStatus === "fallback"
-        ? "Browser preview is using fallback categories."
-        : storageStatus === "error"
-          ? "Storage unavailable; showing fallback categories."
-          : "Loading local storage.";
   const bridgeStatusText = !window.deskPilot
     ? "Bridge: Electron app required"
     : bridgeStatus?.running
@@ -485,24 +845,9 @@ function BrowserPilot({ onOperationMessage }: { onOperationMessage: (message: st
     setDeletedCategories(result.deletedCategories);
   }
 
-  function applyStorageRestoreResult(result: StorageRestoreResult): void {
-    setStorageInfo(result.storageInfo);
-    setCategories(result.categories);
-    setDeletedCategories(result.deletedCategories);
-    setSelectedCategoryId(result.selectedCategoryId);
-    setTabs(result.tabs);
-    setDeletedTabs(result.deletedTabs);
-    setArchivedTabs(result.archivedTabs);
-    setStorageStatus("ready");
-  }
-
   function handleStorageError(): void {
     setStorageStatus("error");
     setOperationMessage("Storage write failed. Existing data was left untouched.");
-  }
-
-  function handleBackupError(): void {
-    setOperationMessage("Could not create backup. Existing data was left untouched.");
   }
 
   function selectedCategoryName(): string {
@@ -713,108 +1058,6 @@ function BrowserPilot({ onOperationMessage }: { onOperationMessage: (message: st
       .catch(() => setOperationMessage("Could not open the DeskPilot update page."));
   }
 
-  function handleCreateStorageBackup(): void {
-    if (!window.deskPilot) {
-      setOperationMessage("Backups require the Electron app.");
-      return;
-    }
-
-    window.deskPilot
-      .createStorageBackup()
-      .then((info: StorageBackupInfo) => {
-        setStorageInfo(info);
-        setOperationMessage("Created local database backup.");
-      })
-      .catch(handleBackupError);
-  }
-
-  function handleRestoreStorageBackup(fileName: string): void {
-    if (!window.deskPilot) {
-      setOperationMessage("Restoring backups requires the Electron app.");
-      return;
-    }
-
-    if (!window.confirm(`Restore "${fileName}"? DeskPilot will create a safety backup before replacing active data.`)) {
-      return;
-    }
-
-    window.deskPilot
-      .restoreStorageBackup(fileName)
-      .then((result: StorageRestoreResult) => {
-        applyStorageRestoreResult(result);
-        setOperationMessage(`Restored backup. Safety backup: ${result.safetyBackupFileName}.`);
-      })
-      .catch(() => setOperationMessage("Could not restore backup. Existing data was left untouched."));
-  }
-
-  function handleRestoreRollingBackup(): void {
-    if (!window.deskPilot) {
-      setOperationMessage("Restoring backups requires the Electron app.");
-      return;
-    }
-
-    if (!storageInfo?.rollingBackup) {
-      setOperationMessage("No automatic rolling backup is available yet.");
-      return;
-    }
-
-    if (!window.confirm("Restore the latest automatic rolling backup? DeskPilot will preserve the current data in a safety backup first.")) {
-      return;
-    }
-
-    window.deskPilot
-      .restoreRollingStorageBackup()
-      .then((result: StorageRestoreResult) => {
-        applyStorageRestoreResult(result);
-        setOperationMessage(`Restored automatic backup. Safety backup: ${result.safetyBackupFileName}.`);
-      })
-      .catch(() => setOperationMessage("Could not restore automatic backup. Existing data was left untouched."));
-  }
-
-  function handleExportStorageBackup(fileName?: string): void {
-    if (!window.deskPilot) {
-      setOperationMessage("Export requires the Electron app.");
-      return;
-    }
-
-    window.deskPilot
-      .exportStorageBackup(fileName)
-      .then((result: StorageExportResult | null) => {
-        if (!result) {
-          setOperationMessage("Export canceled.");
-          return;
-        }
-
-        setStorageInfo(result.storageInfo);
-        setOperationMessage(`Exported backup to ${result.filePath}.`);
-      })
-      .catch(() => setOperationMessage("Could not export backup."));
-  }
-
-  function handleImportStorageBackup(): void {
-    if (!window.deskPilot) {
-      setOperationMessage("Import requires the Electron app.");
-      return;
-    }
-
-    if (!window.confirm("Importing a backup replaces active data after creating a safety backup. Continue?")) {
-      return;
-    }
-
-    window.deskPilot
-      .importStorageBackup()
-      .then((result: StorageRestoreResult | null) => {
-        if (!result) {
-          setOperationMessage("Import canceled.");
-          return;
-        }
-
-        applyStorageRestoreResult(result);
-        setOperationMessage(`Imported backup. Safety backup: ${result.safetyBackupFileName}.`);
-      })
-      .catch(() => setOperationMessage("Could not import backup. Existing data was left untouched."));
-  }
-
   function removeTab(tab: SessionTab): void {
     if (!isStorageWritable) {
       setOperationMessage("Removing URLs requires the Electron app.");
@@ -892,22 +1135,6 @@ function BrowserPilot({ onOperationMessage }: { onOperationMessage: (message: st
         setOperationMessage("Archived URL permanently deleted.");
       })
       .catch(handleStorageError);
-  }
-
-  function handleSaveDisplayPreferences(): void {
-    if (!window.deskPilot) {
-      setOperationMessage("Display settings require the Electron app.");
-      return;
-    }
-
-    window.deskPilot
-      .updateDisplayPreferences(displayDraft)
-      .then((info: DisplaySettingsInfo) => {
-        setDisplaySettings(info);
-        setDisplayDraft(info.preferences);
-        setOperationMessage("Display settings applied.");
-      })
-      .catch(() => setOperationMessage("Could not apply display settings."));
   }
 
   function restoreDeletedTab(id: string): void {
@@ -1053,7 +1280,7 @@ function BrowserPilot({ onOperationMessage }: { onOperationMessage: (message: st
 
   return (
     <main
-      className={displaySettings?.preferences.layoutMode === "touch" ? "shell shell-touch" : "shell"}
+      className={layoutMode === "touch" ? "shell shell-touch" : "shell"}
       data-pilot="browser"
       aria-label="BrowserPilot"
     >
@@ -1126,20 +1353,6 @@ function BrowserPilot({ onOperationMessage }: { onOperationMessage: (message: st
             onClick={() => setControlMode("extension")}
           >
             Extension
-          </button>
-          <button
-            type="button"
-            className={controlMode === "safety" ? "modeButton modeButton-active" : "modeButton"}
-            onClick={() => setControlMode("safety")}
-          >
-            Safety
-          </button>
-          <button
-            type="button"
-            className={controlMode === "display" ? "modeButton modeButton-active" : "modeButton"}
-            onClick={() => setControlMode("display")}
-          >
-            Display
           </button>
         </div>
 
@@ -1321,49 +1534,6 @@ function BrowserPilot({ onOperationMessage }: { onOperationMessage: (message: st
               </button>
             ))}
           </section>
-        ) : controlMode === "display" ? (
-          <section className="displayPanel" aria-label="Display settings">
-            <label>
-              Layout
-              <select
-                aria-label="DeskPilot layout"
-                value={displayDraft.layoutMode}
-                onChange={(event) =>
-                  setDisplayDraft({ ...displayDraft, layoutMode: event.target.value as WindowPreferences["layoutMode"] })
-                }
-              >
-                <option value="standard">Standard</option>
-                <option value="touch">Touch</option>
-              </select>
-            </label>
-            <label>
-              Launch display
-              <select
-                aria-label="DeskPilot launch display"
-                value={displayDraft.displayId ?? ""}
-                onChange={(event) => setDisplayDraft({ ...displayDraft, displayId: event.target.value || null })}
-              >
-                <option value="">Current / system default</option>
-                {displaySettings?.displays.map((display) => (
-                  <option value={display.id} key={display.id}>
-                    {display.label} · {display.width}×{display.height}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="displayCheckbox">
-              <input
-                type="checkbox"
-                checked={displayDraft.kiosk}
-                onChange={(event) => setDisplayDraft({ ...displayDraft, kiosk: event.target.checked })}
-              />
-              Kiosk-like fullscreen mode
-            </label>
-            <small>Kiosk mode can always be left by quitting DeskPilot from the tray menu.</small>
-            <button type="button" className="addCategoryAction" onClick={handleSaveDisplayPreferences}>
-              Apply Display Settings
-            </button>
-          </section>
         ) : controlMode === "extension" ? (
           <section className="extensionPanel" aria-label="Browser extension">
             <div className={bridgeStatus?.running ? "extensionState extensionState-ready" : "extensionState extensionState-warning"}>
@@ -1393,109 +1563,7 @@ function BrowserPilot({ onOperationMessage }: { onOperationMessage: (message: st
               ))}
             </div>
           </section>
-        ) : (
-          <section className="safetyPanel" aria-label="Storage safety">
-            <div
-              className={
-                activeDataProfile?.id === "productive" ? "profileSummary profileSummary-productive" : "profileSummary"
-              }
-            >
-              <strong>{activeDataProfile ? `${activeDataProfile.label} profile` : "Data profile"}</strong>
-              <span>{activeDataProfile?.description ?? "Profile status unavailable."}</span>
-              <small>{activeDataProfile?.cutover.message ?? "Cutover status unavailable."}</small>
-            </div>
-            {startupRecovery?.status === "recovered-from-rolling" ? (
-              <div className="startupRecoveryNotice" role="status">
-                <AlertTriangle aria-hidden="true" />
-                <div>
-                  <strong>Recovered at startup</strong>
-                  <span>{startupRecovery.message}</span>
-                  <small>
-                    Preserved corrupted file: <code>{startupRecovery.corruptDatabaseBackupPath}</code>
-                  </small>
-                </div>
-              </div>
-            ) : null}
-            <div className="backupActionGrid">
-              <button type="button" className="backupAction" onClick={handleCreateStorageBackup}>
-                <DatabaseBackup aria-hidden="true" />
-                Create Backup
-              </button>
-              <button type="button" className="backupAction secondaryBackupAction" onClick={() => handleExportStorageBackup()}>
-                <Download aria-hidden="true" />
-                Export Current
-              </button>
-              <button type="button" className="backupAction secondaryBackupAction" onClick={handleImportStorageBackup}>
-                <Upload aria-hidden="true" />
-                Import Backup
-              </button>
-            </div>
-            <div className="backupPathBox">
-              <strong>Database</strong>
-              <code>{storageInfo?.databasePath ?? "Electron storage path unavailable"}</code>
-            </div>
-            <div className="backupPathBox">
-              <strong>Manual backups</strong>
-              <code>{storageInfo?.manualBackupDirectory ?? "No backup directory yet"}</code>
-            </div>
-            <div className="rollingBackupSection">
-              <div className="backupListHeader">
-                <p>Automatic rolling backup</p>
-                <span>{storageInfo?.rollingBackup ? "Ready" : "Pending"}</span>
-              </div>
-              <div className="backupListItem">
-                <div className="backupListItemText">
-                  <span title={storageInfo?.rollingBackup?.path}>{storageInfo?.rollingBackup?.fileName ?? "Not created yet"}</span>
-                  <small>
-                    {storageInfo?.rollingBackup
-                      ? `${formatBackupSize(storageInfo.rollingBackup.sizeBytes)} - ${formatBackupTime(storageInfo.rollingBackup.createdAt)}`
-                      : "DeskPilot creates this after the first database update."}
-                  </small>
-                </div>
-                <div className="backupListActions">
-                  <button
-                    type="button"
-                    onClick={handleRestoreRollingBackup}
-                    title="Restore automatic rolling backup"
-                    disabled={!storageInfo?.rollingBackup}
-                  >
-                    <RotateCcw aria-hidden="true" />
-                  </button>
-                </div>
-              </div>
-            </div>
-            <div className="backupList">
-              <div className="backupListHeader">
-                <p>Manual backups</p>
-                <span>{storageInfo?.manualBackups.length ?? 0}</span>
-              </div>
-              {!latestManualBackup ? <span className="emptyRecoveryText">None</span> : null}
-              {storageInfo?.manualBackups.map((backup) => (
-                <div className="backupListItem" key={backup.fileName}>
-                  <div className="backupListItemText">
-                    <span title={backup.path}>{backup.fileName}</span>
-                    <small>
-                      {formatBackupSize(backup.sizeBytes)} - {formatBackupTime(backup.createdAt)}
-                    </small>
-                  </div>
-                  <div className="backupListActions">
-                    <button type="button" onClick={() => handleRestoreStorageBackup(backup.fileName)} title="Restore backup">
-                      <RotateCcw aria-hidden="true" />
-                    </button>
-                    <button type="button" onClick={() => handleExportStorageBackup(backup.fileName)} title="Export backup">
-                      <Download aria-hidden="true" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        <footer className="safetyNote">
-          <ShieldCheck aria-hidden="true" />
-          <span>{storageMessage}</span>
-        </footer>
+        ) : null}
       </aside>
 
       <section
@@ -1684,10 +1752,26 @@ function BrowserPilot({ onOperationMessage }: { onOperationMessage: (message: st
 
 function App() {
   const [operationMessage, setOperationMessage] = useState("");
+  const [layoutMode, setLayoutMode] = useState<WindowPreferences["layoutMode"]>("standard");
+  const [storageRestoreResult, setStorageRestoreResult] = useState<StorageRestoreResult | null>(null);
 
   return (
-    <DeskPilotShell toastMessage={operationMessage}>
-      <BrowserPilot onOperationMessage={setOperationMessage} />
+    <DeskPilotShell
+      layoutMode={layoutMode}
+      settings={
+        <SettingsPilot
+          onOperationMessage={setOperationMessage}
+          onStorageRestore={setStorageRestoreResult}
+          onDisplayLayoutModeChange={setLayoutMode}
+        />
+      }
+      toastMessage={operationMessage}
+    >
+      <BrowserPilot
+        layoutMode={layoutMode}
+        onOperationMessage={setOperationMessage}
+        storageRestoreResult={storageRestoreResult}
+      />
     </DeskPilotShell>
   );
 }

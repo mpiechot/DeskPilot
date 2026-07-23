@@ -1089,3 +1089,23 @@ Current status:
 
 Next recommended step:
 - Implement #32 for the DesktopPilot and EnvironmentPilot empty states, then continue with shell-level Settings in #33.
+
+### DesktopPilot, EnvironmentPilot and shell Settings (#32/#33)
+
+Completed:
+- Added reachable DesktopPilot and EnvironmentPilot destinations with responsive, friendly development empty states and dedicated monochrome navigation icons.
+- Added a separate shell-level Settings destination with Display, Safety and reserved Theme sections.
+- Moved Display preferences, active data profile, backup, import/export and recovery controls out of BrowserPilot without changing their persistence APIs or safety behavior.
+- Kept BrowserPilot mounted while switching destinations so the current BrowserPilot session state is preserved.
+- Updated restore flows so Settings refreshes BrowserPilot categories and saved tabs after a backup restore or import.
+- Updated the renderer smoke test to cover all shell destinations, return navigation, Settings display persistence and Settings safety recovery.
+- Updated README, usage documentation and roadmap.
+- Verified `npm run lint`, `npm run build` and `npm run test:prototype`.
+
+Current status:
+- BrowserPilot now keeps only Session, Categories, Archive, Recovery and Extension controls.
+- DesktopPilot and EnvironmentPilot are reachable but intentionally contain no unfinished hotkey functionality yet.
+- Settings is the single home for product-wide Display, Safety and future Theme configuration.
+
+Next recommended step:
+- Implement #34 for the declarative Default Theme foundation.

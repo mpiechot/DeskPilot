@@ -68,6 +68,13 @@ body {
   gap: 8px;
 }
 
+.pilotNavigationBottom {
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+  width: 100%;
+}
+
 .pilotNavigationItem {
   border: 1px solid rgba(205, 232, 211, 0.42);
   background: rgba(255, 250, 240, 0.08);
@@ -122,6 +129,146 @@ body {
 .deskPilotShellContent > .shell {
   min-height: calc(100vh - 32px);
   padding: 0;
+}
+
+.pilotEmptyState {
+  display: grid;
+  justify-items: start;
+  align-content: center;
+  min-height: calc(100vh - 32px);
+  max-width: 620px;
+  padding: 42px;
+}
+
+.pilotEmptyStateIcon {
+  display: grid;
+  place-items: center;
+  width: 68px;
+  height: 68px;
+  margin-bottom: 24px;
+  border: 1px solid #c3d5c6;
+  border-radius: 20px;
+  background: #e5f0e5;
+  color: #315a43;
+}
+
+.pilotEmptyStateIcon svg {
+  width: 30px;
+  height: 30px;
+}
+
+.pilotEmptyStateEyebrow {
+  color: #65806b;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.pilotEmptyState h1 {
+  margin: 8px 0 10px;
+  color: #26312a;
+  font-size: clamp(2rem, 5vw, 3.4rem);
+  line-height: 1;
+}
+
+.pilotEmptyState p {
+  max-width: 500px;
+  margin: 0;
+  color: #5c625d;
+  font-size: 1rem;
+  line-height: 1.55;
+}
+
+.settingsShell {
+  min-height: 100vh;
+  padding: 32px clamp(20px, 5vw, 72px);
+}
+
+.settingsContent {
+  display: grid;
+  align-content: start;
+  gap: 18px;
+  width: min(760px, 100%);
+  min-height: calc(100vh - 64px);
+}
+
+.settingsHeader {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid #c5d2c5;
+  padding-bottom: 16px;
+}
+
+.settingsHeader h1 {
+  margin: 7px 0 0;
+  color: #26312a;
+  font-size: clamp(2rem, 5vw, 3rem);
+  line-height: 1;
+}
+
+.settingsProfileLabel {
+  border: 1px solid #c3d5c6;
+  border-radius: 999px;
+  background: #e7efe5;
+  color: #315a43;
+  padding: 6px 10px;
+  font-size: 0.72rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.settingsModeSwitch {
+  width: min(420px, 100%);
+}
+
+.settingsPanel {
+  width: min(620px, 100%);
+  border: 1px solid #d2cabc;
+  border-radius: 14px;
+  background: rgba(255, 250, 240, 0.62);
+  padding: 18px;
+}
+
+.settingsSectionIntro {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 5px;
+}
+
+.settingsSectionIntro strong,
+.settingsThemePanel strong {
+  color: #27312d;
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.settingsSectionIntro span,
+.settingsThemePanel p {
+  color: #5c625d;
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.settingsThemePanel {
+  display: grid;
+  align-content: start;
+  justify-items: start;
+  gap: 10px;
+}
+
+.settingsThemePanel .pilotEmptyStateIcon {
+  width: 52px;
+  height: 52px;
+  margin: 0 0 2px;
+  border-radius: 15px;
+}
+
+.settingsThemePanel p {
+  max-width: 520px;
+  margin: 0;
 }
 
 .shellToast {
@@ -1280,6 +1427,13 @@ h2 {
     gap: 8px;
   }
 
+  .pilotNavigationBottom {
+    display: flex;
+    align-items: center;
+    width: auto;
+    gap: 8px;
+  }
+
   .pilotNavigationMeta {
     width: auto;
     padding: 0 10px 0 2px;
@@ -1294,6 +1448,25 @@ h2 {
 
   .deskPilotShellContent > .shell {
     min-height: auto;
+  }
+
+  .pilotEmptyState {
+    min-height: 60vh;
+    padding: 32px 20px;
+  }
+
+  .settingsShell {
+    min-height: auto;
+    padding: 24px 16px;
+  }
+
+  .settingsContent {
+    min-height: auto;
+  }
+
+  .settingsHeader {
+    align-items: start;
+    flex-direction: column;
   }
 
   .shell {

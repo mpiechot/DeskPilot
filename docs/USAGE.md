@@ -7,7 +7,8 @@ This document explains how to run the current DeskPilot development build.
 DeskPilot is a functional Productive MVP. Its current browser-session workflow has also passed a real local use trial and is now the stable foundation for post-MVP cleanup and architecture decisions.
 
 Working today:
-- DeskPilot Shell with BrowserPilot as the current fully functional Pilot
+- DeskPilot Shell with BrowserPilot as the current fully functional Pilot, plus DesktopPilot and EnvironmentPilot development destinations
+- shell-level Settings for Display, Safety and the reserved Theme surface
 - responsive icon-only Pilot Navigation with a visually distinct vertical wide-display rail and compact horizontal layout
 - small DeskPilot version and active data-profile metadata in the navigation footer
 - a monochrome, themeable BrowserPilot SVG icon
@@ -35,9 +36,9 @@ Working today:
 - remember the desktop window size and position between app runs
 - close the window to the system tray and quit explicitly from the tray menu
 - relaunch DeskPilot while it is already running without opening a second app instance
-- create manual local SQLite backup snapshots from Safety mode
-- restore, export and import local SQLite backup snapshots from Safety mode
-- inspect and restore the latest automatic rolling backup from Safety mode
+- create manual local SQLite backup snapshots from Settings → Safety
+- restore, export and import local SQLite backup snapshots from Settings → Safety
+- inspect and restore the latest automatic rolling backup from Settings → Safety
 - automatically recover a corrupted active database from a valid rolling backup at startup
 - show a native read-only recovery menu when neither active nor rolling database can be opened
 - wide, low touch-display layout
@@ -57,7 +58,7 @@ Working today:
 - one latest-stable-release check when an installed build starts, with an explicit GitHub installer-page action
 - local development, lint and build commands
 
-The BrowserPilot surface is labelled once as `BrowserPilot`; the navigation and its metadata belong to DeskPilot Shell.
+The BrowserPilot surface is labelled once as `BrowserPilot`; the navigation and its metadata belong to DeskPilot Shell. DesktopPilot and EnvironmentPilot are reachable from the same navigation and currently show friendly development placeholders. Display and Safety are available under shell-level `Settings`, while BrowserPilot keeps only Session, Categories, Recovery, Archive and Extension controls.
 
 Not implemented yet:
 - packaged extension installation flow
@@ -197,15 +198,15 @@ Development, renderer-only and generated prototype/Productive launcher runs do n
 
 The update check first ships in version 0.1.1. An existing 0.1.0 installation therefore needs one final manual installer run before future published versions can be announced inside the app. Creating or publishing the corresponding GitHub Release remains a separate release operation.
 
-## Display And Touch Settings
+## Shell Settings
 
-Open `Display` in the control rail to select:
+Open the shell-level `Settings` destination and choose `Display` to select:
 
 - Standard or larger Touch controls
 - the monitor DeskPilot should use when its window is created
 - optional kiosk-like fullscreen mode
 
-Apply saves all three preferences atomically. Kiosk mode can still be exited by quitting DeskPilot from its tray menu.
+Apply saves all three preferences atomically. Kiosk mode can still be exited by quitting DeskPilot from its tray menu. `Safety` contains the active data profile, backup, import/export and recovery workflows. `Theme` reserves the future theme-selection surface and currently exposes only `Default Theme`.
 
 ## Data Profiles
 
@@ -284,11 +285,11 @@ If a default category is added in a later build, DeskPilot seeds the missing cat
 Saved URLs keep a persisted position inside their category. Existing databases with missing or duplicated tab positions are normalized deterministically on startup, and backup restore/import preserves the stored order.
 Moving or reordering a saved tab updates the existing saved-tab row instead of deleting and recreating it.
 
-The Safety mode can create manual SQLite snapshots in the active profile storage folder under `manual-backups/`. DeskPilot also keeps a rolling `deskpilot.sqlite.bak` file beside the active database after writes.
+The Settings → Safety surface can create manual SQLite snapshots in the active profile storage folder under `manual-backups/`. DeskPilot also keeps a rolling `deskpilot.sqlite.bak` file beside the active database after writes.
 
-When the rolling backup exists, Safety mode shows its timestamp and size and offers an explicit restore action. Restoring it first reads and validates the backup, then creates a manual `pre-restore` safety snapshot of the current database before replacing active data. This preserves the state being replaced and avoids overwriting the rolling source while preparing the restore.
+When the rolling backup exists, Settings → Safety shows its timestamp and size and offers an explicit restore action. Restoring it first reads and validates the backup, then creates a manual `pre-restore` safety snapshot of the current database before replacing active data. This preserves the state being replaced and avoids overwriting the rolling source while preparing the restore.
 
-If the active database cannot be opened during startup, DeskPilot validates the rolling backup and recovers from it automatically. The unreadable source file is copied into `manual-backups/` with a `.sqlite.corrupt` suffix before active storage is replaced. It is deliberately excluded from the manual restore list, but its full path remains visible in Safety mode. DeskPilot also keeps the valid rolling backup intact during recovery.
+If the active database cannot be opened during startup, DeskPilot validates the rolling backup and recovers from it automatically. The unreadable source file is copied into `manual-backups/` with a `.sqlite.corrupt` suffix before active storage is replaced. It is deliberately excluded from the manual restore list, but its full path remains visible in Settings → Safety. DeskPilot also keeps the valid rolling backup intact during recovery.
 
 If both the active database and rolling backup are unusable, DeskPilot leaves both files untouched and shows a native startup recovery menu. It includes both paths and underlying errors, can export either source byte-for-byte to a chosen destination, can open the affected storage folder and exits only when `Quit` is selected. Export destinations are forbidden from overwriting either DeskPilot source file. Preserve those files before moving them aside or importing a known valid DeskPilot backup.
 

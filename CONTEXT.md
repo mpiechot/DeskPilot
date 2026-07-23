@@ -97,11 +97,11 @@ The Pilot that owns the complete existing browser-session workflow, including Ca
 _Avoid_: Session view, browser extension, temporary MVP module
 
 **DesktopPilot**:
-A planned Pilot for user-defined hotkeys intended for general desktop use.
+A DeskPilot Pilot destination for user-defined hotkeys intended for general desktop use. Its current surface is an explicit development empty state; hotkey functionality is not yet implemented.
 _Avoid_: Generic Windows automation, SystemPilot
 
 **EnvironmentPilot**:
-A planned Pilot for user-defined hotkeys that control the user's physical or environmental desk setup, such as lighting or desk height.
+A DeskPilot Pilot destination for user-defined hotkeys that control the user's physical or environmental desk setup, such as lighting or desk height. Its current surface is an explicit development empty state; device-control functionality is not yet implemented.
 _Avoid_: DesktopPilot, device plugin
 
 **Touch Input Isolation**:

@@ -406,10 +406,13 @@ async function runElectronSmoke() {
   console.log("Prototype renderer smoke: renderer loaded");
 
   const shellNavigationResult = await window.webContents.executeJavaScript(`
-    (() => {
+    new Promise((resolve) => {
       const shell = document.querySelector(".deskPilotShell");
       const navigation = shell?.querySelector('[aria-label="Pilot Navigation"]');
       const browserPilotButton = navigation?.querySelector('[data-pilot-id="browser"]');
+      const desktopPilotButton = navigation?.querySelector('[data-pilot-id="desktop"]');
+      const environmentPilotButton = navigation?.querySelector('[data-pilot-id="environment"]');
+      const settingsButton = navigation?.querySelector('button[data-shell-destination="settings"]');
       const browserPilotContent = document.querySelector('[data-pilot="browser"]');
       const shellContent = shell?.querySelector('[aria-label="DeskPilot content"]');
       const shellMetadata = navigation?.querySelector('[data-shell-meta]');
@@ -417,19 +420,45 @@ async function runElectronSmoke() {
       const navigationStyle = navigation ? getComputedStyle(navigation) : null;
       const contentStyle = shellContent ? getComputedStyle(shellContent) : null;
 
-      browserPilotButton?.click();
+      const destinationIsVisible = (destination) =>
+        document.querySelector('.deskPilotShellContent [data-shell-destination="' + destination + '"]')?.hidden === false;
 
-      return {
+      desktopPilotButton?.click();
+      setTimeout(() => {
+        const desktopPilotReachable =
+          destinationIsVisible("desktop") &&
+          document.querySelector('[data-pilot-empty-state="desktop"]')?.textContent.includes("DesktopPilot");
+        environmentPilotButton?.click();
+        setTimeout(() => {
+          const environmentPilotReachable =
+            destinationIsVisible("environment") &&
+            document.querySelector('[data-pilot-empty-state="environment"]')?.textContent.includes("EnvironmentPilot");
+          settingsButton?.click();
+          setTimeout(() => {
+            const settingsWrapper = document.querySelector('.deskPilotShellContent [data-shell-destination="settings"]');
+            const settingsReachable =
+              destinationIsVisible("settings") &&
+              settingsWrapper?.textContent.includes("Settings");
+            browserPilotButton?.click();
+
+            setTimeout(() => resolve({
         shellPresent: Boolean(shell),
         navigationPresent: Boolean(navigation),
         browserPilotNavigationPresent: Boolean(browserPilotButton),
+        desktopPilotNavigationPresent: Boolean(desktopPilotButton),
+        environmentPilotNavigationPresent: Boolean(environmentPilotButton),
+        settingsNavigationPresent: Boolean(settingsButton),
         browserPilotNavigationIconOnly: Boolean(browserPilotButton?.querySelector("svg")) && !browserPilotButton?.textContent?.trim(),
         browserPilotUsesCustomStyleableIcon:
           browserPilotIcon?.getAttribute("stroke") === "currentColor" && browserPilotIcon?.getAttribute("data-icon") === "browser-pilot",
         browserPilotSelected: browserPilotButton?.getAttribute("aria-current") === "page",
-        browserPilotReachable: browserPilotContent?.getAttribute("aria-label") === "BrowserPilot",
+        browserPilotReachable: browserPilotContent?.getAttribute("aria-label") === "BrowserPilot" && destinationIsVisible("browser"),
+        desktopPilotReachable,
+        environmentPilotReachable,
+        settingsReachable,
         browserPilotHasSingleHeading:
-          document.querySelectorAll("h1").length === 1 && document.querySelector("h1")?.textContent === "BrowserPilot",
+          document.querySelectorAll('[data-shell-destination="browser"]:not([hidden]) h1').length === 1 &&
+          document.querySelector('[data-shell-destination="browser"]:not([hidden]) h1')?.textContent === "BrowserPilot",
         shellMetadataVisible:
           shellMetadata?.textContent?.includes("DeskPilot") &&
           shellMetadata?.textContent?.includes("v0.1.1") &&
@@ -440,8 +469,11 @@ async function runElectronSmoke() {
           contentStyle?.borderLeftStyle === "solid",
         navigationBackgroundImage: navigationStyle?.backgroundImage,
         contentBorderLeftStyle: contentStyle?.borderLeftStyle
-      };
-    })()
+            }), 50);
+          }, 50);
+        }, 50);
+      }, 50);
+    })
   `);
 
   window.setSize(600, 800);
@@ -666,6 +698,7 @@ async function runElectronSmoke() {
         }
 
         if (attempts === 0) {
+          const visibleDestination = document.querySelector('.deskPilotShellContent [data-shell-destination]:not([hidden])');
           resolve({
             hasDeskPilotApi: Boolean(window.deskPilot),
             bodyText: getRenderedText()
@@ -674,6 +707,24 @@ async function runElectronSmoke() {
         }
 
         setTimeout(() => waitForText(needle, callback, attempts - 1), 25);
+      };
+      const waitForVisibleText = (needle, callback, attempts = 80) => {
+        const visibleDestination = document.querySelector('.deskPilotShellContent [data-shell-destination]:not([hidden])');
+
+        if (visibleDestination?.textContent.includes(needle)) {
+          callback();
+          return;
+        }
+
+        if (attempts === 0) {
+          resolve({
+            hasDeskPilotApi: Boolean(window.deskPilot),
+            bodyText: getRenderedText()
+          });
+          return;
+        }
+
+        setTimeout(() => waitForVisibleText(needle, callback, attempts - 1), 25);
       };
 
       const setInputValue = (input, value) => {
@@ -784,7 +835,7 @@ async function runElectronSmoke() {
         };
       };
 
-      waitForText("Database recovered from the automatic rolling backup. Review Safety for details.", () => {
+      waitForText("Database recovered from the automatic rolling backup.", () => {
         waitForCondition(
           () =>
             getCategoryCardText("Entertainment").includes("1 saved tab") &&
@@ -896,9 +947,9 @@ async function runElectronSmoke() {
 
                   waitForText("Opened Work second.", () => {
                   sessionBoardOpenWorked = true;
-                  findButtonByText("Display").click();
+                  document.querySelector('button[aria-label="Settings"]').click();
 
-                  waitForText("Apply Display Settings", () => {
+                  waitForVisibleText("Apply Display Settings", () => {
                   const layoutSelect = document.querySelector('select[aria-label="DeskPilot layout"]');
                   const displaySelect = document.querySelector('select[aria-label="DeskPilot launch display"]');
                   const kioskCheckbox = document.querySelector('.displayCheckbox input[type="checkbox"]');
@@ -915,18 +966,21 @@ async function runElectronSmoke() {
                     layoutSelect.value === "touch" &&
                     displaySelect.value === "secondary" &&
                     kioskCheckbox.checked;
+                  document.querySelector('button[data-pilot-id="browser"]').click();
                   findButtonByText("Recovery").click();
 
-                  waitForText("Restore " + longWorkTitle, () => {
+                  waitForVisibleText("Restore " + longWorkTitle, () => {
                   const recoveryOverflow = getControlRailOverflow();
                   const workBoardTitles = getBoardTitles("Work");
 
+                  document.querySelector('button[aria-label="Settings"]').click();
                   findButtonByText("Safety").click();
-                  waitForText("Automatic rolling backup", () => {
+                  waitForVisibleText("Automatic rolling backup", () => {
                   window.confirm = () => true;
                   document.querySelector('button[title="Restore automatic rolling backup"]').click();
 
                   waitForText("Restored automatic backup. Safety backup: deskpilot-pre-restore-smoke.sqlite.", () => {
+                  document.querySelector('button[data-pilot-id="browser"]').click();
 
                 resolve({
                   hasDeskPilotApi: Boolean(window.deskPilot),
@@ -1106,10 +1160,16 @@ async function runElectronSmoke() {
   assert(shellNavigationResult.shellPresent, "Expected DeskPilot to render through the DeskPilot Shell");
   assert(shellNavigationResult.navigationPresent, "Expected the Shell to own Pilot Navigation");
   assert(shellNavigationResult.browserPilotNavigationPresent, "Expected BrowserPilot to be reachable from Pilot Navigation");
+  assert(shellNavigationResult.desktopPilotNavigationPresent, "Expected DesktopPilot to be reachable from Pilot Navigation");
+  assert(shellNavigationResult.environmentPilotNavigationPresent, "Expected EnvironmentPilot to be reachable from Pilot Navigation");
+  assert(shellNavigationResult.settingsNavigationPresent, "Expected Settings to be reachable from shell navigation");
   assert(shellNavigationResult.browserPilotNavigationIconOnly, "Expected Pilot Navigation to use icon-only controls");
   assert(shellNavigationResult.browserPilotUsesCustomStyleableIcon, "Expected BrowserPilot to use a custom currentColor SVG icon");
   assert(shellNavigationResult.browserPilotSelected, "Expected BrowserPilot to be the selected default Pilot");
   assert(shellNavigationResult.browserPilotReachable, "Expected the BrowserPilot content surface to be reachable");
+  assert(shellNavigationResult.desktopPilotReachable, "Expected DesktopPilot to render its development empty state");
+  assert(shellNavigationResult.environmentPilotReachable, "Expected EnvironmentPilot to render its development empty state");
+  assert(shellNavigationResult.settingsReachable, "Expected Settings to render inside the shared Shell content region");
   assert(shellNavigationResult.browserPilotHasSingleHeading, "Expected BrowserPilot to use one clear page heading");
   assert(shellNavigationResult.shellMetadataVisible, "Expected the Shell navigation to show DeskPilot version and data profile metadata");
   assert(shellNavigationResult.navigationVisuallySeparated, "Expected Pilot Navigation to be visually separated from Pilot content");

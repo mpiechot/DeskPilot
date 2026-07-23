@@ -38,8 +38,8 @@ Commands:
 More detailed run and verification notes live in `docs/USAGE.md`.
 
 Current state:
-- The DeskPilot Shell now hosts BrowserPilot as the first fully functional Pilot.
-- Pilot Navigation is icon-only, visually separated from Pilot content, and switches between vertical rail and compact horizontal layout responsively.
+- The DeskPilot Shell now hosts BrowserPilot, DesktopPilot and EnvironmentPilot, with the latter two presenting explicit development empty states.
+- Pilot Navigation is icon-only, visually separated from Pilot content, and switches between vertical rail and compact horizontal layout responsively; shell-level Settings is available separately.
 - The navigation keeps DeskPilot's version and active data profile visible in a small footer and uses a styleable monochrome BrowserPilot SVG icon.
 - DeskPilot uses a real PNG/ICO application icon for its Windows tray, installer and shortcuts.
 - Shell-owned Toast Messages keep BrowserPilot errors visible and provide copyable details.
@@ -58,7 +58,7 @@ Current state:
 - Saved URLs can be viewed and removed from the selected category.
 - Saved tabs can be archived without deletion and returned to the active Session from the selected category's Archive view.
 - Saved URLs from a selected category open together in a new Chrome/Edge browser window named exactly after the Category.
-- Manual SQLite backup snapshots can be created, restored, exported and imported from the Safety mode, and the latest automatic rolling backup can be restored safely.
+- Manual SQLite backup snapshots can be created, restored, exported and imported from shell-level Settings, and the latest automatic rolling backup can be restored safely.
 - A corrupted active database is recovered automatically from the valid rolling backup at startup, while the corrupted source file is preserved for diagnosis.
 - If both database copies are unusable, a native read-only recovery menu can export either file, show both paths and open the affected storage folder.
 - A Chrome/Edge unpacked extension prototype can capture the current browser window through the local bridge in append or replace mode.
@@ -67,7 +67,7 @@ Current state:
 - Productive and Development use separate bridge ports so a hidden Development instance cannot silently receive Productive extension saves.
 - A local prototype package can be generated for double-click launch during development.
 - The Productive package includes its own Electron runtime and can run outside the repository.
-- Display settings can select Standard or Touch layout, a launch monitor and optional kiosk-like fullscreen mode.
+- Settings keeps Display and Safety outside BrowserPilot and reserves a Theme selection surface; Display settings can select Standard or Touch layout, a launch monitor and optional kiosk-like fullscreen mode.
 - Installed builds check the latest stable public GitHub Release once at app startup and highlight a newer installer in the header.
 - Starting DeskPilot again while it is already running focuses the existing instance instead of opening a second bridge.
 - Browser-extension saves refresh the visible category counts in the Electron UI.

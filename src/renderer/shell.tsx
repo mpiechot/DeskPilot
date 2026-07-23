@@ -1,11 +1,14 @@
-import { Info } from "lucide-react";
+import { Info, Keyboard, Lightbulb, Settings } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 
-type PilotId = "browser";
+type PilotId = "browser" | "desktop" | "environment";
+type ShellDestination = PilotId | "settings";
 
 type DeskPilotShellProps = {
   children: ReactNode;
+  settings: ReactNode;
   toastMessage: string;
+  layoutMode?: "standard" | "touch";
 };
 
 const pilotNavigationItems: Array<{ id: PilotId; label: string; description: string }> = [
@@ -13,8 +16,43 @@ const pilotNavigationItems: Array<{ id: PilotId; label: string; description: str
     id: "browser",
     label: "BrowserPilot",
     description: "Browser sessions"
+  },
+  {
+    id: "desktop",
+    label: "DesktopPilot",
+    description: "Desktop hotkeys"
+  },
+  {
+    id: "environment",
+    label: "EnvironmentPilot",
+    description: "Desk and environment controls"
   }
 ];
+
+function PilotNavigationIcon({ id }: { id: PilotId }) {
+  if (id === "desktop") {
+    return <Keyboard aria-hidden="true" />;
+  }
+
+  if (id === "environment") {
+    return <Lightbulb aria-hidden="true" />;
+  }
+
+  return <BrowserPilotIcon />;
+}
+
+function PilotEmptyState({ id, title, description }: { id: PilotId; title: string; description: string }) {
+  return (
+    <main className="pilotEmptyState" data-pilot={id} data-pilot-empty-state={id} aria-label={title}>
+      <div className="pilotEmptyStateIcon" aria-hidden="true">
+        <PilotNavigationIcon id={id} />
+      </div>
+      <span className="pilotEmptyStateEyebrow">In development</span>
+      <h1>{title}</h1>
+      <p>{description}</p>
+    </main>
+  );
+}
 
 function BrowserPilotIcon() {
   return (
@@ -68,7 +106,7 @@ function ShellToast({ message }: { message: string }) {
     <aside className="shellToast" role="status" aria-live="polite" data-toast-message={message}>
       <Info aria-hidden="true" />
       <div className="shellToastContent">
-        <strong>BrowserPilot message</strong>
+        <strong>DeskPilot message</strong>
         <span>{message}</span>
       </div>
       <button type="button" className="shellToastCopy" onClick={() => void copyDetails()}>
@@ -78,8 +116,8 @@ function ShellToast({ message }: { message: string }) {
   );
 }
 
-export function DeskPilotShell({ children, toastMessage }: DeskPilotShellProps) {
-  const [activePilotId, setActivePilotId] = useState<PilotId>("browser");
+export function DeskPilotShell({ children, settings, toastMessage, layoutMode = "standard" }: DeskPilotShellProps) {
+  const [activeDestination, setActiveDestination] = useState<ShellDestination>("browser");
   const [dataProfile, setDataProfile] = useState({ id: "development", label: "Development" });
 
   useEffect(() => {
@@ -88,8 +126,11 @@ export function DeskPilotShell({ children, toastMessage }: DeskPilotShellProps) 
     }).catch(() => undefined);
   }, []);
 
+  const navigationClass = (destination: ShellDestination) =>
+    activeDestination === destination ? "pilotNavigationItem pilotNavigationItem-active" : "pilotNavigationItem";
+
   return (
-    <div className="deskPilotShell" data-shell="deskpilot">
+    <div className={layoutMode === "touch" ? "deskPilotShell deskPilotShell-touch" : "deskPilotShell"} data-shell="deskpilot">
       <aside className="pilotNavigation" aria-label="Pilot Navigation">
         <div className="pilotNavigationBrand" aria-label="DeskPilot">
           DP
@@ -98,32 +139,66 @@ export function DeskPilotShell({ children, toastMessage }: DeskPilotShellProps) 
           {pilotNavigationItems.map((pilot) => (
             <button
               type="button"
-              className={activePilotId === pilot.id ? "pilotNavigationItem pilotNavigationItem-active" : "pilotNavigationItem"}
+              className={navigationClass(pilot.id)}
               data-pilot-id={pilot.id}
               key={pilot.id}
-              onClick={() => setActivePilotId(pilot.id)}
-              aria-current={activePilotId === pilot.id ? "page" : undefined}
+              onClick={() => setActiveDestination(pilot.id)}
+              aria-current={activeDestination === pilot.id ? "page" : undefined}
               aria-label={pilot.label}
               title={`${pilot.label}: ${pilot.description}`}
             >
               <span className="pilotNavigationGlyph" aria-hidden="true">
-                <BrowserPilotIcon />
+                <PilotNavigationIcon id={pilot.id} />
               </span>
             </button>
           ))}
         </nav>
-        <div
-          className={dataProfile.id === "productive" ? "pilotNavigationMeta pilotNavigationMeta-productive" : "pilotNavigationMeta"}
-          data-shell-meta
-          aria-label={`DeskPilot version ${window.deskPilot?.version ?? "0.1.1"}, ${dataProfile.label} data profile`}
-        >
-          <strong>DeskPilot</strong>
-          <span>v{window.deskPilot?.version ?? "0.1.1"}</span>
-          <span>{dataProfile.label}</span>
+        <div className="pilotNavigationBottom">
+          <button
+            type="button"
+            className={navigationClass("settings")}
+            data-shell-destination="settings"
+            onClick={() => setActiveDestination("settings")}
+            aria-current={activeDestination === "settings" ? "page" : undefined}
+            aria-label="Settings"
+            title="Settings: DeskPilot-wide configuration"
+          >
+            <span className="pilotNavigationGlyph" aria-hidden="true">
+              <Settings />
+            </span>
+          </button>
+          <div
+            className={dataProfile.id === "productive" ? "pilotNavigationMeta pilotNavigationMeta-productive" : "pilotNavigationMeta"}
+            data-shell-meta
+            aria-label={`DeskPilot version ${window.deskPilot?.version ?? "0.1.1"}, ${dataProfile.label} data profile`}
+          >
+            <strong>DeskPilot</strong>
+            <span>v{window.deskPilot?.version ?? "0.1.1"}</span>
+            <span>{dataProfile.label}</span>
+          </div>
         </div>
       </aside>
       <section className="deskPilotShellContent" aria-label="DeskPilot content">
-        {activePilotId === "browser" ? children : null}
+        <div hidden={activeDestination !== "browser"} data-shell-destination="browser">
+          {children}
+        </div>
+        <div hidden={activeDestination !== "desktop"} data-shell-destination="desktop">
+          <PilotEmptyState
+            id="desktop"
+            title="DesktopPilot"
+            description="Desktop hotkeys and workflow actions will be configured here in a later step."
+          />
+        </div>
+        <div hidden={activeDestination !== "environment"} data-shell-destination="environment">
+          <PilotEmptyState
+            id="environment"
+            title="EnvironmentPilot"
+            description="Desk and environment controls will be connected here in a later step."
+          />
+        </div>
+        <div hidden={activeDestination !== "settings"} data-shell-destination="settings">
+          {settings}
+        </div>
       </section>
       {toastMessage ? <ShellToast message={toastMessage} /> : null}
     </div>
