@@ -497,7 +497,8 @@ async function runElectronSmoke() {
 
   const browserPilotLayoutResult = await window.webContents.executeJavaScript(`
     new Promise((resolve) => {
-      const controlsToggle = document.querySelector('[aria-controls="browser-pilot-controls"]');
+      const controlRailToggle = document.querySelector('[aria-controls="browser-pilot-control-rail"]');
+      const controlRailContent = document.querySelector("#browser-pilot-control-rail");
       const overflowCard = Array.from(document.querySelectorAll(".categoryCard")).find((card) =>
         card.textContent.includes("Overflow 1")
       );
@@ -507,37 +508,90 @@ async function runElectronSmoke() {
       );
       const workOpenAction = workCard?.querySelector('button[aria-label="Open Work category"]');
       const categoryList = document.querySelector(".categoryList");
-      const shell = document.querySelector(".deskPilotShell");
-      const controlsCollapsedByDefault =
-        controlsToggle?.getAttribute("aria-expanded") === "false" &&
-        document.querySelector("#browser-pilot-controls")?.hidden === true;
+      const browserPilotShell = document.querySelector('[data-pilot="browser"]');
+      const deskPilotShell = document.querySelector(".deskPilotShell");
+      const collapsedRailRect = document.querySelector(".controlRail")?.getBoundingClientRect();
+      const collapsedCategoryRect = categoryList?.getBoundingClientRect();
+      const controlRailCollapsedByDefault =
+        browserPilotShell?.classList.contains("shell-controlRailCollapsed") &&
+        controlRailToggle?.getAttribute("aria-expanded") === "false" &&
+        controlRailContent?.hidden === true;
 
       workOpenAction?.click();
-      controlsToggle?.click();
+      controlRailToggle?.click();
 
       setTimeout(() => {
-        const categoryListRect = categoryList?.getBoundingClientRect();
-        const shellRect = shell?.getBoundingClientRect();
+        browserPilotShell?.getAnimations().forEach((animation) => animation.finish());
+        const expandedRailRect = document.querySelector(".controlRail")?.getBoundingClientRect();
+        const expandedCategoryRect = categoryList?.getBoundingClientRect();
+        const expandedGridTemplateColumns = getComputedStyle(browserPilotShell).gridTemplateColumns;
+        const controlRailCanExpand =
+          !browserPilotShell?.classList.contains("shell-controlRailCollapsed") &&
+          controlRailToggle?.getAttribute("aria-expanded") === "true" &&
+          controlRailContent?.hidden === false;
+        const horizontalTransitionConfigured =
+          getComputedStyle(browserPilotShell).transitionProperty.includes("grid-template-columns") &&
+          getComputedStyle(browserPilotShell).transitionDuration !== "0s";
 
-        resolve({
-          controlsCollapsedByDefault,
-          controlsCanExpand:
-            controlsToggle?.getAttribute("aria-expanded") === "true" &&
-            document.querySelector("#browser-pilot-controls")?.hidden === false,
-          duplicateSavedUrlManagerAbsent: !document.querySelector(".savedUrlManager"),
-          everyCategoryHasOpenAction:
-            document.querySelectorAll(".categoryCard").length > 0 &&
-            document.querySelectorAll(".categoryOpenAction").length === document.querySelectorAll(".categoryCard").length,
-          longCategoryListScrolls:
-            Boolean(overflowList) &&
-            overflowList.scrollHeight > overflowList.clientHeight &&
-            getComputedStyle(overflowList).overflowY === "auto",
-          browserPilotFitsViewport:
-            Boolean(categoryListRect && shellRect) &&
-            shellRect.bottom <= window.innerHeight + 1 &&
-            categoryListRect.bottom <= window.innerHeight + 1
-        });
-      }, 100);
+        controlRailToggle?.click();
+
+        setTimeout(() => {
+          browserPilotShell?.getAnimations().forEach((animation) => animation.finish());
+          const collapsedAgainRailRect = document.querySelector(".controlRail")?.getBoundingClientRect();
+          const collapsedAgainCategoryRect = categoryList?.getBoundingClientRect();
+          const controlRailCanCollapseAgain =
+            browserPilotShell?.classList.contains("shell-controlRailCollapsed") &&
+            controlRailToggle?.getAttribute("aria-expanded") === "false" &&
+            controlRailContent?.hidden === true;
+
+          controlRailToggle?.click();
+
+          setTimeout(() => {
+            browserPilotShell?.getAnimations().forEach((animation) => animation.finish());
+            const categoryListRect = categoryList?.getBoundingClientRect();
+            const shellRect = deskPilotShell?.getBoundingClientRect();
+
+            resolve({
+              controlRailCollapsedByDefault,
+              controlRailCanExpand,
+              controlRailCanCollapseAgain,
+              horizontalTransitionConfigured,
+              railWidths: {
+                collapsed: collapsedRailRect?.width ?? null,
+                expanded: expandedRailRect?.width ?? null,
+                collapsedAgain: collapsedAgainRailRect?.width ?? null
+              },
+              categoryLefts: {
+                collapsed: collapsedCategoryRect?.left ?? null,
+                expanded: expandedCategoryRect?.left ?? null,
+                collapsedAgain: collapsedAgainCategoryRect?.left ?? null
+              },
+              expandedGridTemplateColumns,
+              collapsedRailIsNarrow:
+                Boolean(collapsedRailRect && expandedRailRect && collapsedAgainRailRect) &&
+                collapsedRailRect.width < 64 &&
+                collapsedAgainRailRect.width < 64 &&
+                expandedRailRect.width > collapsedRailRect.width + 180,
+              categoryBoardUsesCollapsedSpace:
+                Boolean(collapsedCategoryRect && expandedCategoryRect && collapsedAgainCategoryRect) &&
+                collapsedCategoryRect.left < expandedCategoryRect.left - 180 &&
+                collapsedAgainCategoryRect.left < expandedCategoryRect.left - 180,
+              duplicateSavedUrlManagerAbsent: !document.querySelector(".savedUrlManager"),
+              everyCategoryHasOpenAction:
+                document.querySelectorAll(".categoryCard").length > 0 &&
+                document.querySelectorAll(".categoryOpenAction").length === document.querySelectorAll(".categoryCard").length,
+              longCategoryListScrolls:
+                Boolean(overflowList) &&
+                overflowList.scrollHeight > overflowList.clientHeight &&
+                getComputedStyle(overflowList).overflowY === "auto",
+              browserPilotFitsViewport:
+                Boolean(categoryListRect && shellRect) &&
+                shellRect.bottom <= window.innerHeight + 1 &&
+                categoryListRect.bottom <= window.innerHeight + 1
+            });
+          }, 300);
+        }, 300);
+      }, 300);
     })
   `);
 
@@ -1240,8 +1294,15 @@ async function runElectronSmoke() {
   assert(shellNavigationResult.shellMetadataVisible, "Expected the Shell navigation to show DeskPilot version and data profile metadata");
   assert(shellNavigationResult.brandOutsideNavigation, "Expected the DP brand to sit outside the dark Pilot Navigation");
   assert(shellNavigationResult.navigationVisuallySeparated, "Expected Pilot Navigation to be visually separated from Pilot content");
-  assert(browserPilotLayoutResult.controlsCollapsedByDefault, "Expected BrowserPilot controls to start collapsed");
-  assert(browserPilotLayoutResult.controlsCanExpand, "Expected BrowserPilot controls to expand on request");
+  if (!Object.values(browserPilotLayoutResult).every(Boolean)) {
+    console.error(JSON.stringify(browserPilotLayoutResult, null, 2));
+  }
+  assert(browserPilotLayoutResult.controlRailCollapsedByDefault, "Expected the entire BrowserPilot control rail to start collapsed");
+  assert(browserPilotLayoutResult.controlRailCanExpand, "Expected the BrowserPilot control rail to expand on request");
+  assert(browserPilotLayoutResult.controlRailCanCollapseAgain, "Expected the BrowserPilot control rail to collapse again");
+  assert(browserPilotLayoutResult.horizontalTransitionConfigured, "Expected a horizontal control-rail transition");
+  assert(browserPilotLayoutResult.collapsedRailIsNarrow, "Expected the collapsed BrowserPilot control rail to become narrow");
+  assert(browserPilotLayoutResult.categoryBoardUsesCollapsedSpace, "Expected categories to move left into the collapsed rail space");
   assert(browserPilotLayoutResult.duplicateSavedUrlManagerAbsent, "Expected the redundant Saved URLs manager to be removed");
   assert(browserPilotLayoutResult.everyCategoryHasOpenAction, "Expected every category card to have its own Open action");
   assert(browserPilotLayoutResult.longCategoryListScrolls, "Expected long category tab lists to scroll inside a fixed card height");

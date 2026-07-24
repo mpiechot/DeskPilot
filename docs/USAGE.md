@@ -241,7 +241,7 @@ The Session Board can be dragged horizontally from a non-interactive part of a c
 
 Each category card has its own `Open` button. Long saved-tab lists stay inside the card and scroll vertically instead of increasing the application height.
 
-BrowserPilot controls start collapsed to keep the low display clear. Expand `BrowserPilot controls` to save a manual URL, use `Open Selected`, edit categories, inspect Archive or Recovery, or view extension status. The Session Board remains the single visible list of active saved tabs; it also owns the open, archive and safe-remove actions for each tab.
+The complete BrowserPilot control rail starts collapsed to a narrow handle beside Pilot Navigation. Use the chevron handle to slide the rail open horizontally when you need to save a manual URL, use `Open Selected`, edit categories, inspect Archive or Recovery, or view extension status. Closing it again moves the Session Board left into the released space. The Session Board remains the single visible list of active saved tabs; it also owns the open, archive and safe-remove actions for each tab.
 
 Open `Categories` to edit the selected category's name, description and icon or to remove it safely. Removal names the affected active-tab count and keeps the category and saved tabs available in `Recovery`.
 

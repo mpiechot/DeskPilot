@@ -1129,3 +1129,21 @@ Current status:
 
 Next recommended step:
 - Continue with #34 for the declarative Default Theme foundation after this UI refinement passes the Working PR quality gate.
+
+### BrowserPilot horizontal control-rail refinement
+
+Completed:
+- Replaced the inner vertical `BrowserPilot controls` disclosure with one handle for the complete BrowserPilot control rail.
+- Collapsed the full rail, including the BrowserPilot heading and Bridge status, from 300 px to zero while retaining a separate 32 px handle column.
+- Let the Session Board consume the released horizontal space so Category cards move directly toward Pilot Navigation.
+- Added a short grid-column transition for opening and closing, with reduced-motion support.
+- Kept the handle in its own grid column so it cannot cover Recovery content or overlap the Session Board.
+- Updated the packaged renderer smoke test to measure the collapsed and expanded widths, Category board position, reversible toggle behavior and configured transition.
+- Verified `npm run lint`, `npm run build` and the complete `npm run test:prototype` workflow.
+
+Current status:
+- BrowserPilot controls now collapse in the direction shown in the UI feedback instead of only hiding their inner content.
+- No browser-session data or storage behavior changed.
+
+Next recommended step:
+- Continue with #34 for the declarative Default Theme foundation after this UI refinement passes the Working PR quality gate.

@@ -374,27 +374,72 @@ textarea {
 
 .shell {
   display: grid;
-  grid-template-columns: minmax(250px, 300px) 1fr;
+  grid-template-columns: minmax(0, 300px) 32px minmax(0, 1fr);
   height: 100%;
   min-height: 0;
   gap: 12px;
   padding: 12px;
   overflow: hidden;
+  transition: grid-template-columns 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.shell.shell-controlRailCollapsed {
+  grid-template-columns: minmax(0, 0) 32px minmax(0, 1fr);
 }
 
 .controlRail {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
   height: 100%;
   min-height: 0;
   min-width: 0;
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
-  gap: 8px;
-  overflow-x: hidden;
+  overflow: hidden;
 }
 
-.controlRail > * {
+.controlRailContent {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+  align-content: start;
+  height: 100%;
+  min-height: 0;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.controlRailContent[hidden] {
+  display: none;
+}
+
+.controlRailContent > * {
   min-width: 0;
+}
+
+.controlRailToggle {
+  display: grid;
+  align-self: center;
+  justify-self: center;
+  width: 32px;
+  height: 56px;
+  place-items: center;
+  border: 1px solid #789282;
+  border-radius: 10px;
+  background: #e7efe5;
+  box-shadow: 0 4px 14px rgba(31, 52, 43, 0.18);
+  color: #243d32;
+  cursor: pointer;
+}
+
+.controlRailToggle:hover {
+  background: #dcecdf;
+}
+
+.controlRailToggle:focus-visible {
+  outline: 3px solid rgba(66, 104, 80, 0.3);
+  outline-offset: 2px;
+}
+
+.controlRailToggle svg {
+  width: 18px;
+  height: 18px;
 }
 
 .appHeader {
@@ -455,42 +500,10 @@ h1 {
   height: 15px;
 }
 
-.browserPilotControlsToggle {
-  display: inline-flex;
-  min-height: 40px;
-  align-items: center;
-  gap: 8px;
-  border: 1px solid #b9c9b8;
-  border-radius: 8px;
-  background: #e7efe5;
-  color: #243d32;
-  cursor: pointer;
-  padding: 0 10px;
-  font-size: 0.78rem;
-  font-weight: 900;
-}
-
-.browserPilotControlsToggle svg {
-  width: 17px;
-  height: 17px;
-}
-
-.browserPilotControls {
-  display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr);
-  align-content: start;
-  gap: 8px;
-  min-height: 0;
-}
-
-.browserPilotControls[hidden] {
-  display: none;
-}
-
-.browserPilotControls > .tabForm,
-.browserPilotControls > .categoryManagementPanel,
-.browserPilotControls > .recoveryList,
-.browserPilotControls > .extensionPanel {
+.controlRailContent > .tabForm,
+.controlRailContent > .categoryManagementPanel,
+.controlRailContent > .recoveryList,
+.controlRailContent > .extensionPanel {
   min-height: 0;
   overflow-y: auto;
   padding-right: 2px;
@@ -937,7 +950,7 @@ h1 {
 }
 
 .shell-touch {
-  grid-template-columns: minmax(300px, 360px) 1fr;
+  grid-template-columns: minmax(0, 360px) 32px minmax(0, 1fr);
 }
 
 .shell-touch button,
@@ -1496,6 +1509,10 @@ h2 {
     padding: 16px;
   }
 
+  .shell.shell-controlRailCollapsed {
+    grid-template-columns: 1fr;
+  }
+
   .controlRail {
     height: auto;
     min-height: auto;
@@ -1536,5 +1553,11 @@ h2 {
     right: 10px;
     bottom: 10px;
     width: calc(100vw - 20px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shell {
+    transition: none;
   }
 }

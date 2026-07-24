@@ -4,7 +4,7 @@ import {
   BookOpen,
   Briefcase,
   CheckCircle2,
-  ChevronDown,
+  ChevronLeft,
   ChevronRight,
   Clapperboard,
   Code2,
@@ -553,7 +553,7 @@ function BrowserPilot({
   const [boardTabsByCategory, setBoardTabsByCategory] = useState<Record<string, SessionTab[]>>({});
   const [tabDraft, setTabDraft] = useState<SessionTabInput>({ categoryId: selectedCategoryId, url: "", title: "" });
   const [controlMode, setControlMode] = useState<"session" | "categories" | "archive" | "recovery" | "extension">("session");
-  const [controlsExpanded, setControlsExpanded] = useState(false);
+  const [controlRailCollapsed, setControlRailCollapsed] = useState(true);
   const [operationMessage, setOperationMessage] = useState("");
   const [appUpdateStatus, setAppUpdateStatus] = useState<AppUpdateStatus | null>(null);
   const [bridgeStatus, setBridgeStatus] = useState<BridgeStatus | null>(null);
@@ -1289,11 +1289,22 @@ function BrowserPilot({
 
   return (
     <main
-      className={layoutMode === "touch" ? "shell shell-touch" : "shell"}
+      className={[
+        "shell",
+        layoutMode === "touch" ? "shell-touch" : "",
+        controlRailCollapsed ? "shell-controlRailCollapsed" : ""
+      ]
+        .filter(Boolean)
+        .join(" ")}
       data-pilot="browser"
       aria-label="BrowserPilot"
     >
-      <aside className="controlRail" aria-label="DeskPilot controls">
+      <aside className="controlRail" aria-label="BrowserPilot controls" aria-hidden={controlRailCollapsed}>
+        <div
+          className="controlRailContent"
+          id="browser-pilot-control-rail"
+          hidden={controlRailCollapsed}
+        >
         <header className="appHeader">
           <div>
             <h1>BrowserPilot</h1>
@@ -1316,18 +1327,6 @@ function BrowserPilot({
           </div>
         </header>
 
-        <button
-          type="button"
-          className="browserPilotControlsToggle"
-          aria-controls="browser-pilot-controls"
-          aria-expanded={controlsExpanded}
-          onClick={() => setControlsExpanded((isExpanded) => !isExpanded)}
-        >
-          {controlsExpanded ? <ChevronDown aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}
-          BrowserPilot controls
-        </button>
-
-        <div className="browserPilotControls" id="browser-pilot-controls" hidden={!controlsExpanded}>
         <section className="quickActions" aria-label="Session actions">
           <button type="button" className="primaryAction" onClick={() => handleOpenCategory()}>
             <PanelTopOpen aria-hidden="true" />
@@ -1555,6 +1554,18 @@ function BrowserPilot({
         ) : null}
         </div>
       </aside>
+
+      <button
+        type="button"
+        className="controlRailToggle"
+        aria-controls="browser-pilot-control-rail"
+        aria-expanded={!controlRailCollapsed}
+        aria-label={controlRailCollapsed ? "Expand BrowserPilot controls" : "Collapse BrowserPilot controls"}
+        title={controlRailCollapsed ? "Expand BrowserPilot controls" : "Collapse BrowserPilot controls"}
+        onClick={() => setControlRailCollapsed((isCollapsed) => !isCollapsed)}
+      >
+        {controlRailCollapsed ? <ChevronRight aria-hidden="true" /> : <ChevronLeft aria-hidden="true" />}
+      </button>
 
       <section
         className={isCategoryListDragging ? "categoryList categoryList-dragging" : "categoryList"}

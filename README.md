@@ -58,7 +58,7 @@ Current state:
 - Saved URLs can be archived or safely removed directly from their category card without a duplicate sidebar list.
 - Saved tabs can be archived without deletion and returned to the active Session from the selected category's Archive view.
 - Saved URLs from a selected category open together in a new Chrome/Edge browser window named exactly after the Category.
-- BrowserPilot controls are collapsed by default and can be expanded when session capture, category management, archive, recovery or extension controls are needed.
+- The complete BrowserPilot control rail is collapsed to a narrow handle by default and slides open horizontally when session capture, category management, archive, recovery or extension controls are needed, giving the Session Board the freed width.
 - Manual SQLite backup snapshots can be created, restored, exported and imported from shell-level Settings, and the latest automatic rolling backup can be restored safely.
 - A corrupted active database is recovered automatically from the valid rolling backup at startup, while the corrupted source file is preserved for diagnosis.
 - If both database copies are unusable, a native read-only recovery menu can export either file, show both paths and open the affected storage folder.
