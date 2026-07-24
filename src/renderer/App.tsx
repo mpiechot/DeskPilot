@@ -4,6 +4,8 @@ import {
   BookOpen,
   Briefcase,
   CheckCircle2,
+  ChevronDown,
+  ChevronRight,
   Clapperboard,
   Code2,
   DatabaseBackup,
@@ -551,6 +553,7 @@ function BrowserPilot({
   const [boardTabsByCategory, setBoardTabsByCategory] = useState<Record<string, SessionTab[]>>({});
   const [tabDraft, setTabDraft] = useState<SessionTabInput>({ categoryId: selectedCategoryId, url: "", title: "" });
   const [controlMode, setControlMode] = useState<"session" | "categories" | "archive" | "recovery" | "extension">("session");
+  const [controlsExpanded, setControlsExpanded] = useState(false);
   const [operationMessage, setOperationMessage] = useState("");
   const [appUpdateStatus, setAppUpdateStatus] = useState<AppUpdateStatus | null>(null);
   const [bridgeStatus, setBridgeStatus] = useState<BridgeStatus | null>(null);
@@ -850,8 +853,12 @@ function BrowserPilot({
     setOperationMessage("Storage write failed. Existing data was left untouched.");
   }
 
+  function categoryName(categoryId: string): string {
+    return categories.find((category) => category.id === categoryId)?.name ?? "category";
+  }
+
   function selectedCategoryName(): string {
-    return categories.find((category) => category.id === selectedCategoryId)?.name ?? "category";
+    return categoryName(selectedCategoryId);
   }
 
   function getBoardTabs(categoryId: string): SessionTab[] {
@@ -1023,8 +1030,8 @@ function BrowserPilot({
       });
   }
 
-  function handleOpenCategory(): void {
-    if (!selectedCategoryId) {
+  function handleOpenCategory(categoryId = selectedCategoryId): void {
+    if (!categoryId) {
       setOperationMessage("Select a category first.");
       return;
     }
@@ -1035,11 +1042,13 @@ function BrowserPilot({
     }
 
     window.deskPilot
-      .openCategory(selectedCategoryId)
+      .openCategory(categoryId)
       .then((openedTabs: SessionTab[]) => {
-        setTabs(openedTabs);
+        if (categoryId === selectedCategoryId) {
+          setTabs(openedTabs);
+        }
         setOperationMessage(
-          openedTabs.length > 0 ? `Opened ${openedTabs.length} saved URLs.` : `${selectedCategoryName()} has no saved URLs yet.`
+          openedTabs.length > 0 ? `Opened ${openedTabs.length} saved URLs.` : `${categoryName(categoryId)} has no saved URLs yet.`
         );
       })
       .catch(() => setOperationMessage("Could not open saved URLs."));
@@ -1307,8 +1316,20 @@ function BrowserPilot({
           </div>
         </header>
 
+        <button
+          type="button"
+          className="browserPilotControlsToggle"
+          aria-controls="browser-pilot-controls"
+          aria-expanded={controlsExpanded}
+          onClick={() => setControlsExpanded((isExpanded) => !isExpanded)}
+        >
+          {controlsExpanded ? <ChevronDown aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}
+          BrowserPilot controls
+        </button>
+
+        <div className="browserPilotControls" id="browser-pilot-controls" hidden={!controlsExpanded}>
         <section className="quickActions" aria-label="Session actions">
-          <button type="button" className="primaryAction" onClick={handleOpenCategory}>
+          <button type="button" className="primaryAction" onClick={() => handleOpenCategory()}>
             <PanelTopOpen aria-hidden="true" />
             Open Selected
           </button>
@@ -1375,38 +1396,6 @@ function BrowserPilot({
               value={tabDraft.title}
             />
             <div className="savedUrlCount">{tabs.length} saved URLs</div>
-            <section className="savedUrlManager" aria-label={`Saved URLs in ${selectedCategoryName()}`}>
-              <div className="savedUrlManagerHeader">
-                <strong>Saved URLs</strong>
-                <span>{selectedCategoryName()}</span>
-              </div>
-              {tabs.length === 0 ? <span className="emptyRecoveryText">None</span> : null}
-              {tabs.length > 0 ? (
-                <div className="savedUrlManagerList">
-                  {tabs.map((tab) => (
-                    <div className="savedUrlManagerItem" key={tab.id}>
-                      <div>
-                        <span>{tab.title}</span>
-                        <small>{getUrlHost(tab.url)}</small>
-                      </div>
-                      <div className="savedUrlActions">
-                        <button
-                          type="button"
-                          className="miniArchiveAction"
-                          onClick={() => archiveSavedTab(tab.id)}
-                          title="Archive URL"
-                        >
-                          <Archive aria-hidden="true" />
-                        </button>
-                        <button type="button" className="miniDangerAction" onClick={() => removeTab(tab)} title="Remove URL">
-                          <X aria-hidden="true" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : null}
-            </section>
           </section>
         ) : controlMode === "categories" ? (
           <section className="categoryManagementPanel" aria-label="Category management">
@@ -1564,6 +1553,7 @@ function BrowserPilot({
             </div>
           </section>
         ) : null}
+        </div>
       </aside>
 
       <section
@@ -1645,6 +1635,18 @@ function BrowserPilot({
                 <>
                   <div className="categoryTitleRow">
                     <h2>{category.name}</h2>
+                    <button
+                      type="button"
+                      className="categoryOpenAction"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        handleOpenCategory(category.id);
+                      }}
+                      aria-label={`Open ${category.name} category`}
+                    >
+                      <PanelTopOpen aria-hidden="true" />
+                      Open
+                    </button>
                   </div>
                   <p>{category.description}</p>
                   {category.tabCount > 0 ? (
@@ -1710,6 +1712,18 @@ function BrowserPilot({
                             aria-label={`Open ${tab.title}`}
                           >
                             <ExternalLink aria-hidden="true" />
+                          </button>
+                          <button
+                            type="button"
+                            className="sessionBoardOpenAction sessionBoardRemoveAction"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              removeTab(tab);
+                            }}
+                            title="Remove saved tab"
+                            aria-label={`Remove ${tab.title}`}
+                          >
+                            <X aria-hidden="true" />
                           </button>
                         </div>
                       </div>

@@ -131,10 +131,10 @@ export function DeskPilotShell({ children, settings, toastMessage, layoutMode = 
 
   return (
     <div className={layoutMode === "touch" ? "deskPilotShell deskPilotShell-touch" : "deskPilotShell"} data-shell="deskpilot">
+      <div className="pilotNavigationBrand" aria-label="DeskPilot">
+        DP
+      </div>
       <aside className="pilotNavigation" aria-label="Pilot Navigation">
-        <div className="pilotNavigationBrand" aria-label="DeskPilot">
-          DP
-        </div>
         <nav className="pilotNavigationItems" aria-label="Pilots">
           {pilotNavigationItems.map((pilot) => (
             <button

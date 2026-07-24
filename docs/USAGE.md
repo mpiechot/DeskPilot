@@ -9,7 +9,7 @@ DeskPilot is a functional Productive MVP. Its current browser-session workflow h
 Working today:
 - DeskPilot Shell with BrowserPilot as the current fully functional Pilot, plus DesktopPilot and EnvironmentPilot development destinations
 - shell-level Settings for Display, Safety and the reserved Theme surface
-- responsive icon-only Pilot Navigation with a visually distinct vertical wide-display rail and compact horizontal layout
+- responsive icon-only Pilot Navigation with a visually distinct vertical wide-display rail, a separate light `DP` brand tile and compact horizontal layout
 - small DeskPilot version and active data-profile metadata in the navigation footer
 - a monochrome, themeable BrowserPilot SVG icon
 - a real DeskPilot icon in the Windows notification area, installer and shortcuts
@@ -25,12 +25,12 @@ Working today:
 - assign each category a persisted monochrome icon from the built-in icon picker
 - restore removed categories
 - save http/https URLs into a selected category
-- open saved URLs from the selected category together in saved order in a new Chrome/Edge browser window named after the Category
-- view saved tabs under each category on the Session Board
+- open a category directly from its card, or open the selected category from the expanded BrowserPilot controls, in saved order in a new Chrome/Edge browser window named after the Category
+- view saved tabs in a fixed-height scrollable list under each category on the Session Board
 - move saved tabs between categories with mouse-first drag and drop
 - reorder saved tabs within a category with mouse-first drag and drop
 - open individual saved tabs from the Session Board
-- view and remove saved URLs in the selected category
+- archive or safely remove saved URLs directly from their category card
 - archive saved URLs without deleting them and return them to the active Session later
 - restore removed URLs from the selected category
 - remember the desktop window size and position between app runs
@@ -238,6 +238,10 @@ The expected display shape is wide and not very tall. The UI should therefore pr
 - dense category tiles that remain readable at low height
 
 The Session Board can be dragged horizontally from a non-interactive part of a category card. Buttons, inputs and saved-tab drag handles keep their own behavior. The scrollbar remains available as a fallback.
+
+Each category card has its own `Open` button. Long saved-tab lists stay inside the card and scroll vertically instead of increasing the application height.
+
+BrowserPilot controls start collapsed to keep the low display clear. Expand `BrowserPilot controls` to save a manual URL, use `Open Selected`, edit categories, inspect Archive or Recovery, or view extension status. The Session Board remains the single visible list of active saved tabs; it also owns the open, archive and safe-remove actions for each tab.
 
 Open `Categories` to edit the selected category's name, description and icon or to remove it safely. Removal names the affected active-tab count and keeps the category and saved tabs available in `Recovery`.
 

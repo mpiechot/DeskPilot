@@ -139,7 +139,7 @@ Goal:
 Prevent categories from becoming huge tab graveyards.
 
 Status:
-Started. Manual per-category archiving is available from the Session Board and selected-category URL list, with a dedicated Archive view for returning tabs to the active Session.
+Started. Manual per-category archiving is available directly from the Session Board, with a dedicated Archive view for returning tabs to the active Session.
 
 Expected features:
 - sleep lists per category

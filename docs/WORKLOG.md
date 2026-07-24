@@ -1109,3 +1109,23 @@ Current status:
 
 Next recommended step:
 - Implement #34 for the declarative Default Theme foundation.
+
+### BrowserPilot low-height workflow refinement
+
+Completed:
+- Removed the redundant selected-category `Saved URLs` list from the BrowserPilot control rail.
+- Kept open, archive and safe-remove actions together on each saved-tab row in the Session Board.
+- Added an explicit `Open` action to every Category card while retaining `Open Selected` inside the expanded controls.
+- Made long per-Category saved-tab lists vertically scrollable inside a bounded card instead of allowing them to grow the application below the viewport.
+- Fixed the Shell height rules at the actual BrowserPilot wrapper so the wide, low layout stays inside the visible application area.
+- Moved the light `DP` brand tile outside the dark Pilot Navigation surface.
+- Made BrowserPilot controls collapsed by default and explicitly expandable for capture, category management, archive, recovery and extension tasks.
+- Extended the packaged renderer smoke test for all of these layout and interaction contracts.
+- Verified `npm run lint`, renderer typechecking, `npm run build` and the full `npm run test:prototype` chain.
+
+Current status:
+- The Session Board is the single active Saved Tab list and preserves open, drag/drop, archive and safe-remove behavior.
+- No browser-session data or storage behavior changed.
+
+Next recommended step:
+- Continue with #34 for the declarative Default Theme foundation after this UI refinement passes the Working PR quality gate.
