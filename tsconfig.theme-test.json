@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "skipLibCheck": true,
+    "outDir": "dist-theme-test",
+    "rootDir": ".",
+    "types": ["node"]
+  },
+  "include": ["src/renderer/theme.ts", "tests/theme.test.ts"]
+}

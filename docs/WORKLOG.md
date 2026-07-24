@@ -1165,3 +1165,24 @@ Current status:
 
 Next recommended step:
 - Continue with #34 for the declarative Default Theme foundation after this UI refinement passes the Working PR quality gate.
+
+### Declarative Default Theme foundation (#34)
+
+Completed:
+- Translated the complete current DeskPilot presentation into a declarative Default Theme covering semantic colors, surfaces, typography, borders, shadows, component states and built-in Shell asset identifiers.
+- Replaced hard-coded theme presentation in the Shell, Pilot Navigation, Settings, BrowserPilot, DesktopPilot and EnvironmentPilot surfaces with generated CSS custom properties.
+- Added sparse Theme resolution so omitted presentation and asset values inherit from the Default Theme and an empty Theme resolves identically to it.
+- Added deterministic optional-effect handling: missing animation and sound values fall back safely, while explicit `off` or `disabled` values resolve to a disabled effect.
+- Kept responsive geometry, breakpoints and the BrowserPilot control-rail layout outside the Theme model.
+- Connected shell-level Settings to the active Theme selection; Default Theme remains the only shipped option.
+- Added focused Node tests for Default Theme fallback, empty Theme equivalence, sparse inheritance, optional-effect disabling and the absence of responsive geometry tokens.
+- Extended the Electron renderer smoke test to verify the active Theme selection, applied semantic variables and disabled default effects in the running application.
+- Updated README, usage documentation and roadmap.
+- Verified `npm run lint`, `npm run build`, `npm run test:theme` and the complete `npm run test:prototype` workflow.
+
+Current status:
+- The current DeskPilot appearance is now data-driven without changing browser-session behavior or responsive layout.
+- Future visual Themes can be sparse declarative overlays; no Theme-specific React component or executable plugin path was introduced.
+
+Next recommended step:
+- Complete the #34 Working PR quality gate, then select the next ready post-shell implementation slice.

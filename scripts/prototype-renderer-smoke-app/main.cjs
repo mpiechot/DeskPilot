@@ -455,9 +455,32 @@ async function runElectronSmoke() {
             const settingsReachable =
               destinationIsVisible("settings") &&
               settingsWrapper?.textContent.includes("Settings");
-            browserPilotButton?.click();
+            const themeTab = Array.from(settingsWrapper?.querySelectorAll(".settingsModeSwitch button") ?? [])
+              .find((button) => button.textContent?.trim() === "Theme");
+            themeTab?.click();
 
-            setTimeout(() => resolve({
+            setTimeout(() => {
+              const themeSelect = settingsWrapper?.querySelector('select[aria-label="DeskPilot theme"]');
+              const activeThemeDescription = settingsWrapper?.querySelector("[data-active-theme]");
+              const rootThemeStyle = getComputedStyle(document.documentElement);
+              const themeSelectionAvailable =
+                themeSelect?.value === "default" &&
+                themeSelect?.disabled === false &&
+                themeSelect?.options.length === 1 &&
+                activeThemeDescription?.getAttribute("data-active-theme") === "default";
+              const defaultThemeApplied =
+                shell?.getAttribute("data-theme") === "default" &&
+                rootThemeStyle.getPropertyValue("--theme-color-text").trim() === "#22252a" &&
+                navigationStyle?.backgroundImage !== "none";
+              const optionalThemeEffectsDisabled =
+                shell?.getAttribute("data-theme-animation") === "disabled" &&
+                shell?.getAttribute("data-theme-sound") === "disabled";
+              const displayTab = Array.from(settingsWrapper?.querySelectorAll(".settingsModeSwitch button") ?? [])
+                .find((button) => button.textContent?.trim() === "Display");
+              displayTab?.click();
+              browserPilotButton?.click();
+
+              setTimeout(() => resolve({
         shellPresent: Boolean(shell),
         navigationPresent: Boolean(navigation),
         browserPilotNavigationPresent: Boolean(browserPilotButton),
@@ -472,6 +495,9 @@ async function runElectronSmoke() {
         desktopPilotReachable,
         environmentPilotReachable,
         settingsReachable,
+        themeSelectionAvailable,
+        defaultThemeApplied,
+        optionalThemeEffectsDisabled,
         browserPilotHasSingleHeading:
           document.querySelectorAll('[data-shell-destination="browser"]:not([hidden]) h1').length === 1 &&
           document.querySelector('[data-shell-destination="browser"]:not([hidden]) h1')?.textContent === "BrowserPilot",
@@ -488,7 +514,8 @@ async function runElectronSmoke() {
           contentStyle?.borderLeftStyle === "solid",
         navigationBackgroundImage: navigationStyle?.backgroundImage,
         contentBorderLeftStyle: contentStyle?.borderLeftStyle
-            }), 50);
+              }), 50);
+            }, 50);
           }, 50);
         }, 50);
       }, 50);
@@ -1316,6 +1343,9 @@ async function runElectronSmoke() {
   assert(shellNavigationResult.desktopPilotReachable, "Expected DesktopPilot to render its development empty state");
   assert(shellNavigationResult.environmentPilotReachable, "Expected EnvironmentPilot to render its development empty state");
   assert(shellNavigationResult.settingsReachable, "Expected Settings to render inside the shared Shell content region");
+  assert(shellNavigationResult.themeSelectionAvailable, "Expected Settings to expose the active Default Theme selection");
+  assert(shellNavigationResult.defaultThemeApplied, "Expected the Shell to consume the declarative Default Theme");
+  assert(shellNavigationResult.optionalThemeEffectsDisabled, "Expected missing Default Theme animations and sounds to remain disabled");
   assert(shellNavigationResult.browserPilotHasSingleHeading, "Expected BrowserPilot to use one clear page heading");
   assert(shellNavigationResult.shellMetadataVisible, "Expected the Shell navigation to show DeskPilot version and data profile metadata");
   assert(shellNavigationResult.brandOutsideNavigation, "Expected the DP brand to sit outside the dark Pilot Navigation");

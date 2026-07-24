@@ -46,11 +46,11 @@ Grill results:
 Shell implementation tickets:
 - #31 introduce the DeskPilot Shell and preserve the BrowserPilot workflow - done; navigation hierarchy and BrowserPilot visual identity refined
 - #32 add DesktopPilot and EnvironmentPilot empty states - done; both destinations are reachable with responsive development placeholders
-- #33 move Display and Safety controls into shell-level Settings - done; BrowserPilot keeps only browser-session controls and Settings owns Display, Safety and Theme reservation
-- #34 introduce the declarative Default Theme foundation - blocked by #31 and #33
+- #33 move Display and Safety controls into shell-level Settings - done; BrowserPilot keeps only browser-session controls and Settings owns Display, Safety and Theme selection
+- #34 introduce the declarative Default Theme foundation - done; the current appearance is a complete semantic fallback with sparse overlay and optional-effect disabling rules
 
 Recommended next implementation step:
-- Continue with #34, while keeping the separate touch-input research and fallback architecture out of the shell ticket sequence.
+- Complete the #34 quality gate, then select the next ready post-shell slice while keeping the separate touch-input fallback architecture out of this completed ticket sequence.
 
 ## v0.1 - Control Panel Skeleton
 

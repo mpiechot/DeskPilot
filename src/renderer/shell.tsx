@@ -1,5 +1,11 @@
 import { Info, Keyboard, Lightbulb, Settings } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import {
+  themeToCssCustomProperties,
+  type ResolvedTheme,
+  type ThemeAssetId,
+  type ThemeAssets
+} from "./theme";
 
 type PilotId = "browser" | "desktop" | "environment";
 type ShellDestination = PilotId | "settings";
@@ -9,6 +15,7 @@ type DeskPilotShellProps = {
   settings: ReactNode;
   toastMessage: string;
   layoutMode?: "standard" | "touch";
+  theme: ResolvedTheme;
 };
 
 const pilotNavigationItems: Array<{ id: PilotId; label: string; description: string }> = [
@@ -29,23 +36,45 @@ const pilotNavigationItems: Array<{ id: PilotId; label: string; description: str
   }
 ];
 
-function PilotNavigationIcon({ id }: { id: PilotId }) {
-  if (id === "desktop") {
+export function ThemeIcon({ assetId }: { assetId: ThemeAssetId }) {
+  if (assetId === "keyboard") {
     return <Keyboard aria-hidden="true" />;
   }
 
-  if (id === "environment") {
+  if (assetId === "lightbulb") {
     return <Lightbulb aria-hidden="true" />;
   }
 
-  return <BrowserPilotIcon />;
+  if (assetId === "settings") {
+    return <Settings aria-hidden="true" />;
+  }
+
+  if (assetId === "browser-pilot") {
+    return <BrowserPilotIcon />;
+  }
+
+  return <span aria-hidden="true">DP</span>;
 }
 
-function PilotEmptyState({ id, title, description }: { id: PilotId; title: string; description: string }) {
+function PilotNavigationIcon({ id, assets }: { id: PilotId; assets: ThemeAssets }) {
+  return <ThemeIcon assetId={assets.navigation[id]} />;
+}
+
+function PilotEmptyState({
+  id,
+  title,
+  description,
+  assets
+}: {
+  id: PilotId;
+  title: string;
+  description: string;
+  assets: ThemeAssets;
+}) {
   return (
     <main className="pilotEmptyState" data-pilot={id} data-pilot-empty-state={id} aria-label={title}>
       <div className="pilotEmptyStateIcon" aria-hidden="true">
-        <PilotNavigationIcon id={id} />
+        <PilotNavigationIcon id={id} assets={assets} />
       </div>
       <span className="pilotEmptyStateEyebrow">In development</span>
       <h1>{title}</h1>
@@ -116,7 +145,13 @@ function ShellToast({ message }: { message: string }) {
   );
 }
 
-export function DeskPilotShell({ children, settings, toastMessage, layoutMode = "standard" }: DeskPilotShellProps) {
+export function DeskPilotShell({
+  children,
+  settings,
+  toastMessage,
+  layoutMode = "standard",
+  theme
+}: DeskPilotShellProps) {
   const [activeDestination, setActiveDestination] = useState<ShellDestination>("browser");
   const [dataProfile, setDataProfile] = useState({ id: "development", label: "Development" });
 
@@ -128,11 +163,19 @@ export function DeskPilotShell({ children, settings, toastMessage, layoutMode = 
 
   const navigationClass = (destination: ShellDestination) =>
     activeDestination === destination ? "pilotNavigationItem pilotNavigationItem-active" : "pilotNavigationItem";
+  const themeStyle = themeToCssCustomProperties(theme) as CSSProperties;
 
   return (
-    <div className={layoutMode === "touch" ? "deskPilotShell deskPilotShell-touch" : "deskPilotShell"} data-shell="deskpilot">
+    <div
+      className={layoutMode === "touch" ? "deskPilotShell deskPilotShell-touch" : "deskPilotShell"}
+      data-shell="deskpilot"
+      data-theme={theme.id}
+      data-theme-animation={theme.effects.animations.toastEntrance === "disabled" ? "disabled" : "enabled"}
+      data-theme-sound={theme.effects.sounds.notification === "disabled" ? "disabled" : "enabled"}
+      style={themeStyle}
+    >
       <div className="pilotNavigationBrand" aria-label="DeskPilot">
-        DP
+        <ThemeIcon assetId={theme.assets.brand} />
       </div>
       <aside className="pilotNavigation" aria-label="Pilot Navigation">
         <nav className="pilotNavigationItems" aria-label="Pilots">
@@ -148,7 +191,7 @@ export function DeskPilotShell({ children, settings, toastMessage, layoutMode = 
               title={`${pilot.label}: ${pilot.description}`}
             >
               <span className="pilotNavigationGlyph" aria-hidden="true">
-                <PilotNavigationIcon id={pilot.id} />
+                <PilotNavigationIcon id={pilot.id} assets={theme.assets} />
               </span>
             </button>
           ))}
@@ -164,7 +207,7 @@ export function DeskPilotShell({ children, settings, toastMessage, layoutMode = 
             title="Settings: DeskPilot-wide configuration"
           >
             <span className="pilotNavigationGlyph" aria-hidden="true">
-              <Settings />
+              <ThemeIcon assetId={theme.assets.navigation.settings} />
             </span>
           </button>
           <div
@@ -187,6 +230,7 @@ export function DeskPilotShell({ children, settings, toastMessage, layoutMode = 
             id="desktop"
             title="DesktopPilot"
             description="Desktop hotkeys and workflow actions will be configured here in a later step."
+            assets={theme.assets}
           />
         </div>
         <div hidden={activeDestination !== "environment"} data-shell-destination="environment">
@@ -194,6 +238,7 @@ export function DeskPilotShell({ children, settings, toastMessage, layoutMode = 
             id="environment"
             title="EnvironmentPilot"
             description="Desk and environment controls will be connected here in a later step."
+            assets={theme.assets}
           />
         </div>
         <div hidden={activeDestination !== "settings"} data-shell-destination="settings">
