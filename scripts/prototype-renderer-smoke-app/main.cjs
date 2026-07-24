@@ -43,15 +43,14 @@ async function runElectronSmoke() {
       name: `Overflow ${index + 1}`,
       description: "Horizontal category navigation fixture.",
       icon: "folder",
-      tabCount: 0,
-      lastSavedLabel: "Not saved yet",
-      status: "empty"
+      tabCount: 0
     }))
   ];
   const deletedCategories = [];
   let activeCategoryId = categories[0]?.id ?? "";
   let displayPreferences = { layoutMode: "standard", displayId: null, kiosk: false };
   let openedUpdateUrl = "";
+  let openedCategoryId = "";
 
   function getActiveTabs(categoryId) {
     return tabsByCategory.get(categoryId) ?? [];
@@ -73,9 +72,7 @@ async function runElectronSmoke() {
     if (categoryIndex >= 0) {
       categories[categoryIndex] = {
         ...categories[categoryIndex],
-        status: storedTabs.length > 0 ? "ready" : "empty",
-        tabCount: storedTabs.length,
-        lastSavedLabel: storedTabs.length > 0 ? "Just now" : "Not saved yet"
+        tabCount: storedTabs.length
       };
     }
   }
@@ -87,6 +84,16 @@ async function runElectronSmoke() {
   function getArchivedTabs(categoryId) {
     return archivedTabsByCategory.get(categoryId) ?? [];
   }
+
+  setActiveTabs(
+    "overflow-1",
+    Array.from({ length: 12 }, (_value, index) => ({
+      id: `overflow-tab-${index + 1}`,
+      categoryId: "overflow-1",
+      title: `Overflow tab ${index + 1}`,
+      url: `https://example.com/overflow/${index + 1}`
+    }))
+  );
 
   ipcMain.handle("bridge:status", () => ({ running: true, host: "127.0.0.1", port: 17383 }));
   ipcMain.handle("updates:status", () => ({
@@ -202,15 +209,17 @@ async function runElectronSmoke() {
 
     return activeCategoryId;
   });
+  ipcMain.handle("categories:open", (_event, id) => {
+    openedCategoryId = id;
+    return getActiveTabs(id);
+  });
   ipcMain.handle("categories:create", (_event, input) => {
     categories.push({
       id: `smoke-category-${Date.now()}`,
       name: input.name,
       description: input.description,
       icon: input.icon || "folder",
-      tabCount: 0,
-      lastSavedLabel: "Not saved yet",
-      status: "empty"
+      tabCount: 0
     });
     return categories;
   });
@@ -411,6 +420,239 @@ async function runElectronSmoke() {
   await window.loadFile(path.join(prototypeRoot, "dist", "index.html"));
   console.log("Prototype renderer smoke: renderer loaded");
 
+  const shellNavigationResult = await window.webContents.executeJavaScript(`
+    new Promise((resolve) => {
+      const shell = document.querySelector(".deskPilotShell");
+      const navigation = shell?.querySelector('[aria-label="Pilot Navigation"]');
+      const browserPilotButton = navigation?.querySelector('[data-pilot-id="browser"]');
+      const desktopPilotButton = navigation?.querySelector('[data-pilot-id="desktop"]');
+      const environmentPilotButton = navigation?.querySelector('[data-pilot-id="environment"]');
+      const settingsButton = navigation?.querySelector('button[data-shell-destination="settings"]');
+      const browserPilotContent = document.querySelector('[data-pilot="browser"]');
+      const shellContent = shell?.querySelector('[aria-label="DeskPilot content"]');
+      const shellMetadata = navigation?.querySelector('[data-shell-meta]');
+      const browserPilotIcon = browserPilotButton?.querySelector('[data-icon="browser-pilot"]');
+      const shellBrand = shell?.querySelector(':scope > .pilotNavigationBrand');
+      const navigationStyle = navigation ? getComputedStyle(navigation) : null;
+      const contentStyle = shellContent ? getComputedStyle(shellContent) : null;
+
+      const destinationIsVisible = (destination) =>
+        document.querySelector('.deskPilotShellContent [data-shell-destination="' + destination + '"]')?.hidden === false;
+
+      desktopPilotButton?.click();
+      setTimeout(() => {
+        const desktopPilotReachable =
+          destinationIsVisible("desktop") &&
+          document.querySelector('[data-pilot-empty-state="desktop"]')?.textContent.includes("DesktopPilot");
+        environmentPilotButton?.click();
+        setTimeout(() => {
+          const environmentPilotReachable =
+            destinationIsVisible("environment") &&
+            document.querySelector('[data-pilot-empty-state="environment"]')?.textContent.includes("EnvironmentPilot");
+          settingsButton?.click();
+          setTimeout(() => {
+            const settingsWrapper = document.querySelector('.deskPilotShellContent [data-shell-destination="settings"]');
+            const settingsReachable =
+              destinationIsVisible("settings") &&
+              settingsWrapper?.textContent.includes("Settings");
+            browserPilotButton?.click();
+
+            setTimeout(() => resolve({
+        shellPresent: Boolean(shell),
+        navigationPresent: Boolean(navigation),
+        browserPilotNavigationPresent: Boolean(browserPilotButton),
+        desktopPilotNavigationPresent: Boolean(desktopPilotButton),
+        environmentPilotNavigationPresent: Boolean(environmentPilotButton),
+        settingsNavigationPresent: Boolean(settingsButton),
+        browserPilotNavigationIconOnly: Boolean(browserPilotButton?.querySelector("svg")) && !browserPilotButton?.textContent?.trim(),
+        browserPilotUsesCustomStyleableIcon:
+          browserPilotIcon?.getAttribute("stroke") === "currentColor" && browserPilotIcon?.getAttribute("data-icon") === "browser-pilot",
+        browserPilotSelected: browserPilotButton?.getAttribute("aria-current") === "page",
+        browserPilotReachable: browserPilotContent?.getAttribute("aria-label") === "BrowserPilot" && destinationIsVisible("browser"),
+        desktopPilotReachable,
+        environmentPilotReachable,
+        settingsReachable,
+        browserPilotHasSingleHeading:
+          document.querySelectorAll('[data-shell-destination="browser"]:not([hidden]) h1').length === 1 &&
+          document.querySelector('[data-shell-destination="browser"]:not([hidden]) h1')?.textContent === "BrowserPilot",
+        shellMetadataVisible:
+          shellMetadata?.textContent?.includes("DeskPilot") &&
+          shellMetadata?.textContent?.includes("v0.1.1") &&
+          shellMetadata?.textContent?.includes("Development"),
+        brandOutsideNavigation:
+          shellBrand?.textContent?.trim() === "DP" &&
+          !navigation?.contains(shellBrand),
+        navigationVisuallySeparated:
+          Boolean(navigationStyle && contentStyle) &&
+          navigationStyle?.backgroundImage !== "none" &&
+          contentStyle?.borderLeftStyle === "solid",
+        navigationBackgroundImage: navigationStyle?.backgroundImage,
+        contentBorderLeftStyle: contentStyle?.borderLeftStyle
+            }), 50);
+          }, 50);
+        }, 50);
+      }, 50);
+    })
+  `);
+
+  const browserPilotLayoutResult = await window.webContents.executeJavaScript(`
+    new Promise((resolve) => {
+      const controlRailToggle = document.querySelector('[aria-controls="browser-pilot-control-rail"]');
+      const controlRailContent = document.querySelector("#browser-pilot-control-rail");
+      const overflowCard = Array.from(document.querySelectorAll(".categoryCard")).find((card) =>
+        card.textContent.includes("Overflow 1")
+      );
+      const overflowList = overflowCard?.querySelector(".sessionBoardList");
+      const workCard = Array.from(document.querySelectorAll(".categoryCard")).find((card) =>
+        card.textContent.includes("Work")
+      );
+      const workOpenAction = workCard?.querySelector('button[aria-label="Open Work category"]');
+      const categoryList = document.querySelector(".categoryList");
+      const browserPilotShell = document.querySelector('[data-pilot="browser"]');
+      const deskPilotShell = document.querySelector(".deskPilotShell");
+      const collapsedRailRect = document.querySelector(".controlRail")?.getBoundingClientRect();
+      const collapsedCategoryRect = categoryList?.getBoundingClientRect();
+      const collapsedWorkCardRect = workCard?.getBoundingClientRect();
+      const controlRailCollapsedByDefault =
+        browserPilotShell?.classList.contains("shell-controlRailCollapsed") &&
+        controlRailToggle?.getAttribute("aria-expanded") === "false" &&
+        controlRailContent?.hidden === true;
+
+      workOpenAction?.click();
+      controlRailToggle?.click();
+
+      setTimeout(() => {
+        browserPilotShell?.getAnimations().forEach((animation) => animation.finish());
+        const expandedRailRect = document.querySelector(".controlRail")?.getBoundingClientRect();
+        const expandedCategoryRect = categoryList?.getBoundingClientRect();
+        const expandedWorkCardRect = workCard?.getBoundingClientRect();
+        const expandedGridTemplateColumns = getComputedStyle(browserPilotShell).gridTemplateColumns;
+        const controlRailCanExpand =
+          !browserPilotShell?.classList.contains("shell-controlRailCollapsed") &&
+          controlRailToggle?.getAttribute("aria-expanded") === "true" &&
+          controlRailContent?.hidden === false;
+        const horizontalTransitionConfigured =
+          getComputedStyle(browserPilotShell).transitionProperty.includes("grid-template-columns") &&
+          getComputedStyle(browserPilotShell).transitionDuration !== "0s";
+
+        controlRailToggle?.click();
+
+        setTimeout(() => {
+          browserPilotShell?.getAnimations().forEach((animation) => animation.finish());
+          const collapsedAgainRailRect = document.querySelector(".controlRail")?.getBoundingClientRect();
+          const collapsedAgainCategoryRect = categoryList?.getBoundingClientRect();
+          const collapsedAgainWorkCardRect = workCard?.getBoundingClientRect();
+          const controlRailCanCollapseAgain =
+            browserPilotShell?.classList.contains("shell-controlRailCollapsed") &&
+            controlRailToggle?.getAttribute("aria-expanded") === "false" &&
+            controlRailContent?.hidden === true;
+
+          controlRailToggle?.click();
+
+          setTimeout(() => {
+            browserPilotShell?.getAnimations().forEach((animation) => animation.finish());
+            const categoryListRect = categoryList?.getBoundingClientRect();
+            const shellRect = deskPilotShell?.getBoundingClientRect();
+            const controlRailToggleRect = controlRailToggle?.getBoundingClientRect();
+            const workCardRect = workCard?.getBoundingClientRect();
+            const workCardActionsRect = workCard?.querySelector(".cardActions")?.getBoundingClientRect();
+            const workBoardListRect = workCard?.querySelector(".sessionBoardList")?.getBoundingClientRect();
+
+            resolve({
+              controlRailCollapsedByDefault,
+              controlRailCanExpand,
+              controlRailCanCollapseAgain,
+              horizontalTransitionConfigured,
+              railWidths: {
+                collapsed: collapsedRailRect?.width ?? null,
+                expanded: expandedRailRect?.width ?? null,
+                collapsedAgain: collapsedAgainRailRect?.width ?? null
+              },
+              categoryLefts: {
+                collapsed: collapsedCategoryRect?.left ?? null,
+                expanded: expandedCategoryRect?.left ?? null,
+                collapsedAgain: collapsedAgainCategoryRect?.left ?? null
+              },
+              workCardWidths: {
+                collapsed: collapsedWorkCardRect?.width ?? null,
+                expanded: expandedWorkCardRect?.width ?? null,
+                collapsedAgain: collapsedAgainWorkCardRect?.width ?? null
+              },
+              expandedGridTemplateColumns,
+              collapsedRailIsNarrow:
+                Boolean(collapsedRailRect && expandedRailRect && collapsedAgainRailRect) &&
+                collapsedRailRect.width < 64 &&
+                collapsedAgainRailRect.width < 64 &&
+                expandedRailRect.width > collapsedRailRect.width + 180,
+              categoryBoardUsesCollapsedSpace:
+                Boolean(collapsedCategoryRect && expandedCategoryRect && collapsedAgainCategoryRect) &&
+                collapsedCategoryRect.left < expandedCategoryRect.left - 180 &&
+                collapsedAgainCategoryRect.left < expandedCategoryRect.left - 180,
+              categoryCardWidthStaysFixed:
+                Boolean(collapsedWorkCardRect && expandedWorkCardRect && collapsedAgainWorkCardRect) &&
+                Math.abs(collapsedWorkCardRect.width - expandedWorkCardRect.width) < 1 &&
+                Math.abs(collapsedAgainWorkCardRect.width - expandedWorkCardRect.width) < 1,
+              controlRailToggleUsesFullHeight:
+                Boolean(controlRailToggleRect && categoryListRect) &&
+                Math.abs(controlRailToggleRect.height - categoryListRect.height) < 1,
+              categoryActionsAtTopRight:
+                Boolean(workCardRect && workCardActionsRect) &&
+                workCardActionsRect.top - workCardRect.top < 20 &&
+                workCardRect.right - workCardActionsRect.right < 20,
+              sessionListUsesRemainingCardHeight:
+                Boolean(workCardRect && workBoardListRect) &&
+                workCardRect.bottom - workBoardListRect.bottom < 20,
+              duplicateSavedUrlManagerAbsent: !document.querySelector(".savedUrlManager"),
+              everyCategoryHasOpenAction:
+                document.querySelectorAll(".categoryCard").length > 0 &&
+                document.querySelectorAll(".categoryOpenAction").length === document.querySelectorAll(".categoryCard").length,
+              longCategoryListScrolls:
+                Boolean(overflowList) &&
+                overflowList.scrollHeight > overflowList.clientHeight &&
+                getComputedStyle(overflowList).overflowY === "auto",
+              browserPilotFitsViewport:
+                Boolean(categoryListRect && shellRect) &&
+                shellRect.bottom <= window.innerHeight + 1 &&
+                categoryListRect.bottom <= window.innerHeight + 1
+            });
+          }, 300);
+        }, 300);
+      }, 300);
+    })
+  `);
+
+  window.setSize(600, 800);
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  const responsiveNavigationResult = await window.webContents.executeJavaScript(`
+    (() => {
+      const shell = document.querySelector(".deskPilotShell");
+      const navigation = document.querySelector('[aria-label="Pilot Navigation"]');
+      const shellStyle = shell ? getComputedStyle(shell) : null;
+      const navigationStyle = navigation ? getComputedStyle(navigation) : null;
+
+      return {
+        smallViewport: window.matchMedia("(max-width: 760px)").matches,
+        shellUsesSingleColumn: shellStyle?.gridTemplateColumns !== "64px",
+        navigationUsesHorizontalLayout: navigationStyle?.gridTemplateRows === "48px"
+      };
+    })()
+  `);
+  window.setSize(1180, 390);
+  await new Promise((resolve) => setTimeout(resolve, 100));
+
+  const toastResult = await window.webContents.executeJavaScript(`
+    new Promise((resolve) => {
+      document.querySelector(".secondaryAction")?.click();
+      setTimeout(() => {
+        const toast = document.querySelector(".shellToast");
+        resolve({
+          errorMessageVisible: toast?.textContent?.includes("Paste a URL before saving it.") ?? false,
+          copyActionVisible: Boolean(toast?.querySelector(".shellToastCopy"))
+        });
+      }, 100);
+    })
+  `);
+
   const updateNoticeResult = await window.webContents.executeJavaScript(`
     new Promise((resolve) => {
       const inspect = (attempts = 120) => {
@@ -462,6 +704,20 @@ async function runElectronSmoke() {
 
       inspect();
     })
+  `);
+
+  const emptyCategorySummaryResult = await window.webContents.executeJavaScript(`
+    (() => {
+      const workCard = document.querySelector('.categoryCard[data-category-id="work"]');
+      const emptyStateMessage = workCard?.querySelector('.sessionBoardEmpty');
+
+      return {
+        emptyStateMessage: emptyStateMessage?.textContent,
+        duplicateEmptySummaryHidden: !workCard?.querySelector('.status, .categoryMeta'),
+        duplicateEmptyTextHidden:
+          !workCard?.textContent?.includes("0 tabs") && !workCard?.textContent?.includes("Not saved yet")
+      };
+    })()
   `);
 
   if (categoryClickPoint) {
@@ -587,6 +843,7 @@ async function runElectronSmoke() {
         }
 
         if (attempts === 0) {
+          const visibleDestination = document.querySelector('.deskPilotShellContent [data-shell-destination]:not([hidden])');
           resolve({
             hasDeskPilotApi: Boolean(window.deskPilot),
             bodyText: getRenderedText()
@@ -595,6 +852,24 @@ async function runElectronSmoke() {
         }
 
         setTimeout(() => waitForText(needle, callback, attempts - 1), 25);
+      };
+      const waitForVisibleText = (needle, callback, attempts = 80) => {
+        const visibleDestination = document.querySelector('.deskPilotShellContent [data-shell-destination]:not([hidden])');
+
+        if (visibleDestination?.textContent.includes(needle)) {
+          callback();
+          return;
+        }
+
+        if (attempts === 0) {
+          resolve({
+            hasDeskPilotApi: Boolean(window.deskPilot),
+            bodyText: getRenderedText()
+          });
+          return;
+        }
+
+        setTimeout(() => waitForVisibleText(needle, callback, attempts - 1), 25);
       };
 
       const setInputValue = (input, value) => {
@@ -705,10 +980,10 @@ async function runElectronSmoke() {
         };
       };
 
-      waitForText("Database recovered from the automatic rolling backup. Review Safety for details.", () => {
+      waitForText("Database recovered from the automatic rolling backup.", () => {
         waitForCondition(
           () =>
-            getCategoryCardText("Entertainment").includes("1 tabs") &&
+            getCategoryCardText("Entertainment").includes("1 saved tab") &&
             getCategoryCardText("Entertainment").includes("External Extension Save"),
           () => {
         waitForText("Target: Work", () => {
@@ -721,7 +996,7 @@ async function runElectronSmoke() {
         saveButton.click();
 
         waitForText("Saved URL to Work.", () => {
-          document.querySelector('.savedUrlManagerItem button[title="Archive URL"]').click();
+          getBoardTab("Work", longWorkTitle).querySelector('button[title="Archive saved tab"]').click();
 
           waitForText("Saved URL archived.", () => {
             findButtonByText("Archive").click();
@@ -748,11 +1023,11 @@ async function runElectronSmoke() {
                     removeConfirmationWorked = message.includes(longWorkTitle) && message.includes("Recovery");
                     return false;
                   };
-                  document.querySelector('.savedUrlManagerItem button[title="Remove URL"]').click();
+                  getBoardTab("Work", longWorkTitle).querySelector('button[title="Remove saved tab"]').click();
 
                   waitForText("Removal canceled.", () => {
                     window.confirm = () => true;
-                    document.querySelector('.savedUrlManagerItem button[title="Remove URL"]').click();
+                    getBoardTab("Work", longWorkTitle).querySelector('button[title="Remove saved tab"]').click();
 
                     waitForText("Saved URL removed safely.", () => {
             clickCategory("Projects");
@@ -761,6 +1036,7 @@ async function runElectronSmoke() {
               const nextUrlInput = document.querySelector('input[aria-label="URL to save"]');
               const nextTitleInput = document.querySelector('input[aria-label="URL title"]');
               const nextSaveButton = findButtonByText("Save URL");
+              nextTitleInput.scrollIntoView({ block: "center" });
               const titleRect = nextTitleInput.getBoundingClientRect();
               const titleCenterElement = document.elementFromPoint(
                 titleRect.left + titleRect.width / 2,
@@ -817,9 +1093,9 @@ async function runElectronSmoke() {
 
                   waitForText("Opened Work second.", () => {
                   sessionBoardOpenWorked = true;
-                  findButtonByText("Display").click();
+                  document.querySelector('button[aria-label="Settings"]').click();
 
-                  waitForText("Apply Display Settings", () => {
+                  waitForVisibleText("Apply Display Settings", () => {
                   const layoutSelect = document.querySelector('select[aria-label="DeskPilot layout"]');
                   const displaySelect = document.querySelector('select[aria-label="DeskPilot launch display"]');
                   const kioskCheckbox = document.querySelector('.displayCheckbox input[type="checkbox"]');
@@ -836,23 +1112,30 @@ async function runElectronSmoke() {
                     layoutSelect.value === "touch" &&
                     displaySelect.value === "secondary" &&
                     kioskCheckbox.checked;
+                  document.querySelector('button[data-pilot-id="browser"]').click();
                   findButtonByText("Recovery").click();
 
-                  waitForText("Restore " + longWorkTitle, () => {
+                  waitForVisibleText("Restore " + longWorkTitle, () => {
                   const recoveryOverflow = getControlRailOverflow();
                   const workBoardTitles = getBoardTitles("Work");
 
+                  document.querySelector('button[aria-label="Settings"]').click();
                   findButtonByText("Safety").click();
-                  waitForText("Automatic rolling backup", () => {
+                  waitForVisibleText("Automatic rolling backup", () => {
                   window.confirm = () => true;
                   document.querySelector('button[title="Restore automatic rolling backup"]').click();
 
                   waitForText("Restored automatic backup. Safety backup: deskpilot-pre-restore-smoke.sqlite.", () => {
+                  document.querySelector('button[data-pilot-id="browser"]').click();
 
                 resolve({
                   hasDeskPilotApi: Boolean(window.deskPilot),
-                  extensionRefreshUpdatedCategoryCount: getCategoryCardText("Entertainment").includes("1 tabs"),
+                  extensionRefreshUpdatedCategoryCount: getCategoryCardText("Entertainment").includes("1 saved tab"),
                   sessionBoardShowsSavedTabs: getCategoryCardText("Entertainment").includes("External Extension Save"),
+                  populatedCategorySummaryConsistent:
+                    !getCategoryCard("Entertainment").querySelector(".status") &&
+                    getCategoryCard("Entertainment").querySelector(".categoryMeta")?.textContent.trim() === "1 saved tab" &&
+                    !getCategoryCardText("Entertainment").includes("Saved"),
                   sessionBoardMoveWorked: getCategoryCardText("Work").includes("Project title"),
                   sessionBoardReorderWorked:
                     workBoardTitles.includes("Work second") &&
@@ -1020,6 +1303,49 @@ async function runElectronSmoke() {
   `);
 
   assert(result.hasDeskPilotApi, "Expected packaged renderer to receive the Electron preload API");
+  assert(shellNavigationResult.shellPresent, "Expected DeskPilot to render through the DeskPilot Shell");
+  assert(shellNavigationResult.navigationPresent, "Expected the Shell to own Pilot Navigation");
+  assert(shellNavigationResult.browserPilotNavigationPresent, "Expected BrowserPilot to be reachable from Pilot Navigation");
+  assert(shellNavigationResult.desktopPilotNavigationPresent, "Expected DesktopPilot to be reachable from Pilot Navigation");
+  assert(shellNavigationResult.environmentPilotNavigationPresent, "Expected EnvironmentPilot to be reachable from Pilot Navigation");
+  assert(shellNavigationResult.settingsNavigationPresent, "Expected Settings to be reachable from shell navigation");
+  assert(shellNavigationResult.browserPilotNavigationIconOnly, "Expected Pilot Navigation to use icon-only controls");
+  assert(shellNavigationResult.browserPilotUsesCustomStyleableIcon, "Expected BrowserPilot to use a custom currentColor SVG icon");
+  assert(shellNavigationResult.browserPilotSelected, "Expected BrowserPilot to be the selected default Pilot");
+  assert(shellNavigationResult.browserPilotReachable, "Expected the BrowserPilot content surface to be reachable");
+  assert(shellNavigationResult.desktopPilotReachable, "Expected DesktopPilot to render its development empty state");
+  assert(shellNavigationResult.environmentPilotReachable, "Expected EnvironmentPilot to render its development empty state");
+  assert(shellNavigationResult.settingsReachable, "Expected Settings to render inside the shared Shell content region");
+  assert(shellNavigationResult.browserPilotHasSingleHeading, "Expected BrowserPilot to use one clear page heading");
+  assert(shellNavigationResult.shellMetadataVisible, "Expected the Shell navigation to show DeskPilot version and data profile metadata");
+  assert(shellNavigationResult.brandOutsideNavigation, "Expected the DP brand to sit outside the dark Pilot Navigation");
+  assert(shellNavigationResult.navigationVisuallySeparated, "Expected Pilot Navigation to be visually separated from Pilot content");
+  if (!Object.values(browserPilotLayoutResult).every(Boolean)) {
+    console.error(JSON.stringify(browserPilotLayoutResult, null, 2));
+  }
+  assert(browserPilotLayoutResult.controlRailCollapsedByDefault, "Expected the entire BrowserPilot control rail to start collapsed");
+  assert(browserPilotLayoutResult.controlRailCanExpand, "Expected the BrowserPilot control rail to expand on request");
+  assert(browserPilotLayoutResult.controlRailCanCollapseAgain, "Expected the BrowserPilot control rail to collapse again");
+  assert(browserPilotLayoutResult.horizontalTransitionConfigured, "Expected a horizontal control-rail transition");
+  assert(browserPilotLayoutResult.collapsedRailIsNarrow, "Expected the collapsed BrowserPilot control rail to become narrow");
+  assert(browserPilotLayoutResult.categoryBoardUsesCollapsedSpace, "Expected categories to move left into the collapsed rail space");
+  assert(browserPilotLayoutResult.categoryCardWidthStaysFixed, "Expected category cards to keep the same width while the rail moves");
+  assert(browserPilotLayoutResult.controlRailToggleUsesFullHeight, "Expected the control-rail toggle to use the full available height");
+  assert(browserPilotLayoutResult.categoryActionsAtTopRight, "Expected category edit and remove actions at the top right");
+  assert(browserPilotLayoutResult.sessionListUsesRemainingCardHeight, "Expected the saved-tab list to use the remaining card height");
+  assert(browserPilotLayoutResult.duplicateSavedUrlManagerAbsent, "Expected the redundant Saved URLs manager to be removed");
+  assert(browserPilotLayoutResult.everyCategoryHasOpenAction, "Expected every category card to have its own Open action");
+  assert(browserPilotLayoutResult.longCategoryListScrolls, "Expected long category tab lists to scroll inside a fixed card height");
+  assert(browserPilotLayoutResult.browserPilotFitsViewport, "Expected BrowserPilot to fit inside the visible application viewport");
+  assert(openedCategoryId === "work", "Expected the Work category Open action to open that category");
+  assert(responsiveNavigationResult.smallViewport, "Expected the smoke viewport to exercise the compact navigation layout");
+  assert(responsiveNavigationResult.shellUsesSingleColumn, "Expected compact navigation to use a single shell column");
+  assert(responsiveNavigationResult.navigationUsesHorizontalLayout, "Expected compact navigation to use a horizontal rail");
+  assert(toastResult.errorMessageVisible, "Expected shell-owned Toast Messages to show BrowserPilot errors");
+  assert(toastResult.copyActionVisible, "Expected error Toast Messages to provide copyable details");
+  assert(emptyCategorySummaryResult.emptyStateMessage === "No saved tabs yet", "Expected one clear empty-category message");
+  assert(emptyCategorySummaryResult.duplicateEmptySummaryHidden, "Expected the empty category to hide duplicate status and metadata");
+  assert(emptyCategorySummaryResult.duplicateEmptyTextHidden, "Expected the empty category to hide duplicate tab-count text");
   assert(categoryClickWorked, "Expected a stationary mouse click to select a category");
   assert(
     updateNoticeResult?.visibleText.includes("v0.1.0") && updateNoticeResult?.visibleText.includes("v0.1.1"),

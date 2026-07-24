@@ -1005,3 +1005,163 @@ Current status:
 
 Next recommended step:
 - Implement issue #31 on this working PR and use its quality gate for the first shell slice.
+
+### DeskPilot Shell implementation (#31)
+
+Completed:
+- Added a real `DeskPilotShell` boundary around the existing BrowserPilot renderer without changing browser-session data ownership.
+- Added responsive, icon-only Pilot Navigation with BrowserPilot as the selected default Pilot.
+- Renamed the existing browser-session surface as BrowserPilot while preserving its Session Board, category, archive, recovery, extension, display and safety workflows.
+- Added shell-owned transient Toast Messages with copyable details for BrowserPilot errors.
+- Extended the packaged Electron renderer smoke test for shell ownership, BrowserPilot reachability, responsive navigation and copyable Toast behavior.
+- Verified `npm run lint`, `npm run build` and `npm run test:prototype`.
+
+Current status:
+- Issue #31 acceptance criteria are implemented on the new working branch.
+- No product data migration or storage ownership change was introduced.
+
+Next recommended step:
+- Implement #32 for the DesktopPilot and EnvironmentPilot empty states, then continue with shell-level Settings in #33.
+
+### Windows tray and application icon fix (#31 feedback)
+
+Completed:
+- Replaced the unsupported inline SVG data URL with the existing DeskPilot PNG asset for the Windows tray icon.
+- Added a real `assets/deskpilot.ico` containing Windows icon sizes for the installer and shortcuts.
+- Configured electron-builder to use the DeskPilot ICO and kept the shared PNG inside the packaged application files.
+- Changed tray initialization to report an unavailable asset instead of silently swallowing the error.
+- Added `npm run test:tray`, which verifies Electron loads a non-empty 32x32 tray image, and extended installer configuration smoke coverage for the ICO.
+- Verified `npm run test:installer` and `npm run test:tray`.
+
+Current status:
+- Windows now has a concrete DeskPilot icon path for the notification area and packaged application branding.
+- No browser-session data or storage behavior changed.
+
+Next recommended step:
+- Implement #32 for the DesktopPilot and EnvironmentPilot empty states, then continue with shell-level Settings in #33.
+
+### BrowserPilot empty-category summary refinement (#31 feedback)
+
+Completed:
+- Removed the repeated empty-category indicators from the Session Board cards.
+- Empty categories now show one clear message: `No saved tabs yet`.
+- Non-empty categories retain useful information with singular/plural wording such as `1 saved tab` or `2 saved tabs`.
+- Extended the packaged renderer smoke test to protect the single empty-state message and the updated saved-tab wording.
+- Verified `npm run lint`, `npm run build` and `npm run test:prototype`.
+
+Current status:
+- The category cards no longer repeat `Empty`, `0 tabs`, `Not saved yet` and `No saved tabs` for the same state.
+- No browser-session data or storage behavior changed.
+
+Next recommended step:
+- Implement #32 for the DesktopPilot and EnvironmentPilot empty states, then continue with shell-level Settings in #33.
+
+### BrowserPilot category summary consistency (#31 feedback)
+
+Completed:
+- Removed the redundant `Ready` and `Saved` fields from the BrowserPilot category model and cards.
+- Kept the single useful populated-card summary, such as `1 saved tab` or `5 saved tabs`.
+- Kept `No saved tabs yet` as the single empty-category message.
+- Documented that BrowserPilot currently has no separate unsaved-tab state.
+- Extended the packaged renderer smoke test to protect the consistent populated-card summary.
+- Verified `npm run lint`, `npm run build` and `npm run test:prototype`.
+
+Current status:
+- Empty and populated category cards now use the same summary rule without redundant status labels.
+- No browser-session data or storage behavior changed.
+
+Next recommended step:
+- Implement #32 for the DesktopPilot and EnvironmentPilot empty states, then continue with shell-level Settings in #33.
+
+### DeskPilot Shell visual refinement (#31 feedback)
+
+Completed:
+- Increased the visual separation between the dark Pilot Navigation rail and the BrowserPilot content surface, including a responsive divider in the compact layout.
+- Moved the DeskPilot version and active Development/Productive data profile into a small Shell-owned navigation footer.
+- Reduced the BrowserPilot content header to one clear `BrowserPilot` heading.
+- Replaced the generic globe glyph with a monochrome, `currentColor`-driven BrowserPilot SVG icon that can follow the active theme.
+- Extended the packaged renderer smoke test for the metadata footer, heading hierarchy, custom icon contract and visual shell separation.
+- Re-verified `npm run lint`, `npm run build` and `npm run test:prototype`.
+
+Current status:
+- PR #35 now contains the visual feedback refinement on top of the issue #31 shell implementation.
+- BrowserPilot data ownership and all existing browser-session workflows remain unchanged.
+
+Next recommended step:
+- Implement #32 for the DesktopPilot and EnvironmentPilot empty states, then continue with shell-level Settings in #33.
+
+### DesktopPilot, EnvironmentPilot and shell Settings (#32/#33)
+
+Completed:
+- Added reachable DesktopPilot and EnvironmentPilot destinations with responsive, friendly development empty states and dedicated monochrome navigation icons.
+- Added a separate shell-level Settings destination with Display, Safety and reserved Theme sections.
+- Moved Display preferences, active data profile, backup, import/export and recovery controls out of BrowserPilot without changing their persistence APIs or safety behavior.
+- Kept BrowserPilot mounted while switching destinations so the current BrowserPilot session state is preserved.
+- Updated restore flows so Settings refreshes BrowserPilot categories and saved tabs after a backup restore or import.
+- Updated the renderer smoke test to cover all shell destinations, return navigation, Settings display persistence and Settings safety recovery.
+- Updated README, usage documentation and roadmap.
+- Verified `npm run lint`, `npm run build` and `npm run test:prototype`.
+
+Current status:
+- BrowserPilot now keeps only Session, Categories, Archive, Recovery and Extension controls.
+- DesktopPilot and EnvironmentPilot are reachable but intentionally contain no unfinished hotkey functionality yet.
+- Settings is the single home for product-wide Display, Safety and future Theme configuration.
+
+Next recommended step:
+- Implement #34 for the declarative Default Theme foundation.
+
+### BrowserPilot low-height workflow refinement
+
+Completed:
+- Removed the redundant selected-category `Saved URLs` list from the BrowserPilot control rail.
+- Kept open, archive and safe-remove actions together on each saved-tab row in the Session Board.
+- Added an explicit `Open` action to every Category card while retaining `Open Selected` inside the expanded controls.
+- Made long per-Category saved-tab lists vertically scrollable inside a bounded card instead of allowing them to grow the application below the viewport.
+- Fixed the Shell height rules at the actual BrowserPilot wrapper so the wide, low layout stays inside the visible application area.
+- Moved the light `DP` brand tile outside the dark Pilot Navigation surface.
+- Made BrowserPilot controls collapsed by default and explicitly expandable for capture, category management, archive, recovery and extension tasks.
+- Extended the packaged renderer smoke test for all of these layout and interaction contracts.
+- Verified `npm run lint`, renderer typechecking, `npm run build` and the full `npm run test:prototype` chain.
+
+Current status:
+- The Session Board is the single active Saved Tab list and preserves open, drag/drop, archive and safe-remove behavior.
+- No browser-session data or storage behavior changed.
+
+Next recommended step:
+- Continue with #34 for the declarative Default Theme foundation after this UI refinement passes the Working PR quality gate.
+
+### BrowserPilot horizontal control-rail refinement
+
+Completed:
+- Replaced the inner vertical `BrowserPilot controls` disclosure with one handle for the complete BrowserPilot control rail.
+- Collapsed the full rail, including the BrowserPilot heading and Bridge status, from 300 px to zero while retaining a separate 32 px handle column.
+- Let the Session Board consume the released horizontal space so Category cards move directly toward Pilot Navigation.
+- Added a short grid-column transition for opening and closing, with reduced-motion support.
+- Kept the handle in its own grid column so it cannot cover Recovery content or overlap the Session Board.
+- Updated the packaged renderer smoke test to measure the collapsed and expanded widths, Category board position, reversible toggle behavior and configured transition.
+- Verified `npm run lint`, `npm run build` and the complete `npm run test:prototype` workflow.
+
+Current status:
+- BrowserPilot controls now collapse in the direction shown in the UI feedback instead of only hiding their inner content.
+- No browser-session data or storage behavior changed.
+
+Next recommended step:
+- Continue with #34 for the declarative Default Theme foundation after this UI refinement passes the Working PR quality gate.
+
+### Session Board fixed-card geometry refinement
+
+Completed:
+- Replaced flexible `1fr` Category tracks with a fixed 224 px card width so opening or closing the BrowserPilot control rail shifts cards without resizing them.
+- Extended the control-rail chevron button across the full available Session Board height.
+- Positioned Category edit and safe-remove actions in the upper-right card corner outside the normal content flow.
+- Removed the saved-tab list height cap and let the list consume the remaining bounded card height with internal vertical scrolling.
+- Preserved the viewport-height guard: Category cards and their lists remain contained by the Session Board instead of growing the application.
+- Extended the renderer smoke test to measure stable card widths, full-height toggle geometry, top-right actions and the list's lower boundary.
+- Verified `npm run lint`, `npm run build` and the complete `npm run test:prototype` workflow.
+
+Current status:
+- The BrowserPilot rail changes how many fixed-width Category cards are visible, not the size of each card.
+- No browser-session data or storage behavior changed.
+
+Next recommended step:
+- Continue with #34 for the declarative Default Theme foundation after this UI refinement passes the Working PR quality gate.

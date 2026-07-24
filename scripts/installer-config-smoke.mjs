@@ -12,8 +12,13 @@ assert(packageJson.engines?.node === ">=22.12.0", "Expected installer tooling to
 assert(packageJson.scripts?.["package:windows"]?.includes("electron-builder --win nsis"), "Expected an NSIS installer command");
 assert(packageJson.scripts?.["package:windows:signed"]?.includes("package-windows-signed.ps1"), "Expected a guarded signing command");
 assert(packageJson.build?.win?.target === "nsis", "Expected Windows installer target to be NSIS");
+assert(packageJson.build?.win?.icon === "assets/deskpilot.ico", "Expected the Windows installer to use the DeskPilot icon");
 assert(packageJson.build?.directories?.output === "dist-installer", "Expected installer output to stay isolated");
 assert(packageJson.build?.npmRebuild === false, "Expected installer not to rebuild absent native dependencies");
+const windowsIconPath = path.join(projectRoot, "assets", "deskpilot.ico");
+assert(fs.existsSync(windowsIconPath), "Expected the DeskPilot Windows icon asset to exist");
+const windowsIconHeader = fs.readFileSync(windowsIconPath).subarray(0, 4);
+assert(windowsIconHeader.equals(Buffer.from([0, 0, 1, 0])), "Expected the DeskPilot Windows icon asset to be a valid ICO file");
 assert(fs.existsSync(signedScriptPath), "Expected signing guard script to exist");
 
 const signedScript = fs.readFileSync(signedScriptPath, "utf-8");

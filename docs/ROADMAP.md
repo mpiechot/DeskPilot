@@ -44,13 +44,13 @@ Grill results:
 - Research tickets [#28](https://github.com/mpiechot/DeskPilot/issues/28) and [#29](https://github.com/mpiechot/DeskPilot/issues/29) remain decision context, not implementation scope
 
 Shell implementation tickets:
-- #31 introduce the DeskPilot Shell and preserve the BrowserPilot workflow - ready-for-agent
-- #32 add DesktopPilot and EnvironmentPilot empty states - blocked by #31
-- #33 move Display and Safety controls into shell-level Settings - blocked by #31
+- #31 introduce the DeskPilot Shell and preserve the BrowserPilot workflow - done; navigation hierarchy and BrowserPilot visual identity refined
+- #32 add DesktopPilot and EnvironmentPilot empty states - done; both destinations are reachable with responsive development placeholders
+- #33 move Display and Safety controls into shell-level Settings - done; BrowserPilot keeps only browser-session controls and Settings owns Display, Safety and Theme reservation
 - #34 introduce the declarative Default Theme foundation - blocked by #31 and #33
 
 Recommended next implementation step:
-- Start with #31. Keep the separate touch-input research and fallback architecture out of this shell ticket sequence.
+- Continue with #34, while keeping the separate touch-input research and fallback architecture out of the shell ticket sequence.
 
 ## v0.1 - Control Panel Skeleton
 
@@ -139,7 +139,7 @@ Goal:
 Prevent categories from becoming huge tab graveyards.
 
 Status:
-Started. Manual per-category archiving is available from the Session Board and selected-category URL list, with a dedicated Archive view for returning tabs to the active Session.
+Started. Manual per-category archiving is available directly from the Session Board, with a dedicated Archive view for returning tabs to the active Session.
 
 Expected features:
 - sleep lists per category

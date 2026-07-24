@@ -3,7 +3,6 @@ import {
   BrowserWindow,
   dialog,
   ipcMain,
-  nativeImage,
   nativeTheme,
   net,
   screen,
@@ -61,6 +60,7 @@ import {
   type StorageStartupFailurePrompt
 } from "./storageStartupFailure.js";
 import { AppUpdateService } from "./appUpdate.js";
+import { createTrayIcon } from "./trayIcon.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, "../..");
@@ -144,7 +144,7 @@ function createMainWindow(): void {
 }
 
 function createTray(): void {
-  tray = new Tray(createTrayIcon());
+  tray = new Tray(createTrayIcon(projectRoot));
   tray.setToolTip("DeskPilot");
   tray.setContextMenu(
     Menu.buildFromTemplate([
@@ -159,19 +159,6 @@ function createTray(): void {
       }
     ])
   );
-}
-
-function createTrayIcon() {
-  const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
-      <rect width="32" height="32" rx="7" fill="#26352f"/>
-      <path d="M8 10.5h16v11H8z" fill="none" stroke="#fffaf0" stroke-width="2"/>
-      <path d="M11 14h10M11 18h6" stroke="#fffaf0" stroke-width="2" stroke-linecap="round"/>
-    </svg>
-  `;
-  const dataUrl = `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`;
-
-  return nativeImage.createFromDataURL(dataUrl);
 }
 
 function showSaveDialog(options: SaveDialogOptions) {
@@ -425,7 +412,8 @@ if (!hasSingleInstanceLock) {
 
     try {
       createTray();
-    } catch {
+    } catch (error) {
+      console.error("DeskPilot tray icon is unavailable.", error);
       tray = null;
     }
 

@@ -1764,9 +1764,7 @@ function mapCategoryRow(row: CategoryRow): SessionCategory {
     name: row.name,
     description: row.description,
     icon: normalizeCategoryIcon(row.icon),
-    tabCount,
-    lastSavedLabel: row.last_saved_at ? "Saved" : "Not saved yet",
-    status: tabCount > 0 ? "ready" : "empty"
+    tabCount
   };
 }
 
