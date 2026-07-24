@@ -6,7 +6,7 @@ import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   {
-    ignores: ["dist", "dist-electron", "dist-prototype", "dist-productive", "dist-installer", "node_modules", "browser-extension"]
+    ignores: ["dist", "dist-electron", "dist-prototype", "dist-productive", "dist-installer", "dist-theme-test", "node_modules", "browser-extension"]
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,

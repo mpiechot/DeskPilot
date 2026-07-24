@@ -27,7 +27,8 @@
     "test:installer": "node scripts/installer-config-smoke.mjs",
     "test:update": "npm run build:electron && node scripts/update-smoke.mjs",
     "test:tray": "npm run build:electron && electron scripts/tray-icon-smoke.cjs",
-    "test:prototype": "npm run package:prototype && node scripts/prototype-launcher-smoke.mjs && npm run package:productive && npm run test:productive-launcher && electron scripts/prototype-renderer-smoke-app && npm run test:extension && npm run test:update && npm run test:tray"
+    "test:theme": "tsc -p tsconfig.theme-test.json && node --test dist-theme-test/tests/theme.test.js",
+    "test:prototype": "npm run test:theme && npm run package:prototype && node scripts/prototype-launcher-smoke.mjs && npm run package:productive && npm run test:productive-launcher && electron scripts/prototype-renderer-smoke-app && npm run test:extension && npm run test:update && npm run test:tray"
   },
   "dependencies": {
     "lucide-react": "0.468.0",
