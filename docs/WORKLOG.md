@@ -1147,3 +1147,21 @@ Current status:
 
 Next recommended step:
 - Continue with #34 for the declarative Default Theme foundation after this UI refinement passes the Working PR quality gate.
+
+### Session Board fixed-card geometry refinement
+
+Completed:
+- Replaced flexible `1fr` Category tracks with a fixed 224 px card width so opening or closing the BrowserPilot control rail shifts cards without resizing them.
+- Extended the control-rail chevron button across the full available Session Board height.
+- Positioned Category edit and safe-remove actions in the upper-right card corner outside the normal content flow.
+- Removed the saved-tab list height cap and let the list consume the remaining bounded card height with internal vertical scrolling.
+- Preserved the viewport-height guard: Category cards and their lists remain contained by the Session Board instead of growing the application.
+- Extended the renderer smoke test to measure stable card widths, full-height toggle geometry, top-right actions and the list's lower boundary.
+- Verified `npm run lint`, `npm run build` and the complete `npm run test:prototype` workflow.
+
+Current status:
+- The BrowserPilot rail changes how many fixed-width Category cards are visible, not the size of each card.
+- No browser-session data or storage behavior changed.
+
+Next recommended step:
+- Continue with #34 for the declarative Default Theme foundation after this UI refinement passes the Working PR quality gate.

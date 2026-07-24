@@ -52,13 +52,14 @@ Current state:
 - The horizontal category board can be panned by dragging, so off-screen categories remain reachable in the compact window.
 - Categories can be created, renamed, safely removed and assigned a persisted icon from a monochrome built-in set.
 - Saved URLs have persisted tab positions and are restored in that stored order.
-- The Session Board shows saved tabs in fixed-height scrollable lists under each category.
+- The Session Board shows saved tabs in bounded scrollable lists that use the remaining height of each Category card.
 - Saved tabs can be moved between categories and reordered with mouse-first drag and drop.
 - Every category can be opened directly from its Session Board card, and individual saved tabs can be opened there too.
 - Saved URLs can be archived or safely removed directly from their category card without a duplicate sidebar list.
 - Saved tabs can be archived without deletion and returned to the active Session from the selected category's Archive view.
 - Saved URLs from a selected category open together in a new Chrome/Edge browser window named exactly after the Category.
 - The complete BrowserPilot control rail is collapsed to a narrow handle by default and slides open horizontally when session capture, category management, archive, recovery or extension controls are needed, giving the Session Board the freed width.
+- Category cards keep a fixed width while the control rail moves, place edit/remove actions in the upper-right corner and reveal additional cards instead of stretching visible cards.
 - Manual SQLite backup snapshots can be created, restored, exported and imported from shell-level Settings, and the latest automatic rolling backup can be restored safely.
 - A corrupted active database is recovered automatically from the valid rolling backup at startup, while the corrupted source file is preserved for diagnosis.
 - If both database copies are unusable, a native read-only recovery menu can export either file, show both paths and open the affected storage folder.

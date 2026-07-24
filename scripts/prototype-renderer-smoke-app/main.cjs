@@ -512,6 +512,7 @@ async function runElectronSmoke() {
       const deskPilotShell = document.querySelector(".deskPilotShell");
       const collapsedRailRect = document.querySelector(".controlRail")?.getBoundingClientRect();
       const collapsedCategoryRect = categoryList?.getBoundingClientRect();
+      const collapsedWorkCardRect = workCard?.getBoundingClientRect();
       const controlRailCollapsedByDefault =
         browserPilotShell?.classList.contains("shell-controlRailCollapsed") &&
         controlRailToggle?.getAttribute("aria-expanded") === "false" &&
@@ -524,6 +525,7 @@ async function runElectronSmoke() {
         browserPilotShell?.getAnimations().forEach((animation) => animation.finish());
         const expandedRailRect = document.querySelector(".controlRail")?.getBoundingClientRect();
         const expandedCategoryRect = categoryList?.getBoundingClientRect();
+        const expandedWorkCardRect = workCard?.getBoundingClientRect();
         const expandedGridTemplateColumns = getComputedStyle(browserPilotShell).gridTemplateColumns;
         const controlRailCanExpand =
           !browserPilotShell?.classList.contains("shell-controlRailCollapsed") &&
@@ -539,6 +541,7 @@ async function runElectronSmoke() {
           browserPilotShell?.getAnimations().forEach((animation) => animation.finish());
           const collapsedAgainRailRect = document.querySelector(".controlRail")?.getBoundingClientRect();
           const collapsedAgainCategoryRect = categoryList?.getBoundingClientRect();
+          const collapsedAgainWorkCardRect = workCard?.getBoundingClientRect();
           const controlRailCanCollapseAgain =
             browserPilotShell?.classList.contains("shell-controlRailCollapsed") &&
             controlRailToggle?.getAttribute("aria-expanded") === "false" &&
@@ -550,6 +553,10 @@ async function runElectronSmoke() {
             browserPilotShell?.getAnimations().forEach((animation) => animation.finish());
             const categoryListRect = categoryList?.getBoundingClientRect();
             const shellRect = deskPilotShell?.getBoundingClientRect();
+            const controlRailToggleRect = controlRailToggle?.getBoundingClientRect();
+            const workCardRect = workCard?.getBoundingClientRect();
+            const workCardActionsRect = workCard?.querySelector(".cardActions")?.getBoundingClientRect();
+            const workBoardListRect = workCard?.querySelector(".sessionBoardList")?.getBoundingClientRect();
 
             resolve({
               controlRailCollapsedByDefault,
@@ -566,6 +573,11 @@ async function runElectronSmoke() {
                 expanded: expandedCategoryRect?.left ?? null,
                 collapsedAgain: collapsedAgainCategoryRect?.left ?? null
               },
+              workCardWidths: {
+                collapsed: collapsedWorkCardRect?.width ?? null,
+                expanded: expandedWorkCardRect?.width ?? null,
+                collapsedAgain: collapsedAgainWorkCardRect?.width ?? null
+              },
               expandedGridTemplateColumns,
               collapsedRailIsNarrow:
                 Boolean(collapsedRailRect && expandedRailRect && collapsedAgainRailRect) &&
@@ -576,6 +588,20 @@ async function runElectronSmoke() {
                 Boolean(collapsedCategoryRect && expandedCategoryRect && collapsedAgainCategoryRect) &&
                 collapsedCategoryRect.left < expandedCategoryRect.left - 180 &&
                 collapsedAgainCategoryRect.left < expandedCategoryRect.left - 180,
+              categoryCardWidthStaysFixed:
+                Boolean(collapsedWorkCardRect && expandedWorkCardRect && collapsedAgainWorkCardRect) &&
+                Math.abs(collapsedWorkCardRect.width - expandedWorkCardRect.width) < 1 &&
+                Math.abs(collapsedAgainWorkCardRect.width - expandedWorkCardRect.width) < 1,
+              controlRailToggleUsesFullHeight:
+                Boolean(controlRailToggleRect && categoryListRect) &&
+                Math.abs(controlRailToggleRect.height - categoryListRect.height) < 1,
+              categoryActionsAtTopRight:
+                Boolean(workCardRect && workCardActionsRect) &&
+                workCardActionsRect.top - workCardRect.top < 20 &&
+                workCardRect.right - workCardActionsRect.right < 20,
+              sessionListUsesRemainingCardHeight:
+                Boolean(workCardRect && workBoardListRect) &&
+                workCardRect.bottom - workBoardListRect.bottom < 20,
               duplicateSavedUrlManagerAbsent: !document.querySelector(".savedUrlManager"),
               everyCategoryHasOpenAction:
                 document.querySelectorAll(".categoryCard").length > 0 &&
@@ -1303,6 +1329,10 @@ async function runElectronSmoke() {
   assert(browserPilotLayoutResult.horizontalTransitionConfigured, "Expected a horizontal control-rail transition");
   assert(browserPilotLayoutResult.collapsedRailIsNarrow, "Expected the collapsed BrowserPilot control rail to become narrow");
   assert(browserPilotLayoutResult.categoryBoardUsesCollapsedSpace, "Expected categories to move left into the collapsed rail space");
+  assert(browserPilotLayoutResult.categoryCardWidthStaysFixed, "Expected category cards to keep the same width while the rail moves");
+  assert(browserPilotLayoutResult.controlRailToggleUsesFullHeight, "Expected the control-rail toggle to use the full available height");
+  assert(browserPilotLayoutResult.categoryActionsAtTopRight, "Expected category edit and remove actions at the top right");
+  assert(browserPilotLayoutResult.sessionListUsesRemainingCardHeight, "Expected the saved-tab list to use the remaining card height");
   assert(browserPilotLayoutResult.duplicateSavedUrlManagerAbsent, "Expected the redundant Saved URLs manager to be removed");
   assert(browserPilotLayoutResult.everyCategoryHasOpenAction, "Expected every category card to have its own Open action");
   assert(browserPilotLayoutResult.longCategoryListScrolls, "Expected long category tab lists to scroll inside a fixed card height");

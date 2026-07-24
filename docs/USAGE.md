@@ -26,7 +26,7 @@ Working today:
 - restore removed categories
 - save http/https URLs into a selected category
 - open a category directly from its card, or open the selected category from the expanded BrowserPilot controls, in saved order in a new Chrome/Edge browser window named after the Category
-- view saved tabs in a fixed-height scrollable list under each category on the Session Board
+- view saved tabs in a bounded scrollable list that fills the remaining height of each Category card on the Session Board
 - move saved tabs between categories with mouse-first drag and drop
 - reorder saved tabs within a category with mouse-first drag and drop
 - open individual saved tabs from the Session Board
@@ -242,6 +242,8 @@ The Session Board can be dragged horizontally from a non-interactive part of a c
 Each category card has its own `Open` button. Long saved-tab lists stay inside the card and scroll vertically instead of increasing the application height.
 
 The complete BrowserPilot control rail starts collapsed to a narrow handle beside Pilot Navigation. Use the chevron handle to slide the rail open horizontally when you need to save a manual URL, use `Open Selected`, edit categories, inspect Archive or Recovery, or view extension status. Closing it again moves the Session Board left into the released space. The Session Board remains the single visible list of active saved tabs; it also owns the open, archive and safe-remove actions for each tab.
+
+Category cards keep the same width while the control rail opens or closes, so the board reveals or hides whole cards instead of resizing them. Edit and remove actions sit in the upper-right corner. The saved-tab list then uses the remaining vertical card space and scrolls internally without increasing the card or application height.
 
 Open `Categories` to edit the selected category's name, description and icon or to remove it safely. Removal names the affected active-tab count and keeps the category and saved tabs available in `Recovery`.
 
