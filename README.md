@@ -73,3 +73,4 @@ Current state:
 - Installed builds check the latest stable public GitHub Release once at app startup and highlight a newer installer in the header.
 - Starting DeskPilot again while it is already running focuses the existing instance instead of opening a second bridge.
 - Browser-extension saves refresh the visible category counts in the Electron UI.
+- The current Productive build is version `1.0.0`; the unsigned Windows installer is generated as `DeskPilot-Setup-1.0.0.exe`.

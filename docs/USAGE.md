@@ -196,7 +196,7 @@ When a newer stable semantic version is available, the version badge in the Desk
 
 Development, renderer-only and generated prototype/Productive launcher runs do not perform this request automatically. Offline, rate-limit and invalid-response failures remain silent so the local browser-session workflow continues normally.
 
-The update check first ships in version 0.1.1. An existing 0.1.0 installation therefore needs one final manual installer run before future published versions can be announced inside the app. Creating or publishing the corresponding GitHub Release remains a separate release operation.
+The current Productive release is version 1.0.0. Existing 0.1.x installations need one manual installer run to move to this first stable version. Creating or publishing the corresponding GitHub Release remains a separate release operation.
 
 ## Shell Settings
 

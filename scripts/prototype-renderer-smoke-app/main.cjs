@@ -98,19 +98,19 @@ async function runElectronSmoke() {
   ipcMain.handle("bridge:status", () => ({ running: true, host: "127.0.0.1", port: 17383 }));
   ipcMain.handle("updates:status", () => ({
     status: "available",
-    currentVersion: "0.1.0",
-    availableVersion: "0.1.1",
-    releaseUrl: "https://github.com/mpiechot/DeskPilot/releases/tag/v0.1.1",
-    message: "DeskPilot 0.1.1 is available."
+    currentVersion: "1.0.0",
+    availableVersion: "1.0.1",
+    releaseUrl: "https://github.com/mpiechot/DeskPilot/releases/tag/v1.0.1",
+    message: "DeskPilot 1.0.1 is available."
   }));
   ipcMain.handle("updates:open", () => {
-    openedUpdateUrl = "https://github.com/mpiechot/DeskPilot/releases/tag/v0.1.1";
+    openedUpdateUrl = "https://github.com/mpiechot/DeskPilot/releases/tag/v1.0.1";
     return {
       status: "available",
-      currentVersion: "0.1.0",
-      availableVersion: "0.1.1",
+      currentVersion: "1.0.0",
+      availableVersion: "1.0.1",
       releaseUrl: openedUpdateUrl,
-      message: "DeskPilot 0.1.1 is available."
+      message: "DeskPilot 1.0.1 is available."
     };
   });
   ipcMain.handle("extension:install-info", () => ({
@@ -503,7 +503,7 @@ async function runElectronSmoke() {
           document.querySelector('[data-shell-destination="browser"]:not([hidden]) h1')?.textContent === "BrowserPilot",
         shellMetadataVisible:
           shellMetadata?.textContent?.includes("DeskPilot") &&
-          shellMetadata?.textContent?.includes("v0.1.1") &&
+          shellMetadata?.textContent?.includes("v1.0.0") &&
           shellMetadata?.textContent?.includes("Development"),
         brandOutsideNavigation:
           shellBrand?.textContent?.trim() === "DP" &&
@@ -1378,12 +1378,12 @@ async function runElectronSmoke() {
   assert(emptyCategorySummaryResult.duplicateEmptyTextHidden, "Expected the empty category to hide duplicate tab-count text");
   assert(categoryClickWorked, "Expected a stationary mouse click to select a category");
   assert(
-    updateNoticeResult?.visibleText.includes("v0.1.0") && updateNoticeResult?.visibleText.includes("v0.1.1"),
+    updateNoticeResult?.visibleText.includes("v1.0.0") && updateNoticeResult?.visibleText.includes("v1.0.1"),
     "Expected the startup update notice to show installed and available versions"
   );
   assert(updateNoticeResult?.ariaLabel.includes("Update now"), "Expected an explicit update action");
   assert(
-    openedUpdateUrl === "https://github.com/mpiechot/DeskPilot/releases/tag/v0.1.1",
+    openedUpdateUrl === "https://github.com/mpiechot/DeskPilot/releases/tag/v1.0.1",
     "Expected the update action to open the validated GitHub release page"
   );
   assert(categoryDragWorked, "Expected horizontal category drag to reveal off-screen categories without resizing");

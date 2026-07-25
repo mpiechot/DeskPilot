@@ -1,6 +1,6 @@
 {
   "name": "deskpilot",
-  "version": "0.1.1",
+  "version": "1.0.0",
   "private": true,
   "description": "Local desktop control panel for browser session management and workflow switching.",
   "author": "portfolio-pirat <mattzeal@gmail.com>",

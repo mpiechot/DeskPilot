@@ -1186,3 +1186,17 @@ Current status:
 
 Next recommended step:
 - Complete the #34 Working PR quality gate, then select the next ready post-shell implementation slice.
+
+### Productive version 1.0.0 installer
+
+Completed:
+- Raised the application, package-lock and preload-reported version from 0.1.1 to the first stable Productive version 1.0.0.
+- Updated the packaged renderer and update-check smoke fixtures to use the real 1.0.0 baseline and a hypothetical 1.0.1 update.
+- Documented the current Productive version and generated installer name.
+
+Current status:
+- The next Windows installer artifact is `dist-installer/DeskPilot-Setup-1.0.0.exe`.
+- Installer packaging remains explicitly unsigned unless the guarded signing command receives a certificate and password.
+
+Next recommended step:
+- Build and manually install the 1.0.0 installer for the first stable Productive run, then publish a release separately if desired.

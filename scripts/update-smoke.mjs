@@ -10,26 +10,26 @@ assert(!isNewerStableVersion("0.2.0", "0.1.9"), "Expected an older release to be
 assert(!isNewerStableVersion("0.1.0", "0.1.1-beta.1"), "Expected prerelease versions to be ignored");
 assert(!isNewerStableVersion("0.1", "0.1.1"), "Expected invalid current versions to fail closed");
 
-const available = resolveLatestReleaseUpdate("0.1.0", {
-  tag_name: "v0.1.1",
-  html_url: "https://github.com/mpiechot/DeskPilot/releases/tag/v0.1.1",
+const available = resolveLatestReleaseUpdate("1.0.0", {
+  tag_name: "v1.0.1",
+  html_url: "https://github.com/mpiechot/DeskPilot/releases/tag/v1.0.1",
   draft: false,
   prerelease: false
 });
 assert(available.status === "available", "Expected a newer stable GitHub release to be available");
-assert(available.availableVersion === "0.1.1", "Expected the normalized available version");
+assert(available.availableVersion === "1.0.1", "Expected the normalized available version");
 
-const invalidUrl = resolveLatestReleaseUpdate("0.1.0", {
-  tag_name: "v0.1.1",
-  html_url: "https://example.com/deskpilot/releases/v0.1.1",
+const invalidUrl = resolveLatestReleaseUpdate("1.0.0", {
+  tag_name: "v1.0.1",
+  html_url: "https://example.com/deskpilot/releases/v1.0.1",
   draft: false,
   prerelease: false
 });
 assert(invalidUrl.status === "unavailable", "Expected a non-GitHub release URL to fail closed");
 
-const prerelease = resolveLatestReleaseUpdate("0.1.0", {
-  tag_name: "v0.2.0",
-  html_url: "https://github.com/mpiechot/DeskPilot/releases/tag/v0.2.0-beta.1",
+const prerelease = resolveLatestReleaseUpdate("1.0.0", {
+  tag_name: "v1.1.0",
+  html_url: "https://github.com/mpiechot/DeskPilot/releases/tag/v1.1.0-beta.1",
   draft: false,
   prerelease: true
 });
@@ -38,13 +38,13 @@ assert(prerelease.status === "up-to-date", "Expected prereleases not to produce 
 let requestCount = 0;
 let openedUrl = "";
 const service = new AppUpdateService({
-  currentVersion: "0.1.0",
+  currentVersion: "1.0.0",
   enabled: true,
   fetchLatestRelease: async () => {
     requestCount += 1;
     return {
-      tag_name: "v0.1.1",
-      html_url: "https://github.com/mpiechot/DeskPilot/releases/tag/v0.1.1",
+      tag_name: "v1.0.1",
+      html_url: "https://github.com/mpiechot/DeskPilot/releases/tag/v1.0.1",
       draft: false,
       prerelease: false
     };
@@ -63,7 +63,7 @@ assert(openedUrl.includes("github.com/mpiechot/DeskPilot/releases/"), "Expected 
 
 let disabledRequestCount = 0;
 const disabledService = new AppUpdateService({
-  currentVersion: "0.1.0",
+  currentVersion: "1.0.0",
   enabled: false,
   fetchLatestRelease: async () => {
     disabledRequestCount += 1;
