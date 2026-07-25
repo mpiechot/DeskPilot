@@ -1210,10 +1210,11 @@ Completed:
 - Published the hardware-independent Touch ticket chain: #37 setup state and diagnostic adapter, #38 surface boundary and #39 keyboard-free BrowserPilot workflow.
 - Added three independent Theme Grill proposals for Space/Holo, Gladiator/Roman and Cyberpunk/Glitch directions under the existing declarative Theme foundation.
 - Published Theme Grill tickets #40 Space/Holo, #41 Gladiator/Roman and #42 Cyberpunk/Glitch under #34.
+- Published Pilot Grill tickets #43 DesktopPilot and #44 EnvironmentPilot under #29.
 
 Current status:
 - The direct-touch implementation slice is ready to be split into tickets.
 - Hardware validation remains deliberately blocked by the absence of representative touch hardware.
 
 Next recommended step:
-- Implement Touch #37 first; run the three Theme Grill sessions independently when a theme direction is selected.
+- Implement Touch #37 first; run the three Theme Grill sessions independently when a theme direction is selected, and use #43/#44 to define the two remaining Pilots before implementing their actions.

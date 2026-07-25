@@ -62,3 +62,17 @@ These are independent specification sessions under [#34](https://github.com/mpie
 - **Blocked by:** None
 - **Goal:** Explore a cyberpunk direction with controlled glitch language, clear system status and deliberate failure/error presentation.
 - **Required output:** The same complete theme specification, including glitch boundaries, reduced-motion behavior, accessibility, sound policy, state semantics and implementation/asset requirements.
+
+## Pilot Grill tickets
+
+These independent product-specification sessions extend the empty Pilot destinations from #32. They are parented by the broader modular shell and action context in #29 and deliberately create no Pilot implementation by themselves.
+
+### [#43 DesktopPilot Grill](https://github.com/mpiechot/DeskPilot/issues/43)
+
+- **Blocked by:** None
+- **Scope:** Define DesktopPilot's purpose, digital desktop action kinds, foreground-target rules, elevation failures, configuration workflow, persistence, safety and future implementation slices.
+
+### [#44 EnvironmentPilot Grill](https://github.com/mpiechot/DeskPilot/issues/44)
+
+- **Blocked by:** None
+- **Scope:** Define EnvironmentPilot's purpose, physical/environmental action kinds, device and scene semantics, safety boundaries, discovery/pairing model, configuration workflow, persistence and the hardware boundary.
