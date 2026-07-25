@@ -1211,6 +1211,7 @@ Completed:
 - Added three independent Theme Grill proposals for Space/Holo, Gladiator/Roman and Cyberpunk/Glitch directions under the existing declarative Theme foundation.
 - Published Theme Grill tickets #40 Space/Holo, #41 Gladiator/Roman and #42 Cyberpunk/Glitch under #34.
 - Published Pilot Grill tickets #43 DesktopPilot and #44 EnvironmentPilot under #29.
+- Published bugfix ticket #45 for typed Toast severity and redundant success/navigation feedback.
 
 Current status:
 - The direct-touch implementation slice is ready to be split into tickets.
