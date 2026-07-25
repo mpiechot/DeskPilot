@@ -1200,3 +1200,19 @@ Current status:
 
 Next recommended step:
 - Build and manually install the 1.0.0 installer for the first stable Productive run, then publish a release separately if desired.
+
+### Touch specification split before implementation
+
+Completed:
+- Separated the hardware-independent Touch Input Isolation product and implementation scope from the hardware-gated Windows validation scope.
+- Added `docs/GRILL_SESSION_2026-07-23_TOUCH_HARDWARE_VALIDATION.md` for physical touch classification, isolation evidence, topology identity, discovery, reconnect behavior, lock-state validation and the conditional separate-device fallback.
+- Kept the pre-hardware frontier explicit: state models, surface boundaries, workflow routing, warning/acceptance UI and diagnostic adapter contracts can be implemented with simulated results, but cannot claim real isolation compliance.
+- Prepared a vertical-slice ticket proposal for review before publishing GitHub issues.
+- Added three independent Theme Grill proposals for Space/Holo, Gladiator/Roman and Cyberpunk/Glitch directions under the existing declarative Theme foundation.
+
+Current status:
+- The direct-touch implementation slice is ready to be split into tickets.
+- Hardware validation remains deliberately blocked by the absence of representative touch hardware.
+
+Next recommended step:
+- Review the proposed ticket granularity and dependencies, then publish the approved Touch tickets under #28 and the three Theme Grill tickets under #34.

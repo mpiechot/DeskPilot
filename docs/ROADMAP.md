@@ -40,7 +40,8 @@ Shell and theme decisions are complete for implementation. Touch hardware remain
 
 Grill results:
 - [Pilot Shell And Themes](GRILL_SESSION_2026-07-22_PILOT_SHELL_AND_THEMES.md) - complete; the confirmed shell/theme decisions are the source for implementation
-- [Touch Input Isolation](GRILL_SESSION_2026-07-23_TOUCH_INPUT_ISOLATION.md) - complete for the direct-touch MVP; fallback topics remain deferred
+- [Touch Input Isolation](GRILL_SESSION_2026-07-23_TOUCH_INPUT_ISOLATION.md) - hardware-independent implementation scope ready; hardware validation split into a separate specification
+- [Touch Hardware Validation](GRILL_SESSION_2026-07-23_TOUCH_HARDWARE_VALIDATION.md) - deferred until representative Windows touch hardware is available
 - Research tickets [#28](https://github.com/mpiechot/DeskPilot/issues/28) and [#29](https://github.com/mpiechot/DeskPilot/issues/29) remain decision context, not implementation scope
 
 Shell implementation tickets:
@@ -50,7 +51,7 @@ Shell implementation tickets:
 - #34 introduce the declarative Default Theme foundation - done; the current appearance is a complete semantic fallback with sparse overlay and optional-effect disabling rules
 
 Recommended next implementation step:
-- Complete the #34 quality gate, then select the next ready post-shell slice while keeping the separate touch-input fallback architecture out of this completed ticket sequence.
+- Approve and publish the hardware-independent Touch Input Isolation tickets; do not start hardware validation or the separate-device fallback before representative hardware is available.
 
 ## v0.1 - Control Panel Skeleton
 
