@@ -1219,3 +1219,18 @@ Current status:
 
 Next recommended step:
 - Implement Touch #37 first; run the three Theme Grill sessions independently when a theme direction is selected, and use #43/#44 to define the two remaining Pilots before implementing their actions.
+
+### BrowserPilot UI information-density Grill ticket
+
+Completed:
+- Published GitHub issue #46, `Grill: Rework BrowserPilot information density and Details view`.
+- Framed the request as a decision-only Grill ticket: critically review the current information hierarchy, test smaller Category representations and evaluate a separate Details view/window without deciding the solution in advance.
+- Preserved the non-regression boundaries for daily Session Board use, local-first ownership, recoverability and safe-delete behavior.
+- Added the ticket to the Roadmap as the next BrowserPilot UI decision stream.
+
+Current status:
+- No product code or browser-session data changed.
+- The Grill session has not started yet, as requested.
+
+Next recommended step:
+- Start the Grill for #46 when ready, then derive only the focused implementation tickets supported by its decisions.

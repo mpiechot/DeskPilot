@@ -50,6 +50,9 @@ Shell implementation tickets:
 - #33 move Display and Safety controls into shell-level Settings - done; BrowserPilot keeps only browser-session controls and Settings owns Display, Safety and Theme selection
 - #34 introduce the declarative Default Theme foundation - done; the current appearance is a complete semantic fallback with sparse overlay and optional-effect disabling rules
 
+BrowserPilot UI decision tickets:
+- #46 critically review BrowserPilot information density, compact Category representations and a possible Details view - ready for Grill
+
 Recommended next implementation step:
 - Approve and publish the hardware-independent Touch Input Isolation tickets; do not start hardware validation or the separate-device fallback before representative hardware is available.
 
