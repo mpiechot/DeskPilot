@@ -51,7 +51,17 @@ Shell implementation tickets:
 - #34 introduce the declarative Default Theme foundation - done; the current appearance is a complete semantic fallback with sparse overlay and optional-effect disabling rules
 
 BrowserPilot UI decision tickets:
-- #46 critically review BrowserPilot information density, compact Category representations and a possible Details view - ready for Grill
+- #46 critically review BrowserPilot information density, compact Category representations and a possible Details view - decision complete
+
+BrowserPilot UI implementation tickets derived from #46:
+- #48 implement the compact responsive BrowserPilot overview grid - ready for agent
+- #49 add BrowserPilot Category Creation and Details Views - ready for agent; blocked by #48
+- #50 move Saved Tab management into Category Details - ready for agent; blocked by #49
+- #51 add the BrowserPilot Settings View - ready for agent; blocked by #48 and #50
+- #52 apply Touch Mode presentation across BrowserPilot views - ready for agent; blocked by #48 through #51
+
+Cross-Pilot visual decision tickets:
+- #47 define the DeskPilot icon system, expanded built-in vocabulary and custom user icons - ready for Grill
 
 Recommended next implementation step:
 - Approve and publish the hardware-independent Touch Input Isolation tickets; do not start hardware validation or the separate-device fallback before representative hardware is available.
