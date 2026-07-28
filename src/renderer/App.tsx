@@ -25,6 +25,7 @@ import {
   RotateCcw,
   Save,
   ShieldCheck,
+  SlidersHorizontal,
   Trash2,
   Upload,
   Wrench,
@@ -583,6 +584,9 @@ function BrowserPilot({
   const [extensionInfo, setExtensionInfo] = useState<ExtensionInstallInfo | null>(null);
   const [draggedTab, setDraggedTab] = useState<{ id: string; categoryId: string } | null>(null);
   const [isCategoryListDragging, setIsCategoryListDragging] = useState(false);
+  const [browserSurface, setBrowserSurface] = useState<"overview" | "legacy">("overview");
+  const [draggedCategoryId, setDraggedCategoryId] = useState<string | null>(null);
+  const [categoryReorderPreviewIndex, setCategoryReorderPreviewIndex] = useState<number | null>(null);
   const categoryListDrag = useRef<{
     pointerId: number;
     startX: number;
@@ -902,6 +906,74 @@ function BrowserPilot({
       startScrollLeft: event.currentTarget.scrollLeft,
       moved: false
     };
+  }
+
+  function openLegacySurface(mode: typeof controlMode, categoryId = selectedCategoryId): void {
+    if (categoryId) {
+      setSelectedCategoryId(categoryId);
+    }
+    setControlMode(mode);
+    setBrowserSurface("legacy");
+  }
+
+  function handleCategoryDragStart(event: DragEvent<HTMLButtonElement>, categoryId: string): void {
+    event.stopPropagation();
+
+    if (!isStorageWritable) {
+      event.preventDefault();
+      setOperationMessage("Reordering Categories requires the Electron app.");
+      return;
+    }
+
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("application/x-deskpilot-category", categoryId);
+    setDraggedCategoryId(categoryId);
+  }
+
+  function handleCategoryDragOver(event: DragEvent<HTMLElement>, previewIndex: number): void {
+    if (!draggedCategoryId) {
+      return;
+    }
+
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    setCategoryReorderPreviewIndex(previewIndex);
+  }
+
+  function cancelCategoryDrag(): void {
+    setDraggedCategoryId(null);
+    setCategoryReorderPreviewIndex(null);
+  }
+
+  function handleCategoryDrop(event: DragEvent<HTMLElement>): void {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const categoryId =
+      event.dataTransfer.getData("application/x-deskpilot-category") || draggedCategoryId;
+    const previewIndex = categoryReorderPreviewIndex;
+
+    if (!categoryId || previewIndex === null || !isStorageWritable) {
+      cancelCategoryDrag();
+      return;
+    }
+
+    const sourceIndex = categories.findIndex((category) => category.id === categoryId);
+    const targetPosition = sourceIndex >= 0 && sourceIndex < previewIndex ? previewIndex - 1 : previewIndex;
+
+    if (sourceIndex === targetPosition) {
+      cancelCategoryDrag();
+      return;
+    }
+
+    window.deskPilot
+      ?.moveCategory(categoryId, targetPosition)
+      .then((nextCategories: SessionCategory[]) => {
+        updateCategories(nextCategories);
+        setOperationMessage("Category order updated.");
+      })
+      .catch(() => setOperationMessage("Could not reorder Categories. Existing order was left untouched."))
+      .finally(cancelCategoryDrag);
   }
 
   function handleCategoryListPointerMove(event: ReactPointerEvent<HTMLElement>): void {
@@ -1310,6 +1382,160 @@ function BrowserPilot({
       .catch(handleStorageError);
   }
 
+  if (browserSurface === "overview") {
+    return (
+      <main
+        className={layoutMode === "touch" ? "browserPilot browserPilot-touch" : "browserPilot"}
+        data-pilot="browser"
+        aria-label="BrowserPilot"
+      >
+        <header className="browserPilotTopNavigation">
+          <div>
+            <h1>BrowserPilot</h1>
+          </div>
+          <div className="browserPilotTopActions">
+            {appUpdateStatus?.status === "available" ? (
+              <button
+                type="button"
+                className="headerUpdateAction"
+                onClick={handleOpenAvailableUpdate}
+                aria-label={`Update available: version ${appUpdateStatus.availableVersion}. Update now.`}
+              >
+                <Download aria-hidden="true" />
+                <span>
+                  Update v{appUpdateStatus.currentVersion} → v{appUpdateStatus.availableVersion}
+                </span>
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className={bridgeStatus?.running ? "bridgeStatusAction bridgeStatusAction-ready" : "bridgeStatusAction bridgeStatusAction-unavailable"}
+              onClick={() => openLegacySurface("extension")}
+              aria-label={`Bridge ${bridgeStatus?.running ? "Ready" : "Unavailable"}. Open Extension settings.`}
+              title="Open BrowserPilot Extension settings"
+            >
+              <span aria-hidden="true" className="bridgeStatusDot" />
+              <span>{bridgeStatus?.running ? "Ready" : "Unavailable"}</span>
+            </button>
+            <button
+              type="button"
+              className="browserPilotSettingsAction"
+              onClick={() => openLegacySurface("extension")}
+              aria-label="BrowserPilot Settings"
+              title="BrowserPilot Settings"
+            >
+              <SlidersHorizontal aria-hidden="true" />
+            </button>
+          </div>
+        </header>
+
+        <section className="browserPilotOverview" aria-label="BrowserPilot category overview">
+          {categories.length === 0 ? (
+            <aside className="categoryCreationCallout">
+              <strong>Create your first Category</strong>
+              <span>Use the outlined plus card to start a browser Session.</span>
+            </aside>
+          ) : null}
+          <div
+            className="categoryGrid"
+            onDragOver={(event) => {
+              if (event.target === event.currentTarget) {
+                handleCategoryDragOver(event, categories.length);
+              }
+            }}
+            onDrop={handleCategoryDrop}
+          >
+            {categories.map((category, index) => (
+              <article
+                className={[
+                  "compactCategoryCard",
+                  selectedCategoryId === category.id ? "compactCategoryCard-selected" : "",
+                  categoryReorderPreviewIndex === index ? "compactCategoryCard-reorderBefore" : "",
+                  categoryReorderPreviewIndex === categories.length && index === categories.length - 1
+                    ? "compactCategoryCard-reorderAfter"
+                    : ""
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+                data-category-id={category.id}
+                key={category.id}
+                onClick={() => setSelectedCategoryId(category.id)}
+                onDragOver={(event) => {
+                  const rect = event.currentTarget.getBoundingClientRect();
+                  const previewIndex = event.clientX >= rect.left + rect.width / 2 ? index + 1 : index;
+                  handleCategoryDragOver(event, previewIndex);
+                }}
+                onDrop={handleCategoryDrop}
+              >
+                <div className="compactCategoryIdentity">
+                  <div className="categoryIcon" data-category-icon={category.icon}>
+                    <CategoryGlyph icon={category.icon} />
+                  </div>
+                  <h2 title={category.name}>{category.name}</h2>
+                </div>
+                <div className="compactCategoryActions">
+                  <button
+                    type="button"
+                    className="categoryOpenAction"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      handleOpenCategory(category.id);
+                    }}
+                    aria-label={`Open ${category.name} category`}
+                    title={`Open ${category.name}`}
+                  >
+                    <PanelTopOpen aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    className="categoryDetailsAction"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      openLegacySurface("categories", category.id);
+                    }}
+                    aria-label={`View details for ${category.name}`}
+                    title={`Details for ${category.name}`}
+                  >
+                    <Pencil aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    className="categoryReorderHandle"
+                    draggable={isStorageWritable}
+                    onClick={(event) => event.stopPropagation()}
+                    onDragEnd={cancelCategoryDrag}
+                    onDragStart={(event) => handleCategoryDragStart(event, category.id)}
+                    aria-label={`Reorder ${category.name}`}
+                    title={`Reorder ${category.name}`}
+                  >
+                    <GripVertical aria-hidden="true" />
+                  </button>
+                </div>
+              </article>
+            ))}
+            <button
+              type="button"
+              className={[
+                "categoryCreationShell",
+                categoryReorderPreviewIndex === categories.length ? "categoryCreationShell-reorderTarget" : ""
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              onClick={() => openLegacySurface("categories")}
+              onDragOver={(event) => handleCategoryDragOver(event, categories.length)}
+              onDrop={handleCategoryDrop}
+              aria-label="Create Category"
+              title="Create Category"
+            >
+              <Plus aria-hidden="true" />
+              <span>Create Category</span>
+            </button>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
   return (
     <main
       className={[
@@ -1330,6 +1556,10 @@ function BrowserPilot({
         >
         <header className="appHeader">
           <div>
+            <button type="button" className="backToOverviewAction" onClick={() => setBrowserSurface("overview")}>
+              <ChevronLeft aria-hidden="true" />
+              Overview
+            </button>
             <h1>BrowserPilot</h1>
           </div>
           <div className="headerMeta">

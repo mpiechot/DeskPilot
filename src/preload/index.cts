@@ -26,6 +26,7 @@ const deskPilot: DeskPilotApi = {
   setActiveCategory: (id) => ipcRenderer.invoke("categories:set-active", id),
   createCategory: (input) => ipcRenderer.invoke("categories:create", input),
   updateCategory: (id, input) => ipcRenderer.invoke("categories:update", id, input),
+  moveCategory: (id, targetPosition) => ipcRenderer.invoke("categories:move", id, targetPosition),
   deleteCategory: (id) => ipcRenderer.invoke("categories:delete", id),
   listDeletedCategories: () => ipcRenderer.invoke("categories:deleted"),
   restoreCategory: (id) => ipcRenderer.invoke("categories:restore", id),

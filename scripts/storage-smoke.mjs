@@ -23,6 +23,7 @@ import {
   listDeletedTabs,
   listCategories,
   listTabs,
+  moveCategory,
   moveTab,
   restoreCategory,
   restoreManualBackup,
@@ -82,6 +83,19 @@ let categories = createCategory({
 const writing = categories.find((category) => category.name === "Writing");
 assert(writing, "Expected Writing category after create");
 assert(writing.icon === "book-open", "Expected a new category to persist its selected icon");
+
+const initialCategoryOrder = listCategories().map((category) => category.id);
+moveCategory(writing.id, 1);
+assert(
+  JSON.stringify(listCategories().map((category) => category.id)) ===
+    JSON.stringify([initialCategoryOrder[0], writing.id, ...initialCategoryOrder.slice(1, -1)]),
+  "Expected moving a category to persist the requested active Category order"
+);
+await initializeStorage(dir, { profile: "development", disallowProductive: true });
+assert(
+  listCategories()[1]?.id === writing.id,
+  "Expected Category order to survive storage restart"
+);
 
 categories = updateCategory(writing.id, {
   name: "Writing Desk",

@@ -34,6 +34,7 @@ import {
   listArchivedTabs,
   listCategories,
   listTabs,
+  moveCategory,
   moveTab,
   restoreCategory,
   restoreManualBackup,
@@ -367,6 +368,7 @@ if (!hasSingleInstanceLock) {
     ipcMain.handle("categories:set-active", (_event, id) => setActiveCategoryId(id));
     ipcMain.handle("categories:create", (_event, input) => createCategory(input));
     ipcMain.handle("categories:update", (_event, id, input) => updateCategory(id, input));
+    ipcMain.handle("categories:move", (_event, id, targetPosition) => moveCategory(id, targetPosition));
     ipcMain.handle("categories:delete", (_event, id) => deleteCategory(id));
     ipcMain.handle("categories:deleted", () => listDeletedCategories());
     ipcMain.handle("categories:restore", (_event, id) => restoreCategory(id));

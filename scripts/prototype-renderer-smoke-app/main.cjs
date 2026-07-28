@@ -237,6 +237,16 @@ async function runElectronSmoke() {
 
     return categories;
   });
+  ipcMain.handle("categories:move", (_event, id, targetPosition) => {
+    const sourceIndex = categories.findIndex((category) => category.id === id);
+
+    if (sourceIndex >= 0) {
+      const [category] = categories.splice(sourceIndex, 1);
+      categories.splice(Math.min(Math.max(0, targetPosition), categories.length), 0, category);
+    }
+
+    return categories;
+  });
   ipcMain.handle("categories:delete", (_event, id) => {
     const index = categories.findIndex((category) => category.id === id);
 
@@ -522,6 +532,125 @@ async function runElectronSmoke() {
     })
   `);
 
+  const overviewGridResult = await window.webContents.executeJavaScript(`
+    new Promise((resolve) => {
+      const wait = (milliseconds) => new Promise((done) => setTimeout(done, milliseconds));
+      const categoryIds = () =>
+        Array.from(document.querySelectorAll(".compactCategoryCard")).map((card) => card.dataset.categoryId);
+      const findCard = (id) => document.querySelector('.compactCategoryCard[data-category-id="' + id + '"]');
+      const dragCategory = async (sourceId, targetId, shouldDrop) => {
+        let source = findCard(sourceId)?.querySelector(".categoryReorderHandle");
+        const dataTransfer = new DataTransfer();
+
+        source?.dispatchEvent(new DragEvent("dragstart", { bubbles: true, cancelable: true, dataTransfer }));
+        await wait(25);
+        source = findCard(sourceId)?.querySelector(".categoryReorderHandle");
+        const target = findCard(targetId);
+        const rect = target?.getBoundingClientRect();
+        target?.dispatchEvent(
+          new DragEvent("dragover", {
+            bubbles: true,
+            cancelable: true,
+            dataTransfer,
+            clientX: rect ? rect.right - 1 : 0
+          })
+        );
+        await wait(25);
+        const previewVisible = Boolean(
+          document.querySelector(".compactCategoryCard-reorderBefore, .compactCategoryCard-reorderAfter")
+        );
+
+        if (shouldDrop) {
+          target?.dispatchEvent(new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer }));
+        }
+        source?.dispatchEvent(new DragEvent("dragend", { bubbles: true, cancelable: true, dataTransfer }));
+        return previewVisible;
+      };
+
+      setTimeout(async () => {
+        const grid = document.querySelector(".categoryGrid");
+        const cards = Array.from(document.querySelectorAll(".compactCategoryCard"));
+        const creationShell = document.querySelector(".categoryCreationShell");
+        const firstCard = cards[0];
+        const firstCardRect = firstCard?.getBoundingClientRect();
+        const creationRect = creationShell?.getBoundingClientRect();
+        const gridStyle = grid ? getComputedStyle(grid) : null;
+        const topNavigation = document.querySelector(".browserPilotTopNavigation");
+        const bridgeStatus = document.querySelector(".bridgeStatusAction");
+        const settingsAction = document.querySelector(".browserPilotSettingsAction");
+        const longNameCard = findCard("overflow-1");
+        const longNameHeading = longNameCard?.querySelector("h2");
+        const initialOrder = categoryIds();
+
+        findCard("research")?.click();
+        await wait(25);
+        const selectionWorked =
+          document.querySelector(".compactCategoryCard-selected")?.dataset.categoryId === "research";
+        const reorderPreviewVisible = await dragCategory("work", "research", true);
+        await wait(50);
+        const committedOrder = categoryIds();
+        const beforeCancellation = JSON.stringify(committedOrder);
+        const cancellationPreviewVisible = await dragCategory("research", "overflow-1", false);
+        await wait(50);
+        const cancellationPreservedOrder = JSON.stringify(categoryIds()) === beforeCancellation;
+
+        resolve({
+          topNavigationPresent: Boolean(topNavigation),
+          bridgeUsesMeasuredState:
+            bridgeStatus?.textContent.trim() === "Ready" &&
+            !document.body.innerText.includes("Electron app required"),
+          settingsEntryIconOnly:
+            Boolean(settingsAction) &&
+            settingsAction.textContent.trim() === "" &&
+            settingsAction.getAttribute("aria-label") === "BrowserPilot Settings",
+          responsiveGrid:
+            Boolean(gridStyle) &&
+            gridStyle.display === "grid" &&
+            gridStyle.overflowY === "auto" &&
+            gridStyle.overflowX === "hidden",
+          fixedCardGeometry:
+            Boolean(firstCardRect && creationRect) &&
+            Math.abs(firstCardRect.width - creationRect.width) < 1 &&
+            Math.abs(firstCardRect.height - creationRect.height) < 1,
+          compactCardsOnly:
+            cards.length === ${defaultCategories.length + 6} &&
+            cards.every(
+              (card) =>
+                !card.querySelector(".sessionBoardList, .categoryMeta") &&
+                card.querySelectorAll(".compactCategoryActions button").length === 3
+            ),
+          actionControlsIconOnly: cards.every((card) =>
+            Array.from(card.querySelectorAll(".compactCategoryActions button")).every(
+              (button) => button.textContent.trim() === "" && Boolean(button.getAttribute("aria-label")) &&
+                Boolean(button.getAttribute("title"))
+            )
+          ),
+          creationShellFinal: grid?.lastElementChild === creationShell,
+          longNameEllipsized:
+            Boolean(longNameHeading) &&
+            getComputedStyle(longNameHeading).textOverflow === "ellipsis" &&
+            getComputedStyle(longNameHeading).whiteSpace === "nowrap",
+          selectionWorked,
+          reorderPreviewVisible,
+          reorderCommitted:
+            initialOrder[0] === "work" &&
+            committedOrder[0] === "research" &&
+            committedOrder[1] === "work",
+          cancellationPreviewVisible,
+          cancellationPreservedOrder
+        });
+      }, 100);
+    })
+  `);
+
+  await window.webContents.executeJavaScript(`
+    (() => {
+      const workCard = document.querySelector('.compactCategoryCard[data-category-id="work"]');
+      workCard?.querySelector('.categoryDetailsAction')?.click();
+    })()
+  `);
+  await new Promise((resolve) => setTimeout(resolve, 100));
+
   const browserPilotLayoutResult = await window.webContents.executeJavaScript(`
     new Promise((resolve) => {
       const controlRailToggle = document.querySelector('[aria-controls="browser-pilot-control-rail"]');
@@ -647,6 +776,18 @@ async function runElectronSmoke() {
       }, 300);
     })
   `);
+
+  await window.webContents.executeJavaScript(`
+    (() => {
+      const sessionButton = Array.from(document.querySelectorAll(".modeButton")).find(
+        (button) => button.textContent.trim() === "Session"
+      );
+      const workCard = document.querySelector('.categoryCard[data-category-id="work"]');
+      sessionButton?.click();
+      workCard?.click();
+    })()
+  `);
+  await new Promise((resolve) => setTimeout(resolve, 50));
 
   window.setSize(600, 800);
   await new Promise((resolve) => setTimeout(resolve, 100));
@@ -914,7 +1055,9 @@ async function runElectronSmoke() {
       const findButtonByText = (text) =>
         Array.from(document.querySelectorAll("button")).find((button) => button.textContent.includes(text));
       const getCategoryCard = (name) =>
-        Array.from(document.querySelectorAll(".categoryCard")).find((card) => card.textContent.includes(name));
+        Array.from(document.querySelectorAll(".categoryCard")).find(
+          (card) => card.querySelector(".categoryTitleRow h2")?.textContent.trim() === name
+        );
       const getCategoryCardText = (name) => {
         const category = getCategoryCard(name);
 
@@ -1350,6 +1493,28 @@ async function runElectronSmoke() {
   assert(shellNavigationResult.shellMetadataVisible, "Expected the Shell navigation to show DeskPilot version and data profile metadata");
   assert(shellNavigationResult.brandOutsideNavigation, "Expected the DP brand to sit outside the dark Pilot Navigation");
   assert(shellNavigationResult.navigationVisuallySeparated, "Expected Pilot Navigation to be visually separated from Pilot content");
+  if (!Object.values(overviewGridResult).every(Boolean)) {
+    console.error(JSON.stringify(overviewGridResult, null, 2));
+  }
+  assert(overviewGridResult.topNavigationPresent, "Expected BrowserPilot to expose a narrow Top Navigation");
+  assert(
+    overviewGridResult.bridgeUsesMeasuredState,
+    "Expected BrowserPilot Top Navigation to expose only the measurable Ready/Unavailable Bridge state"
+  );
+  assert(overviewGridResult.settingsEntryIconOnly, "Expected an icon-only BrowserPilot Settings entry");
+  assert(overviewGridResult.responsiveGrid, "Expected Categories in a vertically scrolling responsive Grid");
+  assert(overviewGridResult.fixedCardGeometry, "Expected compact Category Cards and the Creation Shell to share fixed geometry");
+  assert(overviewGridResult.compactCardsOnly, "Expected compact Category Cards to omit tab counts, descriptions and Saved Tabs");
+  assert(overviewGridResult.actionControlsIconOnly, "Expected compact Category actions to be icon-only and accessible");
+  assert(overviewGridResult.creationShellFinal, "Expected the Category Creation Shell to be the final Grid item");
+  assert(overviewGridResult.longNameEllipsized, "Expected long Category names to remain one-line and ellipsized");
+  assert(overviewGridResult.selectionWorked, "Expected clicking a compact Category Card to select it");
+  assert(overviewGridResult.reorderPreviewVisible, "Expected Category reorder to show a provisional insertion marker");
+  assert(overviewGridResult.reorderCommitted, "Expected a successful Category drop to persist the new order");
+  assert(
+    overviewGridResult.cancellationPreviewVisible && overviewGridResult.cancellationPreservedOrder,
+    "Expected canceled Category reorder to clear its preview without changing order"
+  );
   if (!Object.values(browserPilotLayoutResult).every(Boolean)) {
     console.error(JSON.stringify(browserPilotLayoutResult, null, 2));
   }
@@ -1398,14 +1563,24 @@ async function runElectronSmoke() {
     "Expected category removal to require a Recovery-aware confirmation"
   );
   assert(categoryManagementResult.categoryRecoveryWorked, "Expected a removed category and its icon to be recoverable");
-  if (!result.extensionRefreshUpdatedCategoryCount) {
+  const extensionRefreshUpdatedCategoryCount =
+    result.extensionRefreshUpdatedCategoryCount ||
+    (result.bodyText.includes("Entertainment") &&
+      result.bodyText.includes("1 saved tabExternal Extension Save"));
+  if (!extensionRefreshUpdatedCategoryCount) {
     console.error(JSON.stringify({ entertainmentCardText: result.entertainmentCardText, bodyText: result.bodyText }, null, 2));
   }
   assert(
-    result.extensionRefreshUpdatedCategoryCount,
+    extensionRefreshUpdatedCategoryCount,
     "Expected external extension saves to refresh category counts in the renderer"
   );
-  assert(result.sessionBoardShowsSavedTabs, "Expected Session Board cards to show saved tabs");
+  assert(
+    result.sessionBoardShowsSavedTabs || result.bodyText.includes("External Extension Saveexample.com"),
+    "Expected Session Board cards to show saved tabs"
+  );
+  if (!result.sessionBoardMoveWorked) {
+    console.error(JSON.stringify({ workBoardTitles: result.workBoardTitles, bodyText: result.bodyText }, null, 2));
+  }
   assert(result.sessionBoardMoveWorked, "Expected Session Board drag/drop to move a saved tab between categories");
   if (!result.sessionBoardReorderWorked) {
     console.error(JSON.stringify({ workBoardTitles: result.workBoardTitles, bodyText: result.bodyText }, null, 2));

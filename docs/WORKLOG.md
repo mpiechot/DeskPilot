@@ -1266,3 +1266,22 @@ Current status:
 
 Next recommended step:
 - Implement #48 first, then proceed through #49, #50, #51 and #52 in dependency order; run the separate icon-system Grill #47 independently before expanding the shared icon vocabulary.
+
+### Compact BrowserPilot overview grid (#48)
+
+Completed:
+- Replaced the daily BrowserPilot entry surface with a fixed-size responsive multi-row Category Grid that scrolls vertically.
+- Reduced each compact Category Card to icon, one-line name, selection, icon-only Open/Details actions and a dedicated reorder handle.
+- Added the final hollow Category Creation Shell and the responsive first-Category callout.
+- Added the narrow BrowserPilot Top Navigation with measurable Ready/Unavailable Bridge status and a separate BrowserPilot Settings entry.
+- Added persisted Category ordering behind the existing storage/preload seam, including provisional insertion feedback, successful-drop commit and cancellation without writes.
+- Kept existing browser-session data intact and retained the legacy workflow temporarily behind the new entry actions while the dependent Details and Settings tickets replace it.
+- Added storage and packaged Electron renderer coverage for order persistence, Grid geometry, selection, action accessibility, long names and reorder commit/cancel behavior.
+- Verified `npm run test:storage`, `npm run lint`, `npm run build`, `npm run package:prototype` and the packaged Electron renderer smoke.
+
+Current status:
+- Issue #48 is implemented on the shared BrowserPilot UI branch.
+- Category Creation/Details remains the next dependency; the temporary legacy secondary surface is not the final #49–#51 information architecture.
+
+Next recommended step:
+- Implement #49 Category Creation and Details Views, including explicit drafts and unsaved-change navigation.

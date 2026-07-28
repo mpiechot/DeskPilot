@@ -308,6 +308,46 @@ export function updateCategory(id: string, input: CategoryInput): SessionCategor
   return listCategories();
 }
 
+export function moveCategory(id: string, targetPosition: number): SessionCategory[] {
+  const db = getDatabase();
+  const safeId = normalizeCategoryId(id);
+  const orderedIds = getActiveCategoryIds(db);
+
+  if (!orderedIds.includes(safeId)) {
+    throw new Error("Category is not active.");
+  }
+
+  const nextIds = orderedIds.filter((categoryId) => categoryId !== safeId);
+  nextIds.splice(Math.min(normalizeTabPosition(targetPosition), nextIds.length), 0, safeId);
+
+  db.run("BEGIN TRANSACTION");
+
+  try {
+    const statement = db.prepare(
+      "UPDATE categories SET position = $position, updated_at = CURRENT_TIMESTAMP WHERE id = $id AND deleted_at IS NULL"
+    );
+
+    try {
+      nextIds.forEach((categoryId, position) => {
+        statement.run({
+          $id: categoryId,
+          $position: position
+        });
+      });
+    } finally {
+      statement.free();
+    }
+
+    db.run("COMMIT");
+  } catch (error) {
+    db.run("ROLLBACK");
+    throw error;
+  }
+
+  saveDatabase();
+  return listCategories();
+}
+
 export function deleteCategory(id: string): SessionCategory[] {
   const db = getDatabase();
   const safeId = normalizeCategoryId(id);
@@ -1226,6 +1266,18 @@ function getNextCategoryPosition(db: Database): number {
   }
 
   return Number(result[0].values[0][0]);
+}
+
+function getActiveCategoryIds(db: Database): string[] {
+  const result = db.exec(
+    "SELECT id FROM categories WHERE deleted_at IS NULL ORDER BY position ASC, name ASC"
+  );
+
+  if (result.length === 0) {
+    return [];
+  }
+
+  return result[0].values.map((value) => String(value[0]));
 }
 
 function normalizeTabInput(input: SessionTabInput): SessionTabInput {

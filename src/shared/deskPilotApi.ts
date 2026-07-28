@@ -21,6 +21,7 @@ export type DeskPilotApi = {
   setActiveCategory: (id: string) => Promise<string>;
   createCategory: (input: CategoryInput) => Promise<SessionCategory[]>;
   updateCategory: (id: string, input: CategoryInput) => Promise<SessionCategory[]>;
+  moveCategory: (id: string, targetPosition: number) => Promise<SessionCategory[]>;
   deleteCategory: (id: string) => Promise<SessionCategory[]>;
   listDeletedCategories: () => Promise<SessionCategory[]>;
   restoreCategory: (id: string) => Promise<CategoryRecoveryResult>;
