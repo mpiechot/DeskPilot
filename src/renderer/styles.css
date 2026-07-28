@@ -2213,3 +2213,280 @@ h2 {
     transition: none;
   }
 }
+
+.browserPilotSettingsView {
+  display: grid;
+  grid-template-columns: minmax(210px, 250px) minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 14px;
+  min-height: 0;
+  overflow: hidden;
+  padding: 12px 2px 4px;
+}
+
+.browserPilotViewHeader {
+  grid-column: 1 / -1;
+}
+
+.browserPilotViewHeader > div,
+.browserPilotSettingsPanel > header {
+  display: grid;
+  gap: 5px;
+}
+
+.browserPilotViewHeader h2,
+.browserPilotSettingsPanel h2 {
+  color: var(--theme-color-heading-secondary);
+  font-size: var(--theme-font-size-title-secondary);
+}
+
+.browserPilotViewHeader p,
+.browserPilotSettingsPanel header p {
+  max-width: 760px;
+  color: var(--theme-color-text-muted);
+  font-size: var(--theme-font-size-body);
+}
+
+.browserPilotEyebrow {
+  color: var(--theme-color-text-subtle);
+  font-size: var(--theme-font-size-caption);
+  font-weight: var(--theme-font-weight-emphasis);
+  letter-spacing: var(--theme-letter-spacing-eyebrow);
+  text-transform: var(--theme-text-case-eyebrow);
+}
+
+.browserPilotSettingsSections {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.settingsSectionEntry {
+  display: grid;
+  gap: 4px;
+}
+
+.settingsSectionEntry small {
+  color: var(--theme-color-text-muted);
+  font-size: var(--theme-font-size-caption);
+  line-height: var(--theme-line-height-copy);
+  padding: 0 8px;
+}
+
+.settingsSectionAction {
+  display: flex;
+  width: 100%;
+  min-height: 42px;
+  align-items: center;
+  gap: 8px;
+  border: var(--theme-border-width) solid var(--theme-border-control);
+  border-radius: var(--theme-radius-control);
+  background: var(--theme-surface-panel);
+  color: var(--theme-color-text-strong);
+  cursor: pointer;
+  padding: 8px 10px;
+  text-align: left;
+  font-size: var(--theme-font-size-control);
+  font-weight: var(--theme-font-weight-control);
+}
+
+.settingsSectionAction svg,
+.browserPilotRecoveryItem button svg,
+.permanentCleanupAction svg {
+  width: 17px;
+  height: 17px;
+  flex: 0 0 auto;
+}
+
+.settingsSectionAction-active {
+  border-color: var(--theme-border-accent);
+  background: var(--theme-surface-accent);
+  color: var(--theme-color-text-accent);
+}
+
+.settingsSectionAction:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.browserPilotSettingsPanel {
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  border: var(--theme-border-width) solid var(--theme-border-subtle);
+  border-radius: var(--theme-radius-control);
+  background: var(--theme-surface-panel-subtle);
+  padding: 14px;
+  scrollbar-width: thin;
+}
+
+.extensionDiagnosticsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.extensionDiagnostic {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  align-items: start;
+  gap: 9px;
+  border: var(--theme-border-width) solid var(--theme-border-warning);
+  border-radius: var(--theme-radius-control);
+  background: var(--theme-surface-warning);
+  color: var(--theme-color-text-warning);
+  padding: 12px;
+}
+
+.extensionDiagnostic-ready {
+  border-color: var(--theme-border-accent-soft);
+  background: var(--theme-surface-accent);
+  color: var(--theme-color-text-accent);
+}
+
+.extensionDiagnostic svg {
+  width: 21px;
+  height: 21px;
+}
+
+.extensionDiagnostic > div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.extensionDiagnostic span,
+.extensionDiagnostic code {
+  overflow-wrap: anywhere;
+  color: var(--theme-color-text-muted);
+  font-size: var(--theme-font-size-caption);
+}
+
+.extensionDetailsList {
+  display: grid;
+  gap: 0;
+  margin-top: 14px;
+}
+
+.extensionDetailsList > div {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 12px;
+  border-top: var(--theme-border-width) solid var(--theme-border-subtle);
+  padding: 10px 0;
+}
+
+.extensionDetailsList dt {
+  color: var(--theme-color-text-muted);
+  font-size: var(--theme-font-size-control);
+  font-weight: var(--theme-font-weight-control);
+}
+
+.extensionDetailsList dd {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--theme-color-text-strong);
+  font-size: var(--theme-font-size-body);
+}
+
+.browserPilotRecoveryList,
+.archivedCleanupSummary {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.browserPilotRecoveryItem {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  border: var(--theme-border-width) solid var(--theme-border-subtle);
+  border-radius: var(--theme-radius-control);
+  background: var(--theme-surface-panel);
+  padding: 10px;
+}
+
+.browserPilotRecoveryItem .categoryIcon {
+  width: 38px;
+  height: 38px;
+}
+
+.browserPilotRecoveryItem > div:nth-child(2),
+.archivedCleanupSummary > div {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.browserPilotRecoveryItem span,
+.archivedCleanupSummary small {
+  overflow: hidden;
+  color: var(--theme-color-text-muted);
+  font-size: var(--theme-font-size-caption);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.browserPilotRecoveryItem button,
+.permanentCleanupAction {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: var(--theme-border-width) solid var(--theme-border-control);
+  border-radius: var(--theme-radius-control);
+  background: var(--theme-surface-panel-raised);
+  color: var(--theme-color-text-strong);
+  cursor: pointer;
+  padding: 0 11px;
+  font-size: var(--theme-font-size-control);
+  font-weight: var(--theme-font-weight-control);
+}
+
+.archivedCleanupSummary {
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.archivedCleanupSummary > div {
+  border-bottom: var(--theme-border-width) solid var(--theme-border-subtle);
+  padding: 7px 2px;
+}
+
+.permanentCleanupAction {
+  border-color: var(--theme-border-danger);
+  color: var(--theme-color-text-danger);
+  margin-top: 14px;
+}
+
+.browserPilotSettingsEmpty {
+  border: var(--theme-border-width) solid var(--theme-border-subtle);
+  border-radius: var(--theme-radius-control);
+  color: var(--theme-color-text-muted);
+  padding: 14px;
+  margin-top: 14px;
+}
+
+@media (max-width: 760px) {
+  .browserPilotSettingsView {
+    grid-template-columns: 1fr;
+    overflow-y: auto;
+  }
+
+  .browserPilotSettingsSections {
+    overflow: visible;
+  }
+
+  .browserPilotSettingsPanel {
+    overflow: visible;
+  }
+
+  .extensionDiagnosticsGrid {
+    grid-template-columns: 1fr;
+  }
+}

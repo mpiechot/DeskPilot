@@ -10,6 +10,7 @@ import {
   createManualBackup,
   addTab,
   deleteCategory,
+  deleteAllArchivedTabsPermanently,
   deleteArchivedTabPermanently,
   deleteTab,
   exportStorageBackup,
@@ -19,6 +20,7 @@ import {
   importStorageBackup,
   initializeStorage,
   listArchivedTabs,
+  listAllArchivedTabs,
   listDeletedCategories,
   listDeletedTabs,
   listCategories,
@@ -205,6 +207,56 @@ deleteArchivedTabPermanently(permanentDeleteTab.id);
 assert(
   !listArchivedTabs(recreatedWriting.id).some((item) => item.id === permanentDeleteTab.id),
   "Expected explicit permanent delete to remove only the archived tab"
+);
+const globalCleanupCategory = createCategory({
+  name: "Global Cleanup Test",
+  description: "BrowserPilot Settings cleanup checks."
+}).find((category) => category.name === "Global Cleanup Test");
+assert(globalCleanupCategory, "Expected global cleanup fixture category");
+const firstGlobalArchivedTab = addTab({
+  categoryId: recreatedWriting.id,
+  url: "https://example.com/global-archive-one",
+  title: "Global Archive One"
+}).tabs.find((item) => item.title === "Global Archive One");
+const secondGlobalArchivedTab = addTab({
+  categoryId: globalCleanupCategory.id,
+  url: "https://example.com/global-archive-two",
+  title: "Global Archive Two"
+}).tabs.find((item) => item.title === "Global Archive Two");
+const activeGlobalTab = addTab({
+  categoryId: globalCleanupCategory.id,
+  url: "https://example.com/global-active",
+  title: "Global Active"
+}).tabs.find((item) => item.title === "Global Active");
+const removedCleanupCategory = createCategory({
+  name: "Removed Cleanup Test",
+  description: "Its archived data must stay recoverable."
+}).find((category) => category.name === "Removed Cleanup Test");
+assert(removedCleanupCategory, "Expected removed cleanup fixture category");
+const recoverableArchivedTab = addTab({
+  categoryId: removedCleanupCategory.id,
+  url: "https://example.com/recoverable-archive",
+  title: "Recoverable Archive"
+}).tabs.find((item) => item.title === "Recoverable Archive");
+assert(
+  firstGlobalArchivedTab && secondGlobalArchivedTab && activeGlobalTab && recoverableArchivedTab,
+  "Expected global cleanup fixtures"
+);
+archiveTab(firstGlobalArchivedTab.id);
+archiveTab(secondGlobalArchivedTab.id);
+archiveTab(recoverableArchivedTab.id);
+deleteCategory(removedCleanupCategory.id);
+assert(listAllArchivedTabs().length === 2, "Expected global archive list to include tabs from every active Category");
+assert(deleteAllArchivedTabsPermanently() === 2, "Expected global cleanup to report the number of deleted Archived Tabs");
+assert(listAllArchivedTabs().length === 0, "Expected global cleanup to remove every Archived Tab");
+assert(
+  listTabs(globalCleanupCategory.id).some((item) => item.id === activeGlobalTab.id),
+  "Expected global cleanup to preserve active Saved Tabs"
+);
+restoreCategory(removedCleanupCategory.id);
+assert(
+  listArchivedTabs(removedCleanupCategory.id).some((item) => item.id === recoverableArchivedTab.id),
+  "Expected global cleanup to preserve Archived Tabs belonging to a removed recoverable Category"
 );
 
 const databasePath = path.join(dir, "profiles", "development", "storage", "deskpilot.sqlite");

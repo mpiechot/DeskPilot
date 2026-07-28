@@ -409,6 +409,29 @@ export function listArchivedTabs(categoryId: string): SessionTab[] {
   return listTabsByState(categoryId, "archived");
 }
 
+export function listAllArchivedTabs(): SessionTab[] {
+  const db = getDatabase();
+  const result = db.exec(`
+    SELECT t.id, t.category_id, t.url, t.title, t.position, t.saved_at
+    FROM session_tabs t
+    INNER JOIN categories c ON c.id = t.category_id
+    WHERE t.deleted_at IS NULL
+      AND t.archived_at IS NOT NULL
+      AND c.deleted_at IS NULL
+    ORDER BY c.position ASC, t.position ASC, t.saved_at ASC, t.id ASC
+  `);
+
+  if (result.length === 0) {
+    return [];
+  }
+
+  const columns = result[0].columns;
+  return result[0].values.map((value) => {
+    const row = Object.fromEntries(columns.map((column, index) => [column, value[index]])) as SessionTabRow;
+    return mapSessionTabRow(row);
+  });
+}
+
 export function getActiveTab(id: string): SessionTab | null {
   const db = getDatabase();
   const safeId = normalizeRequiredString(id, "Tab id is required.");
@@ -1266,6 +1289,25 @@ function getNextCategoryPosition(db: Database): number {
   }
 
   return Number(result[0].values[0][0]);
+}
+
+export function deleteAllArchivedTabsPermanently(): number {
+  const db = getDatabase();
+  const archivedCount = listAllArchivedTabs().length;
+
+  if (archivedCount === 0) {
+    return 0;
+  }
+
+  db.run(`
+    DELETE FROM session_tabs
+    WHERE deleted_at IS NULL
+      AND archived_at IS NOT NULL
+      AND category_id IN (SELECT id FROM categories WHERE deleted_at IS NULL)
+  `);
+  normalizeTabPositions(db);
+  saveDatabase();
+  return archivedCount;
 }
 
 function getActiveCategoryIds(db: Database): string[] {

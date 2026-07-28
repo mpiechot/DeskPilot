@@ -20,17 +20,15 @@ Working today:
 - isolated Development and Productive data profiles
 - visible active profile and Productive cutover status in the control panel
 - one-time Productive cutover from the old prototype database when Productive storage is first created
-- create, rename and remove active categories
-- drag the horizontal category board to reach categories beyond the current window width
+- create, rename and safely remove categories through dedicated Creation and Details views
+- browse the compact responsive multi-row Category Grid and reorder Categories by their dedicated drag handles
 - assign each category a persisted monochrome icon from the built-in icon picker
 - restore removed categories
-- save http/https URLs into a selected category
-- open a category directly from its card, or open the selected category from the expanded BrowserPilot controls, in saved order in a new Chrome/Edge browser window named after the Category
-- view saved tabs in a bounded scrollable list that fills the remaining height of each Category card on the Session Board
-- move saved tabs between categories with mouse-first drag and drop
-- reorder saved tabs within a category with mouse-first drag and drop
-- open individual saved tabs from the Session Board
-- archive or safely remove saved URLs directly from their category card
+- capture http/https URLs into the selected Category through the Browser Extension
+- open a Category directly from its compact card, in saved order in a new Chrome/Edge browser window named after the Category
+- view and manage active Saved Tabs in Category Details
+- move Saved Tabs explicitly between Categories and reorder them with release-based drag and drop
+- open, archive or safely remove individual Saved Tabs from Category Details
 - archive saved URLs without deleting them and return them to the active Session later
 - restore removed URLs from the selected category
 - remember the desktop window size and position between app runs
@@ -42,8 +40,8 @@ Working today:
 - automatically recover a corrupted active database from a valid rolling backup at startup
 - show a native read-only recovery menu when neither active nor rolling database can be opened
 - wide, low touch-display layout
-- visible browser-bridge status in the control panel
-- guided Extension mode with bridge, manifest and load-unpacked status
+- measured Ready/Unavailable browser-bridge status in BrowserPilot Top Navigation
+- BrowserPilot Settings with Extension diagnostics, removed-Category Recovery and confirmed global Archived Tab Cleanup
 - unpacked browser-extension prototype for saving the current browser window
 - one-click current-tab save from the browser extension into the active DeskPilot category
 - persistent Productive/Development profile badge in the browser-extension popup
@@ -58,7 +56,7 @@ Working today:
 - one latest-stable-release check when an installed build starts, with an explicit GitHub installer-page action
 - local development, lint and build commands
 
-The BrowserPilot surface is labelled once as `BrowserPilot`; the navigation and its metadata belong to DeskPilot Shell. DesktopPilot and EnvironmentPilot are reachable from the same navigation and currently show friendly development placeholders. Display and Safety are available under shell-level `Settings`, while BrowserPilot keeps only Session, Categories, Recovery, Archive and Extension controls.
+The BrowserPilot surface is labelled once as `BrowserPilot`; the navigation and its metadata belong to DeskPilot Shell. DesktopPilot and EnvironmentPilot are reachable from the same navigation and currently show friendly development placeholders. Display, Safety and Themes remain under shell-level `Settings`. The smaller BrowserPilot Settings view owns only browser-wide Extension diagnostics, removed-Category Recovery and Archived Tab Cleanup.
 
 Not implemented yet:
 - packaged extension installation flow
@@ -237,17 +235,15 @@ The expected display shape is wide and not very tall. The UI should therefore pr
 - compact status text
 - dense category tiles that remain readable at low height
 
-The Session Board can be dragged horizontally from a non-interactive part of a category card. Buttons, inputs and saved-tab drag handles keep their own behavior. The scrollbar remains available as a fallback.
+BrowserPilot opens on a compact multi-row Category Grid. Cards keep a fixed size and expose icon-only Open, Details and reorder controls; the Grid scrolls vertically when more Categories exist than fit in the window. The hollow final card starts Category Creation.
 
-Each category card has its own `Open` button. Long saved-tab lists stay inside the card and scroll vertically instead of increasing the application height.
+Category Creation and Category Details keep edits in explicit drafts. Leaving with unsaved changes offers Save and leave, Discard changes and leave or Keep editing. Removing a Category is recoverable through BrowserPilot Settings.
 
-The complete BrowserPilot control rail starts collapsed to a narrow handle beside Pilot Navigation. Use the chevron handle to slide the rail open horizontally when you need to save a manual URL, use `Open Selected`, edit categories, inspect Archive or Recovery, or view extension status. Closing it again moves the Session Board left into the released space. The Session Board remains the single visible list of active saved tabs; it also owns the open, archive and safe-remove actions for each tab.
+Category Details contains the active Saved Tab list and Category-local Archive and Recovery modes. Use the dedicated controls to open, archive, safely remove or move a Saved Tab. Reordering shows a provisional position and writes only when the drag is released on a valid target.
 
-Category cards keep the same width while the control rail opens or closes, so the board reveals or hides whole cards instead of resizing them. Edit and remove actions sit in the upper-right corner. The saved-tab list then uses the remaining vertical card space and scrolls internally without increasing the card or application height.
+The BrowserPilot Bridge indicator opens BrowserPilot Settings directly at Extension Details. Its other sections restore removed Categories or permanently clean all Archived Tabs after an explicit confirmation. Category-specific Archive and Saved Tab Recovery do not appear there.
 
-Open `Categories` to edit the selected category's name, description and icon or to remove it safely. Removal names the affected active-tab count and keeps the category and saved tabs available in `Recovery`.
-
-`Open Selected` starts the saved URLs in one new supported Chrome/Edge window and supplies the Category name itself as the window name, without a DeskPilot prefix. This makes restored sessions distinguishable in the Windows taskbar and Alt+Tab. If no supported Chrome/Edge executable can be found, DeskPilot keeps its existing default-browser fallback; that fallback cannot assign a Chrome window name.
+Opening a Category starts its saved URLs in one new supported Chrome/Edge window and supplies the Category name itself as the window name, without a DeskPilot prefix. This makes restored sessions distinguishable in the Windows taskbar and Alt+Tab. If no supported Chrome/Edge executable can be found, DeskPilot keeps its existing default-browser fallback; that fallback cannot assign a Chrome window name.
 
 ## Browser Extension Prototype
 
@@ -280,13 +276,13 @@ The extension uses DeskPilot's active desktop category as the default `Save to` 
 
 Current-tab saves reject unsupported browser pages such as `chrome://...`. Same-category duplicates are not added twice; soft-deleted matching URLs in the same category are restored. If a URL is already active in another category, the extension asks before saving it into the selected category too.
 
-The control panel's Extension mode shows the current load-unpacked folder and whether the extension manifest is present. For packaged prototype trials, load the `browser-extension/` folder from `dist-prototype/DeskPilot/`. After regenerating the prototype, reload the unpacked extension in the browser extension management page so the popup uses the latest bridge client headers.
+BrowserPilot Settings → Extension shows Bridge host/port, allowed origins, connected data profile, supported browsers, the current load-unpacked folder and whether the extension manifest is present. For packaged prototype trials, load the `browser-extension/` folder from `dist-prototype/DeskPilot/`. After regenerating the prototype, reload the unpacked extension in the browser extension management page so the popup uses the latest bridge client headers.
 
 ## Data Safety
 
 DeskPilot creates local SQLite databases inside the active data profile.
 
-At this stage, SQLite stores categories and manually saved URLs.
+At this stage, SQLite stores Categories and browser-extension-captured Saved Tabs.
 If a default category is added in a later build, DeskPilot seeds the missing category on the next start without deleting existing data.
 Saved URLs keep a persisted position inside their category. Existing databases with missing or duplicated tab positions are normalized deterministically on startup, and backup restore/import preserves the stored order.
 Moving or reordering a saved tab updates the existing saved-tab row instead of deleting and recreating it.

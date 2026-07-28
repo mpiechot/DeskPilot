@@ -146,12 +146,14 @@ function getUrlHost(value: string): string {
   }
 }
 
-type BrowserSurface = "overview" | "create" | "details" | "legacy";
+type BrowserSurface = "overview" | "create" | "details" | "settings" | "legacy";
+type BrowserSettingsSection = "extension" | "recovery" | "cleanup";
 
 type BrowserNavigationTarget = {
   surface: BrowserSurface;
   mode?: "session" | "categories" | "archive" | "recovery" | "extension";
   categoryId?: string;
+  settingsSection?: BrowserSettingsSection;
 };
 
 function SettingsPilot({
@@ -580,6 +582,7 @@ function BrowserPilot({
   const [deletedCategories, setDeletedCategories] = useState<SessionCategory[]>([]);
   const [deletedTabs, setDeletedTabs] = useState<SessionTab[]>([]);
   const [archivedTabs, setArchivedTabs] = useState<SessionTab[]>([]);
+  const [allArchivedTabs, setAllArchivedTabs] = useState<SessionTab[]>([]);
   const [tabs, setTabs] = useState<SessionTab[]>([]);
   const [boardTabsByCategory, setBoardTabsByCategory] = useState<Record<string, SessionTab[]>>({});
   const [controlMode, setControlMode] = useState<"session" | "categories" | "archive" | "recovery" | "extension">("session");
@@ -591,6 +594,7 @@ function BrowserPilot({
   const [draggedTab, setDraggedTab] = useState<{ id: string; categoryId: string } | null>(null);
   const [isCategoryListDragging, setIsCategoryListDragging] = useState(false);
   const [browserSurface, setBrowserSurface] = useState<BrowserSurface>("overview");
+  const [browserSettingsSection, setBrowserSettingsSection] = useState<BrowserSettingsSection>("extension");
   const [pendingBrowserNavigation, setPendingBrowserNavigation] = useState<BrowserNavigationTarget | null>(null);
   const [draggedCategoryId, setDraggedCategoryId] = useState<string | null>(null);
   const [categoryReorderPreviewIndex, setCategoryReorderPreviewIndex] = useState<number | null>(null);
@@ -694,6 +698,15 @@ function BrowserPilot({
       })
       .catch(() => undefined);
 
+    window.deskPilot
+      .listAllArchivedTabs()
+      .then((storedTabs: SessionTab[]) => {
+        if (isMounted) {
+          setAllArchivedTabs(storedTabs);
+        }
+      })
+      .catch(() => undefined);
+
     return () => {
       isMounted = false;
       unsubscribeFromUpdates();
@@ -781,9 +794,24 @@ function BrowserPilot({
       const deletedTabsPromise = currentCategoryId ? window.deskPilot?.listDeletedTabs(currentCategoryId) : Promise.resolve([]);
       const archivedTabsPromise = currentCategoryId ? window.deskPilot?.listArchivedTabs(currentCategoryId) : Promise.resolve([]);
 
-      Promise.all([window.deskPilot?.listCategories(), tabsPromise, deletedTabsPromise, archivedTabsPromise])
-        .then(([nextCategories, nextTabs, nextDeletedTabs, nextArchivedTabs]) => {
-          if (!isMounted || !nextCategories || !nextTabs || !nextDeletedTabs || !nextArchivedTabs) {
+      Promise.all([
+        window.deskPilot?.listCategories(),
+        tabsPromise,
+        deletedTabsPromise,
+        archivedTabsPromise,
+        window.deskPilot?.listDeletedCategories(),
+        window.deskPilot?.listAllArchivedTabs()
+      ])
+        .then(([nextCategories, nextTabs, nextDeletedTabs, nextArchivedTabs, nextDeletedCategories, nextAllArchivedTabs]) => {
+          if (
+            !isMounted ||
+            !nextCategories ||
+            !nextTabs ||
+            !nextDeletedTabs ||
+            !nextArchivedTabs ||
+            !nextDeletedCategories ||
+            !nextAllArchivedTabs
+          ) {
             return;
           }
 
@@ -798,6 +826,8 @@ function BrowserPilot({
           setTabs(nextTabs);
           setDeletedTabs(nextDeletedTabs);
           setArchivedTabs(nextArchivedTabs);
+          setDeletedCategories(nextDeletedCategories);
+          setAllArchivedTabs(nextAllArchivedTabs);
           setStorageStatus("ready");
         })
         .catch(() => {
@@ -825,6 +855,10 @@ function BrowserPilot({
     setDeletedTabs(storageRestoreResult.deletedTabs);
     setArchivedTabs(storageRestoreResult.archivedTabs);
     setStorageStatus("ready");
+    window.deskPilot
+      ?.listAllArchivedTabs()
+      .then((storedTabs: SessionTab[]) => setAllArchivedTabs(storedTabs))
+      .catch(() => undefined);
   }, [storageRestoreResult]);
 
   const isStorageWritable = storageStatus === "ready" && Boolean(window.deskPilot);
@@ -875,6 +909,18 @@ function BrowserPilot({
     window.deskPilot
       .listArchivedTabs(selectedCategoryId)
       .then((storedTabs: SessionTab[]) => setArchivedTabs(storedTabs))
+      .catch(() => undefined);
+  }
+
+  function refreshAllArchivedTabs(): void {
+    if (!window.deskPilot) {
+      setAllArchivedTabs([]);
+      return;
+    }
+
+    window.deskPilot
+      .listAllArchivedTabs()
+      .then((storedTabs: SessionTab[]) => setAllArchivedTabs(storedTabs))
       .catch(() => undefined);
   }
 
@@ -1277,6 +1323,7 @@ function BrowserPilot({
           refreshArchivedTabs();
         }
 
+        refreshAllArchivedTabs();
         setOperationMessage("Saved URL archived.");
       })
       .catch(handleStorageError);
@@ -1293,6 +1340,7 @@ function BrowserPilot({
       .then((result: SessionMutationResult) => {
         updateSessionResult(result);
         refreshArchivedTabs();
+        refreshAllArchivedTabs();
         setCategoryDetailsMode("session");
         setOperationMessage("Archived URL returned to the active Session.");
       })
@@ -1315,6 +1363,7 @@ function BrowserPilot({
       .then((result: SessionMutationResult) => {
         updateSessionResult(result);
         refreshArchivedTabs();
+        refreshAllArchivedTabs();
         setCategoryDetailsMode("session");
         setOperationMessage("Archived URL permanently deleted.");
       })
@@ -1471,7 +1520,35 @@ function BrowserPilot({
       ?.restoreCategory(id)
       .then((result: CategoryRecoveryResult) => {
         updateRecoveryResult(result);
+        refreshAllArchivedTabs();
         setOperationMessage("Category restored.");
+      })
+      .catch(handleStorageError);
+  }
+
+  function permanentlyDeleteAllArchivedTabs(): void {
+    if (!isStorageWritable || allArchivedTabs.length === 0) {
+      return;
+    }
+
+    const tabLabel = `${allArchivedTabs.length} Archived Tab${allArchivedTabs.length === 1 ? "" : "s"}`;
+    if (
+      !window.confirm(
+        `Permanently delete all ${tabLabel} across BrowserPilot? This cannot be recovered.`
+      )
+    ) {
+      setOperationMessage("Archived Tab cleanup canceled.");
+      return;
+    }
+
+    window.deskPilot
+      ?.deleteAllArchivedTabsPermanently()
+      .then((deletedCount: number) => {
+        setAllArchivedTabs([]);
+        setArchivedTabs([]);
+        setOperationMessage(
+          `Permanently deleted ${deletedCount} Archived Tab${deletedCount === 1 ? "" : "s"}.`
+        );
       })
       .catch(handleStorageError);
   }
@@ -1496,6 +1573,9 @@ function BrowserPilot({
     }
     if (target.mode) {
       setControlMode(target.mode);
+    }
+    if (target.settingsSection) {
+      setBrowserSettingsSection(target.settingsSection);
     }
     setPendingBrowserNavigation(null);
     setBrowserSurface(target.surface);
@@ -1591,7 +1671,9 @@ function BrowserPilot({
           <button
             type="button"
             className={bridgeStatus?.running ? "bridgeStatusAction bridgeStatusAction-ready" : "bridgeStatusAction bridgeStatusAction-unavailable"}
-            onClick={() => requestBrowserNavigation({ surface: "legacy", mode: "extension" })}
+            onClick={() =>
+              requestBrowserNavigation({ surface: "settings", settingsSection: "extension" })
+            }
             aria-label={`Bridge ${bridgeStatus?.running ? "Ready" : "Unavailable"}. Open Extension settings.`}
             title="Open BrowserPilot Extension settings"
           >
@@ -1601,7 +1683,9 @@ function BrowserPilot({
           <button
             type="button"
             className="browserPilotSettingsAction"
-            onClick={() => requestBrowserNavigation({ surface: "legacy", mode: "extension" })}
+            onClick={() =>
+              requestBrowserNavigation({ surface: "settings", settingsSection: "extension" })
+            }
             aria-label="BrowserPilot Settings"
             title="BrowserPilot Settings"
           >
@@ -2152,6 +2236,185 @@ function BrowserPilot({
           )}
         </section>
         {renderUnsavedChangesDialog()}
+      </main>
+    );
+  }
+
+  if (browserSurface === "settings") {
+    const archivedCategoryCount = new Set(allArchivedTabs.map((tab) => tab.categoryId)).size;
+
+    return (
+      <main
+        className={[
+          "browserPilot",
+          "browserPilotSecondaryView",
+          layoutMode === "touch" ? "browserPilotSettingsView-touch" : ""
+        ].filter(Boolean).join(" ")}
+        data-pilot="browser"
+        aria-label="BrowserPilot Settings"
+      >
+        {renderBrowserTopNavigation()}
+        <section className="browserPilotSettingsView">
+          <header className="browserPilotViewHeader">
+            <div>
+              <button
+                type="button"
+                className="backToOverviewAction"
+                onClick={() => requestBrowserNavigation({ surface: "overview" })}
+              >
+                <ChevronLeft aria-hidden="true" />
+                Overview
+              </button>
+              <span className="browserPilotEyebrow">BrowserPilot Settings</span>
+              <h2>Browser-wide controls and diagnostics</h2>
+              <p>Category-specific Session, Archive and Recovery actions stay in Category Details.</p>
+            </div>
+          </header>
+
+          <nav className="browserPilotSettingsSections" aria-label="BrowserPilot Settings sections">
+            <button
+              type="button"
+              className={browserSettingsSection === "extension" ? "settingsSectionAction settingsSectionAction-active" : "settingsSectionAction"}
+              aria-current={browserSettingsSection === "extension" ? "page" : undefined}
+              onClick={() => setBrowserSettingsSection("extension")}
+            >
+              <Puzzle aria-hidden="true" />
+              Extension
+            </button>
+            <div className="settingsSectionEntry">
+              <button
+                type="button"
+                className={browserSettingsSection === "recovery" ? "settingsSectionAction settingsSectionAction-active" : "settingsSectionAction"}
+                aria-current={browserSettingsSection === "recovery" ? "page" : undefined}
+                disabled={deletedCategories.length === 0}
+                onClick={() => setBrowserSettingsSection("recovery")}
+              >
+                <RotateCcw aria-hidden="true" />
+                BrowserPilot Recovery
+              </button>
+              {deletedCategories.length === 0 ? <small>No removed Categories to recover.</small> : null}
+            </div>
+            <div className="settingsSectionEntry">
+              <button
+                type="button"
+                className={browserSettingsSection === "cleanup" ? "settingsSectionAction settingsSectionAction-active" : "settingsSectionAction"}
+                aria-current={browserSettingsSection === "cleanup" ? "page" : undefined}
+                disabled={allArchivedTabs.length === 0}
+                onClick={() => setBrowserSettingsSection("cleanup")}
+              >
+                <Trash2 aria-hidden="true" />
+                Archived Tab Cleanup
+              </button>
+              {allArchivedTabs.length === 0 ? <small>No Archived Tabs to clean up.</small> : null}
+            </div>
+          </nav>
+
+          <section className="browserPilotSettingsPanel">
+            {browserSettingsSection === "extension" ? (
+              <>
+                <header>
+                  <span className="browserPilotEyebrow">Extension Details</span>
+                  <h2>Browser capture connection</h2>
+                  <p>The Browser Extension is the only path for adding current browser tabs and windows.</p>
+                </header>
+                <div className="extensionDiagnosticsGrid">
+                  <article className={bridgeStatus?.running ? "extensionDiagnostic extensionDiagnostic-ready" : "extensionDiagnostic extensionDiagnostic-warning"}>
+                    {bridgeStatus?.running ? <CheckCircle2 aria-hidden="true" /> : <AlertTriangle aria-hidden="true" />}
+                    <div>
+                      <strong>{bridgeStatus?.running ? "Bridge Ready" : "Bridge Unavailable"}</strong>
+                      <span>
+                        {bridgeStatus ? `${bridgeStatus.host}:${bridgeStatus.port}` : "No Bridge status was reported."}
+                      </span>
+                    </div>
+                  </article>
+                  <article className={extensionInfo?.manifestPresent ? "extensionDiagnostic extensionDiagnostic-ready" : "extensionDiagnostic extensionDiagnostic-warning"}>
+                    {extensionInfo?.manifestPresent ? <CheckCircle2 aria-hidden="true" /> : <AlertTriangle aria-hidden="true" />}
+                    <div>
+                      <strong>{extensionInfo?.manifestPresent ? "Manifest found" : "Manifest missing"}</strong>
+                      <code>{extensionInfo?.manifestPath ?? "browser-extension/manifest.json"}</code>
+                    </div>
+                  </article>
+                </div>
+                <dl className="extensionDetailsList">
+                  <div>
+                    <dt>Load unpacked</dt>
+                    <dd><code>{extensionPathText}</code></dd>
+                  </div>
+                  <div>
+                    <dt>Supported browsers</dt>
+                    <dd>{supportedBrowsers.join(", ")}</dd>
+                  </div>
+                  <div>
+                    <dt>Allowed origins</dt>
+                    <dd>{bridgeStatus?.allowedOrigins.join(", ") || "Unavailable"}</dd>
+                  </div>
+                  <div>
+                    <dt>Data profile</dt>
+                    <dd>{bridgeStatus?.dataProfile?.label ?? "Unavailable"}</dd>
+                  </div>
+                </dl>
+              </>
+            ) : browserSettingsSection === "recovery" ? (
+              <>
+                <header>
+                  <span className="browserPilotEyebrow">BrowserPilot Recovery</span>
+                  <h2>Removed Categories</h2>
+                  <p>Restoring a Category also returns its associated recoverable data.</p>
+                </header>
+                <div className="browserPilotRecoveryList" role="list">
+                  {deletedCategories.map((category) => (
+                    <article className="browserPilotRecoveryItem" key={category.id} role="listitem">
+                      <div className="categoryIcon" data-category-icon={category.icon}>
+                        <CategoryGlyph icon={category.icon} />
+                      </div>
+                      <div>
+                        <strong>{category.name}</strong>
+                        <span>{category.description || "No description"}</span>
+                      </div>
+                      <button type="button" onClick={() => restoreDeletedCategory(category.id)}>
+                        <RotateCcw aria-hidden="true" />
+                        Restore Category
+                      </button>
+                    </article>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <>
+                <header>
+                  <span className="browserPilotEyebrow">Archived Tab Cleanup</span>
+                  <h2>{allArchivedTabs.length} Archived Tab{allArchivedTabs.length === 1 ? "" : "s"}</h2>
+                  <p>
+                    These tabs span {archivedCategoryCount} Categor{archivedCategoryCount === 1 ? "y" : "ies"}.
+                    Category-local archive actions remain in Category Details.
+                  </p>
+                </header>
+                {allArchivedTabs.length > 0 ? (
+                  <>
+                    <div className="archivedCleanupSummary" role="list">
+                      {allArchivedTabs.map((tab) => (
+                        <div key={tab.id} role="listitem">
+                          <span>{tab.title}</span>
+                          <small>{categoryName(tab.categoryId)} · {getUrlHost(tab.url)}</small>
+                        </div>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      className="permanentCleanupAction"
+                      onClick={permanentlyDeleteAllArchivedTabs}
+                    >
+                      <Trash2 aria-hidden="true" />
+                      Permanently delete all Archived Tabs
+                    </button>
+                  </>
+                ) : (
+                  <p className="browserPilotSettingsEmpty">No Archived Tabs are available for cleanup.</p>
+                )}
+              </>
+            )}
+          </section>
+        </section>
       </main>
     );
   }

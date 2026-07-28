@@ -20,6 +20,7 @@ import {
   createManualBackup,
   createCategory,
   deleteCategory,
+  deleteAllArchivedTabsPermanently,
   deleteArchivedTabPermanently,
   deleteTab,
   exportStorageBackup,
@@ -32,6 +33,7 @@ import {
   listDeletedCategories,
   listDeletedTabs,
   listArchivedTabs,
+  listAllArchivedTabs,
   listCategories,
   listTabs,
   moveCategory,
@@ -377,6 +379,7 @@ if (!hasSingleInstanceLock) {
     ipcMain.handle("tabs:archive", (_event, id) => archiveTab(id));
     ipcMain.handle("tabs:delete", (_event, id) => deleteTab(id));
     ipcMain.handle("tabs:delete-archived-permanently", (_event, id) => deleteArchivedTabPermanently(id));
+    ipcMain.handle("tabs:delete-all-archived-permanently", () => deleteAllArchivedTabsPermanently());
     ipcMain.handle("tabs:move", (_event, id, input) => moveTab(id, input));
     ipcMain.handle("tabs:open", async (_event, id) => {
       const tab = getActiveTab(id);
@@ -389,6 +392,7 @@ if (!hasSingleInstanceLock) {
     });
     ipcMain.handle("tabs:deleted", (_event, categoryId) => listDeletedTabs(categoryId));
     ipcMain.handle("tabs:archived", (_event, categoryId) => listArchivedTabs(categoryId));
+    ipcMain.handle("tabs:all-archived", () => listAllArchivedTabs());
     ipcMain.handle("tabs:restore", (_event, id) => restoreTab(id));
     ipcMain.handle("tabs:unarchive", (_event, id) => unarchiveTab(id));
     ipcMain.handle("categories:open", async (_event, categoryId) => {

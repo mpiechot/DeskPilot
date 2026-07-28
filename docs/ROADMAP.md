@@ -57,14 +57,14 @@ BrowserPilot UI implementation tickets derived from #46:
 - #48 implement the compact responsive BrowserPilot overview grid - done
 - #49 add BrowserPilot Category Creation and Details Views - done
 - #50 move Saved Tab management into Category Details - done
-- #51 add the BrowserPilot Settings View - in progress; #48 and #50 complete
+- #51 add the BrowserPilot Settings View - done
 - #52 apply Touch Mode presentation across BrowserPilot views - ready for agent; blocked by #48 through #51
 
 Cross-Pilot visual decision tickets:
 - #47 define the DeskPilot icon system, expanded built-in vocabulary and custom user icons - ready for Grill
 
 Recommended next implementation step:
-- Finish the shared BrowserPilot UI branch with #51 BrowserPilot Settings.
+- Continue with #52 Touch Mode presentation after the #48–#51 BrowserPilot UI branch passes its Working PR quality gate.
 
 ## v0.1 - Control Panel Skeleton
 
@@ -99,7 +99,7 @@ Expected features:
 - category navigation - horizontal drag-to-scroll done for compact windows
 - category icons - persisted monochrome built-in icon picker done, with folder fallback for existing data
 - category recovery - initial pass done
-- saved URLs - manual save/open/list/soft-delete done
+- saved URLs - extension capture/open/list/soft-delete done; desktop manual Save URL removed
 - URL recovery - initial pass done
 - create/edit/delete categories - initial pass done with soft-delete
 - open category URLs in browser - initial pass done
@@ -153,7 +153,7 @@ Goal:
 Prevent categories from becoming huge tab graveyards.
 
 Status:
-Started. Manual per-category archiving is available directly from the Session Board, with a dedicated Archive view for returning tabs to the active Session.
+Started. Manual per-category archiving and return are available in Category Details, with confirmed BrowserPilot-wide cleanup for all Archived Tabs.
 
 Expected features:
 - sleep lists per category

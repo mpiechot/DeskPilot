@@ -8,6 +8,7 @@ runElectronSmoke().catch((error) => {
 });
 
 async function runElectronSmoke() {
+  const smokeScope = process.env.DESKPILOT_SMOKE_SCOPE ?? "category-views";
   const projectRoot = path.resolve(__dirname, "..", "..");
   const prototypeRoot = path.join(projectRoot, "dist-prototype", "DeskPilot");
   const { defaultCategories } = await import(
@@ -85,6 +86,10 @@ async function runElectronSmoke() {
     return archivedTabsByCategory.get(categoryId) ?? [];
   }
 
+  function getAllArchivedTabs() {
+    return Array.from(archivedTabsByCategory.values()).flat();
+  }
+
   setActiveTabs(
     "overflow-1",
     Array.from({ length: 12 }, (_value, index) => ({
@@ -95,7 +100,13 @@ async function runElectronSmoke() {
     }))
   );
 
-  ipcMain.handle("bridge:status", () => ({ running: true, host: "127.0.0.1", port: 17383 }));
+  ipcMain.handle("bridge:status", () => ({
+    running: true,
+    host: "127.0.0.1",
+    port: 17383,
+    allowedOrigins: ["chrome-extension://deskpilot-smoke"],
+    dataProfile: smokeDataProfile
+  }));
   ipcMain.handle("updates:status", () => ({
     status: "available",
     currentVersion: "1.0.0",
@@ -275,6 +286,12 @@ async function runElectronSmoke() {
   ipcMain.handle("tabs:list", (_event, categoryId) => getActiveTabs(categoryId));
   ipcMain.handle("tabs:deleted", (_event, categoryId) => getDeletedTabs(categoryId));
   ipcMain.handle("tabs:archived", (_event, categoryId) => getArchivedTabs(categoryId));
+  ipcMain.handle("tabs:all-archived", () => getAllArchivedTabs());
+  ipcMain.handle("tabs:delete-all-archived-permanently", () => {
+    const deletedCount = getAllArchivedTabs().length;
+    archivedTabsByCategory.clear();
+    return deletedCount;
+  });
   ipcMain.handle("tabs:add", (_event, input) => {
     const tab = {
       id: `smoke-tab-${input.categoryId}-${Date.now()}`,
@@ -665,7 +682,151 @@ async function runElectronSmoke() {
     })
   `);
 
-  if (process.env.DESKPILOT_SMOKE_SCOPE === "saved-tab-details") {
+  if (smokeScope === "browserpilot-settings") {
+    archivedTabsByCategory.set("work", [
+      {
+        id: "settings-archive-work",
+        categoryId: "work",
+        title: "Archived Work",
+        url: "https://work.example.com/archive",
+        position: 0,
+        savedAt: new Date().toISOString()
+      }
+    ]);
+    archivedTabsByCategory.set("research", [
+      {
+        id: "settings-archive-research",
+        categoryId: "research",
+        title: "Archived Research",
+        url: "https://research.example.com/archive",
+        position: 0,
+        savedAt: new Date().toISOString()
+      }
+    ]);
+    deletedCategories.push({
+      id: "settings-removed-category",
+      name: "Removed Settings Fixture",
+      description: "Recoverable from BrowserPilot Settings.",
+      icon: "folder",
+      tabCount: 0
+    });
+    window.webContents.send("sessions:changed");
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    const browserPilotSettingsResult = await window.webContents.executeJavaScript(`
+      new Promise((resolve) => {
+        const wait = (milliseconds) => new Promise((done) => setTimeout(done, milliseconds));
+        const waitFor = async (predicate, attempts = 120) => {
+          for (let attempt = 0; attempt < attempts; attempt += 1) {
+            if (predicate()) {
+              return true;
+            }
+            await wait(25);
+          }
+          return false;
+        };
+        const buttonByText = (text) =>
+          Array.from(document.querySelectorAll("button")).find((button) => button.textContent.trim() === text);
+
+        setTimeout(async () => {
+          try {
+            document.querySelector(".bridgeStatusAction")?.click();
+            await waitFor(() => Boolean(document.querySelector(".browserPilotSettingsView")));
+            const bridgeOpenedExtensionSection =
+              document.querySelector(".browserPilotSettingsPanel")?.textContent.includes("Bridge Ready") &&
+              document.querySelector(".browserPilotSettingsPanel")?.textContent.includes("127.0.0.1:17383") &&
+              document.querySelector(".browserPilotSettingsPanel")?.textContent.includes("Manifest found") &&
+              document.querySelector(".browserPilotSettingsPanel")?.textContent.includes("Chrome, Edge");
+            const threeSettingsSections = [
+              "Extension",
+              "BrowserPilot Recovery",
+              "Archived Tab Cleanup"
+            ].every((label) => Boolean(buttonByText(label)));
+            const categorySpecificControlsExcluded =
+              !document.querySelector(".categoryTabWorkspace") &&
+              !document.body.textContent.includes("Return to Session");
+
+            buttonByText("BrowserPilot Recovery")?.click();
+            await waitFor(() => Boolean(buttonByText("Restore Category")));
+            const globalRecoveryOnlyShowsCategories =
+              document.body.textContent.includes("Removed Settings Fixture") &&
+              !document.body.textContent.includes("Restore Saved Tab");
+            buttonByText("Restore Category")?.click();
+            const recoveryBecameDisabled = await waitFor(
+              () =>
+                buttonByText("BrowserPilot Recovery")?.disabled &&
+                document.body.textContent.includes("No removed Categories to recover.")
+            );
+
+            buttonByText("Archived Tab Cleanup")?.click();
+            await waitFor(() => Boolean(document.querySelector(".archivedCleanupSummary")));
+            const globalArchiveSummary =
+              document.body.textContent.includes("Archived Work") &&
+              document.body.textContent.includes("Archived Research") &&
+              document.body.textContent.includes("2 Archived Tabs");
+            let cancellationConfirmation = "";
+            window.confirm = (message) => {
+              cancellationConfirmation = message;
+              return false;
+            };
+            buttonByText("Permanently delete all Archived Tabs")?.click();
+            await wait(50);
+            const cleanupCancellationPreservedTabs =
+              document.querySelectorAll(".archivedCleanupSummary [role='listitem']").length === 2;
+
+            let deletionConfirmation = "";
+            window.confirm = (message) => {
+              deletionConfirmation = message;
+              return true;
+            };
+            buttonByText("Permanently delete all Archived Tabs")?.click();
+            const cleanupBecameDisabled = await waitFor(
+              () =>
+                buttonByText("Archived Tab Cleanup")?.disabled &&
+                document.body.textContent.includes("No Archived Tabs to clean up.")
+            );
+            const cleanupRequiredExplicitConfirmation =
+              cancellationConfirmation.includes("2 Archived Tabs") &&
+              cancellationConfirmation.includes("cannot be recovered") &&
+              deletionConfirmation.includes("2 Archived Tabs");
+
+            buttonByText("Overview")?.click();
+            const overviewReturnWorked = await waitFor(() => Boolean(document.querySelector(".categoryGrid")));
+
+            resolve({
+              bridgeOpenedExtensionSection,
+              threeSettingsSections,
+              categorySpecificControlsExcluded,
+              globalRecoveryOnlyShowsCategories,
+              recoveryBecameDisabled,
+              globalArchiveSummary,
+              cleanupCancellationPreservedTabs,
+              cleanupBecameDisabled,
+              cleanupRequiredExplicitConfirmation,
+              overviewReturnWorked
+            });
+          } catch (error) {
+            resolve({ error: error instanceof Error ? error.message : String(error) });
+          }
+        }, 50);
+      })
+    `);
+
+    if (!Object.values(browserPilotSettingsResult).every(Boolean)) {
+      console.error(JSON.stringify(browserPilotSettingsResult, null, 2));
+    }
+    assert(
+      Object.values(browserPilotSettingsResult).every(Boolean),
+      "Expected BrowserPilot Settings sections, boundaries and safety states to work"
+    );
+    window.destroy();
+    app.quit();
+    console.log(JSON.stringify({ renderer: "dist/index.html", browserPilotSettings: "ok" }, null, 2));
+    process.exit(0);
+    return;
+  }
+
+  if (smokeScope === "saved-tab-details") {
     setActiveTabs("work", [
       {
         id: "details-alpha",
@@ -1030,18 +1191,13 @@ async function runElectronSmoke() {
           !findCompactCard("Smoke Updated");
 
         document.querySelector(".browserPilotSettingsAction")?.click();
-        await waitFor(() => Boolean(document.querySelector(".controlRail")));
-        buttonByText("Recovery")?.click();
-        await waitFor(() => Boolean(buttonByText("Restore Smoke Updated")));
-        buttonByText("Restore Smoke Updated")?.click();
-        await waitFor(() =>
-          Array.from(document.querySelectorAll(".categoryCard")).some(
-            (card) => card.querySelector("h2")?.textContent.trim() === "Smoke Updated"
-          )
-        );
-        const removedCategoryRecoverable = Array.from(document.querySelectorAll(".categoryCard")).some(
-          (card) => card.querySelector("h2")?.textContent.trim() === "Smoke Updated"
-        );
+        await waitFor(() => Boolean(document.querySelector(".browserPilotSettingsView")));
+        buttonByText("BrowserPilot Recovery")?.click();
+        await waitFor(() => Boolean(buttonByText("Restore Category")));
+        buttonByText("Restore Category")?.click();
+        buttonByText("Overview")?.click();
+        await waitFor(() => Boolean(findCompactCard("Smoke Updated")));
+        const removedCategoryRecoverable = Boolean(findCompactCard("Smoke Updated"));
 
         resolve({
           creationHasUnsavedDraft,
@@ -1067,7 +1223,7 @@ async function runElectronSmoke() {
     })
   `);
   console.log("Prototype renderer smoke: Category views", categoryViewsResult);
-  if (process.env.DESKPILOT_SMOKE_SCOPE === "category-views") {
+  if (smokeScope === "category-views") {
     assert(
       Object.values(categoryViewsResult).every(Boolean),
       `Expected Category Creation/Details workflow to pass: ${JSON.stringify(categoryViewsResult)}`

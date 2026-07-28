@@ -1323,3 +1323,24 @@ Current status:
 
 Next recommended step:
 - Implement #51 BrowserPilot Settings and remove the remaining legacy BrowserPilot management surface.
+
+### BrowserPilot Settings View (#51)
+
+Completed:
+- Added one in-app BrowserPilot Settings View with separate Extension, BrowserPilot Recovery and Archived Tab Cleanup sections.
+- Made both the Top Navigation Settings action and the measured Bridge Ready/Unavailable indicator open Settings at Extension Details.
+- Moved browser-wide removed-Category Recovery into Settings while keeping Category-specific Saved Tab Archive and Recovery in Category Details.
+- Added global Archived Tab enumeration and a confirmed irreversible cleanup operation that deletes only Archived Tabs across all Categories.
+- Kept Recovery and Cleanup entries stable and visible when empty, with disabled controls and explanatory text.
+- Exposed Bridge host, port, allowed origins, connected data profile, extension manifest path, load-unpacked path and supported browsers as detailed diagnostics.
+- Removed every user-reachable route to the temporary legacy BrowserPilot Control Rail.
+- Updated README and usage guidance for the compact Grid, dedicated Category views, extension-only capture and the BrowserPilot Settings boundary.
+- Added storage coverage for safe global archive cleanup and focused packaged Electron renderer coverage for section boundaries, Recovery, confirmation/cancellation, disabled states and return navigation.
+- Verified `npm run test:storage`, `npm run lint`, `npm run build`, `npm run package:prototype` and the focused #49, #50 and #51 packaged renderer flows.
+
+Current status:
+- Issues #48, #49, #50 and #51 are implemented as four focused commits on the shared BrowserPilot UI branch.
+- Ticket #52 remains the next dependent BrowserPilot slice and is intentionally outside this working branch.
+
+Next recommended step:
+- Run the complete repository validation, push the shared branch and use its single Working PR as the quality gate before starting #52.
