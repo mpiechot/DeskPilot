@@ -183,7 +183,7 @@ Goal:
 Make DeskPilot easy to launch for local trial use.
 
 Status:
-Started. Separate generated folders now provide a guarded Development prototype launcher and an explicitly named Productive double-click launcher.
+Started. Separate generated folders provide a guarded Development prototype launcher and an explicitly named Productive double-click launcher. The current unsigned Productive installer is version 1.1.0.
 
 Expected features:
 - local prototype folder - initial pass done
@@ -198,3 +198,8 @@ Expected features:
 
 Recent tracking issue:
 - #24 one-time installed-app startup update check and explicit update action - done
+
+Current installer artifact:
+- `dist-installer/DeskPilot-Setup-1.1.0.exe`
+- unsigned by design until a code-signing certificate is supplied
+- publishing a matching GitHub Release remains a separate explicit operation

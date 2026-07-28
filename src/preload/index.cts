@@ -2,7 +2,7 @@ import { contextBridge, ipcRenderer } from "electron";
 import type { DeskPilotApi } from "../shared/deskPilotApi.js" with { "resolution-mode": "import" };
 
 const deskPilot: DeskPilotApi = {
-  version: "1.0.0",
+  version: "1.1.0",
   updateStatus: () => ipcRenderer.invoke("updates:status"),
   openAvailableUpdate: () => ipcRenderer.invoke("updates:open"),
   onUpdateStatusChanged: (callback) => {
