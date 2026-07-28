@@ -60,7 +60,13 @@ import {
   type CategoryIconName
 } from "../shared/categoryIcons";
 import { defaultCategories, type SessionCategory } from "../shared/sessions";
-import { DeskPilotShell } from "./shell";
+import { DeskPilotShell, ThemeIcon } from "./shell";
+import {
+  availableThemes,
+  defaultTheme,
+  themeToCssCustomProperties,
+  type ResolvedTheme
+} from "./theme";
 import "./styles.css";
 
 const categoryIconComponents: Record<CategoryIconName, LucideIcon> = {
@@ -143,11 +149,17 @@ function getUrlHost(value: string): string {
 function SettingsPilot({
   onOperationMessage,
   onStorageRestore,
-  onDisplayLayoutModeChange
+  onDisplayLayoutModeChange,
+  activeTheme,
+  themes,
+  onThemeChange
 }: {
   onOperationMessage: (message: string) => void;
   onStorageRestore: (result: StorageRestoreResult) => void;
   onDisplayLayoutModeChange: (layoutMode: WindowPreferences["layoutMode"]) => void;
+  activeTheme: ResolvedTheme;
+  themes: readonly ResolvedTheme[];
+  onThemeChange: (themeId: string) => void;
 }) {
   const [settingsMode, setSettingsMode] = useState<"display" | "safety" | "theme">("display");
   const [storageInfo, setStorageInfo] = useState<StorageBackupInfo | null>(null);
@@ -500,16 +512,27 @@ function SettingsPilot({
         ) : (
           <section className="settingsThemePanel settingsPanel" aria-label="Theme settings">
             <div className="pilotEmptyStateIcon" aria-hidden="true">
-              <Lightbulb />
+              <ThemeIcon assetId={activeTheme.assets.settingsTheme} />
             </div>
             <strong>Theme selection</strong>
-            <p>The theme surface is reserved here. Additional visual themes will be added without changing BrowserPilot data or workflows.</p>
+            <p>Choose the declarative presentation used by the entire DeskPilot Shell and every Pilot.</p>
             <label>
               Current theme
-              <select aria-label="DeskPilot theme" disabled>
-                <option>Default Theme</option>
+              <select
+                aria-label="DeskPilot theme"
+                value={activeTheme.id}
+                onChange={(event) => onThemeChange(event.target.value)}
+              >
+                {themes.map((theme) => (
+                  <option value={theme.id} key={theme.id}>
+                    {theme.name}
+                  </option>
+                ))}
               </select>
             </label>
+            <small data-active-theme={activeTheme.id}>
+              {activeTheme.name} is active. It is the complete fallback for every future Theme.
+            </small>
           </section>
         )}
 
@@ -1779,15 +1802,27 @@ function App() {
   const [operationMessage, setOperationMessage] = useState("");
   const [layoutMode, setLayoutMode] = useState<WindowPreferences["layoutMode"]>("standard");
   const [storageRestoreResult, setStorageRestoreResult] = useState<StorageRestoreResult | null>(null);
+  const [activeThemeId, setActiveThemeId] = useState(defaultTheme.id);
+  const activeTheme = availableThemes.find((theme) => theme.id === activeThemeId) ?? defaultTheme;
+
+  useEffect(() => {
+    for (const [property, value] of Object.entries(themeToCssCustomProperties(activeTheme))) {
+      document.documentElement.style.setProperty(property, value);
+    }
+  }, [activeTheme]);
 
   return (
     <DeskPilotShell
       layoutMode={layoutMode}
+      theme={activeTheme}
       settings={
         <SettingsPilot
+          activeTheme={activeTheme}
           onOperationMessage={setOperationMessage}
           onStorageRestore={setStorageRestoreResult}
           onDisplayLayoutModeChange={setLayoutMode}
+          onThemeChange={setActiveThemeId}
+          themes={availableThemes}
         />
       }
       toastMessage={operationMessage}

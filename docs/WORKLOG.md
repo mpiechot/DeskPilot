@@ -1165,3 +1165,72 @@ Current status:
 
 Next recommended step:
 - Continue with #34 for the declarative Default Theme foundation after this UI refinement passes the Working PR quality gate.
+
+### Declarative Default Theme foundation (#34)
+
+Completed:
+- Translated the complete current DeskPilot presentation into a declarative Default Theme covering semantic colors, surfaces, typography, borders, shadows, component states and built-in Shell asset identifiers.
+- Replaced hard-coded theme presentation in the Shell, Pilot Navigation, Settings, BrowserPilot, DesktopPilot and EnvironmentPilot surfaces with generated CSS custom properties.
+- Added sparse Theme resolution so omitted presentation and asset values inherit from the Default Theme and an empty Theme resolves identically to it.
+- Added deterministic optional-effect handling: missing animation and sound values fall back safely, while explicit `off` or `disabled` values resolve to a disabled effect.
+- Kept responsive geometry, breakpoints and the BrowserPilot control-rail layout outside the Theme model.
+- Connected shell-level Settings to the active Theme selection; Default Theme remains the only shipped option.
+- Added focused Node tests for Default Theme fallback, empty Theme equivalence, sparse inheritance, optional-effect disabling and the absence of responsive geometry tokens.
+- Extended the Electron renderer smoke test to verify the active Theme selection, applied semantic variables and disabled default effects in the running application.
+- Updated README, usage documentation and roadmap.
+- Verified `npm run lint`, `npm run build`, `npm run test:theme` and the complete `npm run test:prototype` workflow.
+
+Current status:
+- The current DeskPilot appearance is now data-driven without changing browser-session behavior or responsive layout.
+- Future visual Themes can be sparse declarative overlays; no Theme-specific React component or executable plugin path was introduced.
+
+Next recommended step:
+- Complete the #34 Working PR quality gate, then select the next ready post-shell implementation slice.
+
+### Productive version 1.0.0 installer
+
+Completed:
+- Raised the application, package-lock and preload-reported version from 0.1.1 to the first stable Productive version 1.0.0.
+- Updated the packaged renderer and update-check smoke fixtures to use the real 1.0.0 baseline and a hypothetical 1.0.1 update.
+- Documented the current Productive version and generated installer name.
+
+Current status:
+- The next Windows installer artifact is `dist-installer/DeskPilot-Setup-1.0.0.exe`.
+- Installer packaging remains explicitly unsigned unless the guarded signing command receives a certificate and password.
+
+Next recommended step:
+- Build and manually install the 1.0.0 installer for the first stable Productive run, then publish a release separately if desired.
+
+### Touch specification split before implementation
+
+Completed:
+- Separated the hardware-independent Touch Input Isolation product and implementation scope from the hardware-gated Windows validation scope.
+- Added `docs/GRILL_SESSION_2026-07-23_TOUCH_HARDWARE_VALIDATION.md` for physical touch classification, isolation evidence, topology identity, discovery, reconnect behavior, lock-state validation and the conditional separate-device fallback.
+- Kept the pre-hardware frontier explicit: state models, surface boundaries, workflow routing, warning/acceptance UI and diagnostic adapter contracts can be implemented with simulated results, but cannot claim real isolation compliance.
+- Published the hardware-independent Touch ticket chain: #37 setup state and diagnostic adapter, #38 surface boundary and #39 keyboard-free BrowserPilot workflow.
+- Added three independent Theme Grill proposals for Space/Holo, Gladiator/Roman and Cyberpunk/Glitch directions under the existing declarative Theme foundation.
+- Published Theme Grill tickets #40 Space/Holo, #41 Gladiator/Roman and #42 Cyberpunk/Glitch under #34.
+- Published Pilot Grill tickets #43 DesktopPilot and #44 EnvironmentPilot under #29.
+- Published bugfix ticket #45 for typed Toast severity and redundant success/navigation feedback.
+
+Current status:
+- The direct-touch implementation slice is ready to be split into tickets.
+- Hardware validation remains deliberately blocked by the absence of representative touch hardware.
+
+Next recommended step:
+- Implement Touch #37 first; run the three Theme Grill sessions independently when a theme direction is selected, and use #43/#44 to define the two remaining Pilots before implementing their actions.
+
+### BrowserPilot UI information-density Grill ticket
+
+Completed:
+- Published GitHub issue #46, `Grill: Rework BrowserPilot information density and Details view`.
+- Framed the request as a decision-only Grill ticket: critically review the current information hierarchy, test smaller Category representations and evaluate a separate Details view/window without deciding the solution in advance.
+- Preserved the non-regression boundaries for daily Session Board use, local-first ownership, recoverability and safe-delete behavior.
+- Added the ticket to the Roadmap as the next BrowserPilot UI decision stream.
+
+Current status:
+- No product code or browser-session data changed.
+- The Grill session has not started yet, as requested.
+
+Next recommended step:
+- Start the Grill for #46 when ready, then derive only the focused implementation tickets supported by its decisions.

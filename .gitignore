@@ -4,6 +4,7 @@ dist-electron/
 dist-prototype/
 dist-productive/
 dist-installer/
+dist-theme-test/
 coverage/
 *.log
 .env

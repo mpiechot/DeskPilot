@@ -98,19 +98,19 @@ async function runElectronSmoke() {
   ipcMain.handle("bridge:status", () => ({ running: true, host: "127.0.0.1", port: 17383 }));
   ipcMain.handle("updates:status", () => ({
     status: "available",
-    currentVersion: "0.1.0",
-    availableVersion: "0.1.1",
-    releaseUrl: "https://github.com/mpiechot/DeskPilot/releases/tag/v0.1.1",
-    message: "DeskPilot 0.1.1 is available."
+    currentVersion: "1.0.0",
+    availableVersion: "1.0.1",
+    releaseUrl: "https://github.com/mpiechot/DeskPilot/releases/tag/v1.0.1",
+    message: "DeskPilot 1.0.1 is available."
   }));
   ipcMain.handle("updates:open", () => {
-    openedUpdateUrl = "https://github.com/mpiechot/DeskPilot/releases/tag/v0.1.1";
+    openedUpdateUrl = "https://github.com/mpiechot/DeskPilot/releases/tag/v1.0.1";
     return {
       status: "available",
-      currentVersion: "0.1.0",
-      availableVersion: "0.1.1",
+      currentVersion: "1.0.0",
+      availableVersion: "1.0.1",
       releaseUrl: openedUpdateUrl,
-      message: "DeskPilot 0.1.1 is available."
+      message: "DeskPilot 1.0.1 is available."
     };
   });
   ipcMain.handle("extension:install-info", () => ({
@@ -455,9 +455,32 @@ async function runElectronSmoke() {
             const settingsReachable =
               destinationIsVisible("settings") &&
               settingsWrapper?.textContent.includes("Settings");
-            browserPilotButton?.click();
+            const themeTab = Array.from(settingsWrapper?.querySelectorAll(".settingsModeSwitch button") ?? [])
+              .find((button) => button.textContent?.trim() === "Theme");
+            themeTab?.click();
 
-            setTimeout(() => resolve({
+            setTimeout(() => {
+              const themeSelect = settingsWrapper?.querySelector('select[aria-label="DeskPilot theme"]');
+              const activeThemeDescription = settingsWrapper?.querySelector("[data-active-theme]");
+              const rootThemeStyle = getComputedStyle(document.documentElement);
+              const themeSelectionAvailable =
+                themeSelect?.value === "default" &&
+                themeSelect?.disabled === false &&
+                themeSelect?.options.length === 1 &&
+                activeThemeDescription?.getAttribute("data-active-theme") === "default";
+              const defaultThemeApplied =
+                shell?.getAttribute("data-theme") === "default" &&
+                rootThemeStyle.getPropertyValue("--theme-color-text").trim() === "#22252a" &&
+                navigationStyle?.backgroundImage !== "none";
+              const optionalThemeEffectsDisabled =
+                shell?.getAttribute("data-theme-animation") === "disabled" &&
+                shell?.getAttribute("data-theme-sound") === "disabled";
+              const displayTab = Array.from(settingsWrapper?.querySelectorAll(".settingsModeSwitch button") ?? [])
+                .find((button) => button.textContent?.trim() === "Display");
+              displayTab?.click();
+              browserPilotButton?.click();
+
+              setTimeout(() => resolve({
         shellPresent: Boolean(shell),
         navigationPresent: Boolean(navigation),
         browserPilotNavigationPresent: Boolean(browserPilotButton),
@@ -472,12 +495,15 @@ async function runElectronSmoke() {
         desktopPilotReachable,
         environmentPilotReachable,
         settingsReachable,
+        themeSelectionAvailable,
+        defaultThemeApplied,
+        optionalThemeEffectsDisabled,
         browserPilotHasSingleHeading:
           document.querySelectorAll('[data-shell-destination="browser"]:not([hidden]) h1').length === 1 &&
           document.querySelector('[data-shell-destination="browser"]:not([hidden]) h1')?.textContent === "BrowserPilot",
         shellMetadataVisible:
           shellMetadata?.textContent?.includes("DeskPilot") &&
-          shellMetadata?.textContent?.includes("v0.1.1") &&
+          shellMetadata?.textContent?.includes("v1.0.0") &&
           shellMetadata?.textContent?.includes("Development"),
         brandOutsideNavigation:
           shellBrand?.textContent?.trim() === "DP" &&
@@ -488,7 +514,8 @@ async function runElectronSmoke() {
           contentStyle?.borderLeftStyle === "solid",
         navigationBackgroundImage: navigationStyle?.backgroundImage,
         contentBorderLeftStyle: contentStyle?.borderLeftStyle
-            }), 50);
+              }), 50);
+            }, 50);
           }, 50);
         }, 50);
       }, 50);
@@ -1316,6 +1343,9 @@ async function runElectronSmoke() {
   assert(shellNavigationResult.desktopPilotReachable, "Expected DesktopPilot to render its development empty state");
   assert(shellNavigationResult.environmentPilotReachable, "Expected EnvironmentPilot to render its development empty state");
   assert(shellNavigationResult.settingsReachable, "Expected Settings to render inside the shared Shell content region");
+  assert(shellNavigationResult.themeSelectionAvailable, "Expected Settings to expose the active Default Theme selection");
+  assert(shellNavigationResult.defaultThemeApplied, "Expected the Shell to consume the declarative Default Theme");
+  assert(shellNavigationResult.optionalThemeEffectsDisabled, "Expected missing Default Theme animations and sounds to remain disabled");
   assert(shellNavigationResult.browserPilotHasSingleHeading, "Expected BrowserPilot to use one clear page heading");
   assert(shellNavigationResult.shellMetadataVisible, "Expected the Shell navigation to show DeskPilot version and data profile metadata");
   assert(shellNavigationResult.brandOutsideNavigation, "Expected the DP brand to sit outside the dark Pilot Navigation");
@@ -1348,12 +1378,12 @@ async function runElectronSmoke() {
   assert(emptyCategorySummaryResult.duplicateEmptyTextHidden, "Expected the empty category to hide duplicate tab-count text");
   assert(categoryClickWorked, "Expected a stationary mouse click to select a category");
   assert(
-    updateNoticeResult?.visibleText.includes("v0.1.0") && updateNoticeResult?.visibleText.includes("v0.1.1"),
+    updateNoticeResult?.visibleText.includes("v1.0.0") && updateNoticeResult?.visibleText.includes("v1.0.1"),
     "Expected the startup update notice to show installed and available versions"
   );
   assert(updateNoticeResult?.ariaLabel.includes("Update now"), "Expected an explicit update action");
   assert(
-    openedUpdateUrl === "https://github.com/mpiechot/DeskPilot/releases/tag/v0.1.1",
+    openedUpdateUrl === "https://github.com/mpiechot/DeskPilot/releases/tag/v1.0.1",
     "Expected the update action to open the validated GitHub release page"
   );
   assert(categoryDragWorked, "Expected horizontal category drag to reveal off-screen categories without resizing");

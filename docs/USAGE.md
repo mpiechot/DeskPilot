@@ -8,7 +8,7 @@ DeskPilot is a functional Productive MVP. Its current browser-session workflow h
 
 Working today:
 - DeskPilot Shell with BrowserPilot as the current fully functional Pilot, plus DesktopPilot and EnvironmentPilot development destinations
-- shell-level Settings for Display, Safety and the reserved Theme surface
+- shell-level Settings for Display, Safety and declarative Theme selection
 - responsive icon-only Pilot Navigation with a visually distinct vertical wide-display rail, a separate light `DP` brand tile and compact horizontal layout
 - small DeskPilot version and active data-profile metadata in the navigation footer
 - a monochrome, themeable BrowserPilot SVG icon
@@ -196,7 +196,7 @@ When a newer stable semantic version is available, the version badge in the Desk
 
 Development, renderer-only and generated prototype/Productive launcher runs do not perform this request automatically. Offline, rate-limit and invalid-response failures remain silent so the local browser-session workflow continues normally.
 
-The update check first ships in version 0.1.1. An existing 0.1.0 installation therefore needs one final manual installer run before future published versions can be announced inside the app. Creating or publishing the corresponding GitHub Release remains a separate release operation.
+The current Productive release is version 1.0.0. Existing 0.1.x installations need one manual installer run to move to this first stable version. Creating or publishing the corresponding GitHub Release remains a separate release operation.
 
 ## Shell Settings
 
@@ -206,7 +206,7 @@ Open the shell-level `Settings` destination and choose `Display` to select:
 - the monitor DeskPilot should use when its window is created
 - optional kiosk-like fullscreen mode
 
-Apply saves all three preferences atomically. Kiosk mode can still be exited by quitting DeskPilot from its tray menu. `Safety` contains the active data profile, backup, import/export and recovery workflows. `Theme` reserves the future theme-selection surface and currently exposes only `Default Theme`.
+Apply saves all three preferences atomically. Kiosk mode can still be exited by quitting DeskPilot from its tray menu. `Safety` contains the active data profile, backup, import/export and recovery workflows. `Theme` selects the presentation used across the Shell and all Pilots. The complete declarative `Default Theme` is currently the only shipped choice and supplies every fallback value for future sparse Themes.
 
 ## Data Profiles
 
