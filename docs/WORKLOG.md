@@ -1345,3 +1345,22 @@ Current status:
 
 Next recommended step:
 - Run the complete repository validation, push the shared branch and use its single Working PR as the quality gate before starting #52.
+
+### Productive version 1.1.0 installer
+
+Completed:
+- Classified the BrowserPilot #48–#51 release as version 1.1.0 because it adds backward-compatible functionality; version 1.0.1 remains reserved for a bugfix-only release.
+- Raised the package, package-lock, preload-reported and renderer-fallback versions from 1.0.0 to 1.1.0.
+- Updated renderer and installed-update smoke fixtures to use 1.1.0 as the current release and 1.1.1 as the hypothetical next stable patch.
+- Added installer-version consistency checks across package metadata and the preload API.
+- Built `dist-installer/DeskPilot-Setup-1.1.0.exe` with the bundled Node 24 runtime.
+- Verified the installer at 105,609,026 bytes with SHA-256 `DCDA57AD9DFCB31089C8230B6A6EA176C3CD27F0EA7315993AA1758CE64B3F44`.
+- Verified the artifact is `NotSigned`, matching the guarded unsigned packaging workflow.
+- Verified `npm run lint`, `npm run test:storage`, `npm run test:prototype`, `npm run test:update` and `npm run test:installer`.
+
+Current status:
+- The local unsigned 1.1.0 installer is ready for deliberate manual installation.
+- No GitHub Release was created and no installer was published or installed automatically.
+
+Next recommended step:
+- Review the release branch through the single Working PR, then merge it before manually installing or separately publishing version 1.1.0.
