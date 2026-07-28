@@ -308,6 +308,46 @@ export function updateCategory(id: string, input: CategoryInput): SessionCategor
   return listCategories();
 }
 
+export function moveCategory(id: string, targetPosition: number): SessionCategory[] {
+  const db = getDatabase();
+  const safeId = normalizeCategoryId(id);
+  const orderedIds = getActiveCategoryIds(db);
+
+  if (!orderedIds.includes(safeId)) {
+    throw new Error("Category is not active.");
+  }
+
+  const nextIds = orderedIds.filter((categoryId) => categoryId !== safeId);
+  nextIds.splice(Math.min(normalizeTabPosition(targetPosition), nextIds.length), 0, safeId);
+
+  db.run("BEGIN TRANSACTION");
+
+  try {
+    const statement = db.prepare(
+      "UPDATE categories SET position = $position, updated_at = CURRENT_TIMESTAMP WHERE id = $id AND deleted_at IS NULL"
+    );
+
+    try {
+      nextIds.forEach((categoryId, position) => {
+        statement.run({
+          $id: categoryId,
+          $position: position
+        });
+      });
+    } finally {
+      statement.free();
+    }
+
+    db.run("COMMIT");
+  } catch (error) {
+    db.run("ROLLBACK");
+    throw error;
+  }
+
+  saveDatabase();
+  return listCategories();
+}
+
 export function deleteCategory(id: string): SessionCategory[] {
   const db = getDatabase();
   const safeId = normalizeCategoryId(id);
@@ -367,6 +407,29 @@ export function listDeletedTabs(categoryId: string): SessionTab[] {
 
 export function listArchivedTabs(categoryId: string): SessionTab[] {
   return listTabsByState(categoryId, "archived");
+}
+
+export function listAllArchivedTabs(): SessionTab[] {
+  const db = getDatabase();
+  const result = db.exec(`
+    SELECT t.id, t.category_id, t.url, t.title, t.position, t.saved_at
+    FROM session_tabs t
+    INNER JOIN categories c ON c.id = t.category_id
+    WHERE t.deleted_at IS NULL
+      AND t.archived_at IS NOT NULL
+      AND c.deleted_at IS NULL
+    ORDER BY c.position ASC, t.position ASC, t.saved_at ASC, t.id ASC
+  `);
+
+  if (result.length === 0) {
+    return [];
+  }
+
+  const columns = result[0].columns;
+  return result[0].values.map((value) => {
+    const row = Object.fromEntries(columns.map((column, index) => [column, value[index]])) as SessionTabRow;
+    return mapSessionTabRow(row);
+  });
 }
 
 export function getActiveTab(id: string): SessionTab | null {
@@ -1226,6 +1289,37 @@ function getNextCategoryPosition(db: Database): number {
   }
 
   return Number(result[0].values[0][0]);
+}
+
+export function deleteAllArchivedTabsPermanently(): number {
+  const db = getDatabase();
+  const archivedCount = listAllArchivedTabs().length;
+
+  if (archivedCount === 0) {
+    return 0;
+  }
+
+  db.run(`
+    DELETE FROM session_tabs
+    WHERE deleted_at IS NULL
+      AND archived_at IS NOT NULL
+      AND category_id IN (SELECT id FROM categories WHERE deleted_at IS NULL)
+  `);
+  normalizeTabPositions(db);
+  saveDatabase();
+  return archivedCount;
+}
+
+function getActiveCategoryIds(db: Database): string[] {
+  const result = db.exec(
+    "SELECT id FROM categories WHERE deleted_at IS NULL ORDER BY position ASC, name ASC"
+  );
+
+  if (result.length === 0) {
+    return [];
+  }
+
+  return result[0].values.map((value) => String(value[0]));
 }
 
 function normalizeTabInput(input: SessionTabInput): SessionTabInput {

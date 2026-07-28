@@ -1234,3 +1234,114 @@ Current status:
 
 Next recommended step:
 - Start the Grill for #46 when ready, then derive only the focused implementation tickets supported by its decisions.
+
+### Cross-Pilot icon system Grill ticket
+
+Completed:
+- Published GitHub issue #47, `Grill: Define the DeskPilot icon system and custom user icons`.
+- Kept the ticket decision-only and separate from the BrowserPilot information-density Grill.
+- Connected the existing persisted monochrome Category icon picker (#23) to the broader question of built-in Pilot/action vocabulary and local custom assets.
+- Included local-first storage, backup/import, fallback, validation, accessibility and Theme-boundary questions before any icon implementation.
+
+Current status:
+- No icon assets, editor or storage behavior changed.
+- The icon Grill has not started yet.
+
+Next recommended step:
+- Finish the BrowserPilot UI Grill first, then run #47 as its own icon-system decision session when ready.
+
+### BrowserPilot UI Grill and implementation slices
+
+Completed:
+- Completed the BrowserPilot UI information-density Grill in `docs/GRILL_SESSION_2026-07-28_BROWSERPILOT_UI.md`.
+- Defined the compact responsive Category Grid, fixed compact Cards, icon-only actions, Category Creation Shell, Category Creation/Details Views, release-based reorder previews, explicit drafts and unsaved-change handling.
+- Separated Category Details from BrowserPilot Settings and explicitly kept global DeskPilot Settings, Themes and screenshot annotation colors out of this scope.
+- Defined BrowserPilot Settings as the home for Extension diagnostics, BrowserPilot-wide Recovery and Archived Tab Cleanup; Category-specific Archive and Recovery remain in Category Details.
+- Defined the measurable Bridge Status Indicator as Ready/Unavailable only; development-only `Electron app required` is not a normal product status.
+- Published implementation issues #48 through #52 under parent #46 in dependency order, all marked `ready-for-agent`.
+
+Current status:
+- The UI design is decision-complete and ready for implementation slicing.
+- No product code or stored browser-session data changed during the Grill.
+
+Next recommended step:
+- Implement #48 first, then proceed through #49, #50, #51 and #52 in dependency order; run the separate icon-system Grill #47 independently before expanding the shared icon vocabulary.
+
+### Compact BrowserPilot overview grid (#48)
+
+Completed:
+- Replaced the daily BrowserPilot entry surface with a fixed-size responsive multi-row Category Grid that scrolls vertically.
+- Reduced each compact Category Card to icon, one-line name, selection, icon-only Open/Details actions and a dedicated reorder handle.
+- Centered the three compact Category Card actions so the control group stays visually balanced regardless of Category name length.
+- Added the final hollow Category Creation Shell and the responsive first-Category callout.
+- Added the narrow BrowserPilot Top Navigation with measurable Ready/Unavailable Bridge status and a separate BrowserPilot Settings entry.
+- Added persisted Category ordering behind the existing storage/preload seam, including provisional insertion feedback, successful-drop commit and cancellation without writes.
+- Kept existing browser-session data intact and retained the legacy workflow temporarily behind the new entry actions while the dependent Details and Settings tickets replace it.
+- Added storage and packaged Electron renderer coverage for order persistence, Grid geometry, selection, action accessibility, long names and reorder commit/cancel behavior.
+- Verified `npm run test:storage`, `npm run lint`, `npm run build`, `npm run package:prototype` and the packaged Electron renderer smoke.
+
+Current status:
+- Issue #48 is implemented on the shared BrowserPilot UI branch.
+- Category Creation/Details remains the next dependency; the temporary legacy secondary surface is not the final #49–#51 information architecture.
+
+Next recommended step:
+- Implement #49 Category Creation and Details Views, including explicit drafts and unsaved-change navigation.
+
+### BrowserPilot Category Creation and Details Views (#49)
+
+Completed:
+- Added a dedicated Category Creation View backed by an unsaved draft with required name, default Folder icon, optional icon and description.
+- Made Create Category persist exactly once and route to the newly created Category Details View; Cancel can discard without creating a Category.
+- Added an in-app Category Details View with explicit Overview navigation and Open, Edit and recoverable Remove actions.
+- Added explicit Details editing with Save/Cancel, a visible `Unsaved changes` state and per-field `Changed` indicators that do not rely on color.
+- Added a three-choice navigation dialog for dirty Creation/Details drafts: Save and leave, Discard changes and leave or Keep editing.
+- Kept empty Category Details usable while reserving Saved Tab-specific management for dependent ticket #50.
+- Kept recoverable Category removal behavior intact and verified the removed Category can be restored.
+- Added a focused packaged Electron renderer flow covering draft create/cancel, create-to-details routing, edit save/discard, dirty navigation and safe removal/recovery.
+- Verified `npm run lint`, `npm run build`, `npm run package:prototype` and the focused packaged Category Views smoke.
+
+Current status:
+- Issue #49 is implemented on the shared BrowserPilot UI branch.
+- The temporary legacy surface still hosts Saved Tab and BrowserPilot-wide settings workflows until #50 and #51 replace them.
+
+Next recommended step:
+- Implement #50 by moving active Saved Tabs plus Category Archive/Recovery into Category Details and removing the desktop manual Save URL path.
+
+### Saved Tab management in Category Details (#50)
+
+Completed:
+- Moved active Saved Tab management into Category Details with title, host, individual Open, Archive, recoverable Remove and explicit Move controls.
+- Removed the desktop manual `Save URL` path; new browser tabs continue to enter DeskPilot through the Browser Extension capture workflow.
+- Added release-based Saved Tab reorder previews with persisted drop commits and cancellation without storage writes.
+- Added Category-local Session, Archive and Recovery modes with stable disabled entries and explanatory empty states.
+- Kept archived tabs reversible, required an explicit confirmation before permanent deletion and kept safely removed tabs recoverable.
+- Added a focused packaged Electron renderer flow covering individual Open, explicit Move, reorder commit/cancel, Archive return/permanent-delete confirmation and Recovery restore.
+- Verified `npm run lint`, `npm run build`, `npm run package:prototype` and the focused packaged Saved Tab Details smoke.
+
+Current status:
+- Issue #50 is implemented on the shared BrowserPilot UI branch.
+- BrowserPilot-wide Extension diagnostics, Category Recovery and Archived Tab Cleanup remain on the temporary legacy surface until #51 replaces it.
+
+Next recommended step:
+- Implement #51 BrowserPilot Settings and remove the remaining legacy BrowserPilot management surface.
+
+### BrowserPilot Settings View (#51)
+
+Completed:
+- Added one in-app BrowserPilot Settings View with separate Extension, BrowserPilot Recovery and Archived Tab Cleanup sections.
+- Made both the Top Navigation Settings action and the measured Bridge Ready/Unavailable indicator open Settings at Extension Details.
+- Moved browser-wide removed-Category Recovery into Settings while keeping Category-specific Saved Tab Archive and Recovery in Category Details.
+- Added global Archived Tab enumeration and a confirmed irreversible cleanup operation that deletes only Archived Tabs across all Categories.
+- Kept Recovery and Cleanup entries stable and visible when empty, with disabled controls and explanatory text.
+- Exposed Bridge host, port, allowed origins, connected data profile, extension manifest path, load-unpacked path and supported browsers as detailed diagnostics.
+- Removed every user-reachable route to the temporary legacy BrowserPilot Control Rail.
+- Updated README and usage guidance for the compact Grid, dedicated Category views, extension-only capture and the BrowserPilot Settings boundary.
+- Added storage coverage for safe global archive cleanup and focused packaged Electron renderer coverage for section boundaries, Recovery, confirmation/cancellation, disabled states and return navigation.
+- Verified `npm run test:storage`, `npm run lint`, `npm run build`, `npm run package:prototype` and the focused #49, #50 and #51 packaged renderer flows.
+
+Current status:
+- Issues #48, #49, #50 and #51 are implemented as four focused commits on the shared BrowserPilot UI branch.
+- Ticket #52 remains the next dependent BrowserPilot slice and is intentionally outside this working branch.
+
+Next recommended step:
+- Run the complete repository validation, push the shared branch and use its single Working PR as the quality gate before starting #52.

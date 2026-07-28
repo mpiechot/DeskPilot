@@ -25,6 +25,7 @@ import {
   RotateCcw,
   Save,
   ShieldCheck,
+  SlidersHorizontal,
   Trash2,
   Upload,
   Wrench,
@@ -48,7 +49,6 @@ import type {
   ExtensionInstallInfo,
   SessionMutationResult,
   SessionTab,
-  SessionTabInput,
   StorageExportResult,
   StorageBackupInfo,
   StorageRestoreResult,
@@ -145,6 +145,16 @@ function getUrlHost(value: string): string {
     return value;
   }
 }
+
+type BrowserSurface = "overview" | "create" | "details" | "settings" | "legacy";
+type BrowserSettingsSection = "extension" | "recovery" | "cleanup";
+
+type BrowserNavigationTarget = {
+  surface: BrowserSurface;
+  mode?: "session" | "categories" | "archive" | "recovery" | "extension";
+  categoryId?: string;
+  settingsSection?: BrowserSettingsSection;
+};
 
 function SettingsPilot({
   onOperationMessage,
@@ -572,9 +582,9 @@ function BrowserPilot({
   const [deletedCategories, setDeletedCategories] = useState<SessionCategory[]>([]);
   const [deletedTabs, setDeletedTabs] = useState<SessionTab[]>([]);
   const [archivedTabs, setArchivedTabs] = useState<SessionTab[]>([]);
+  const [allArchivedTabs, setAllArchivedTabs] = useState<SessionTab[]>([]);
   const [tabs, setTabs] = useState<SessionTab[]>([]);
   const [boardTabsByCategory, setBoardTabsByCategory] = useState<Record<string, SessionTab[]>>({});
-  const [tabDraft, setTabDraft] = useState<SessionTabInput>({ categoryId: selectedCategoryId, url: "", title: "" });
   const [controlMode, setControlMode] = useState<"session" | "categories" | "archive" | "recovery" | "extension">("session");
   const [controlRailCollapsed, setControlRailCollapsed] = useState(true);
   const [operationMessage, setOperationMessage] = useState("");
@@ -583,6 +593,14 @@ function BrowserPilot({
   const [extensionInfo, setExtensionInfo] = useState<ExtensionInstallInfo | null>(null);
   const [draggedTab, setDraggedTab] = useState<{ id: string; categoryId: string } | null>(null);
   const [isCategoryListDragging, setIsCategoryListDragging] = useState(false);
+  const [browserSurface, setBrowserSurface] = useState<BrowserSurface>("overview");
+  const [browserSettingsSection, setBrowserSettingsSection] = useState<BrowserSettingsSection>("extension");
+  const [pendingBrowserNavigation, setPendingBrowserNavigation] = useState<BrowserNavigationTarget | null>(null);
+  const [draggedCategoryId, setDraggedCategoryId] = useState<string | null>(null);
+  const [categoryReorderPreviewIndex, setCategoryReorderPreviewIndex] = useState<number | null>(null);
+  const [categoryDetailsMode, setCategoryDetailsMode] = useState<"session" | "archive" | "recovery">("session");
+  const [tabReorderPreviewIndex, setTabReorderPreviewIndex] = useState<number | null>(null);
+  const [tabMoveTargets, setTabMoveTargets] = useState<Record<string, string>>({});
   const categoryListDrag = useRef<{
     pointerId: number;
     startX: number;
@@ -680,6 +698,15 @@ function BrowserPilot({
       })
       .catch(() => undefined);
 
+    window.deskPilot
+      .listAllArchivedTabs()
+      .then((storedTabs: SessionTab[]) => {
+        if (isMounted) {
+          setAllArchivedTabs(storedTabs);
+        }
+      })
+      .catch(() => undefined);
+
     return () => {
       isMounted = false;
       unsubscribeFromUpdates();
@@ -687,8 +714,6 @@ function BrowserPilot({
   }, []);
 
   useEffect(() => {
-    setTabDraft((currentDraft) => ({ ...currentDraft, categoryId: selectedCategoryId }));
-
     if (!window.deskPilot || !selectedCategoryId) {
       setTabs([]);
       setDeletedTabs([]);
@@ -769,9 +794,24 @@ function BrowserPilot({
       const deletedTabsPromise = currentCategoryId ? window.deskPilot?.listDeletedTabs(currentCategoryId) : Promise.resolve([]);
       const archivedTabsPromise = currentCategoryId ? window.deskPilot?.listArchivedTabs(currentCategoryId) : Promise.resolve([]);
 
-      Promise.all([window.deskPilot?.listCategories(), tabsPromise, deletedTabsPromise, archivedTabsPromise])
-        .then(([nextCategories, nextTabs, nextDeletedTabs, nextArchivedTabs]) => {
-          if (!isMounted || !nextCategories || !nextTabs || !nextDeletedTabs || !nextArchivedTabs) {
+      Promise.all([
+        window.deskPilot?.listCategories(),
+        tabsPromise,
+        deletedTabsPromise,
+        archivedTabsPromise,
+        window.deskPilot?.listDeletedCategories(),
+        window.deskPilot?.listAllArchivedTabs()
+      ])
+        .then(([nextCategories, nextTabs, nextDeletedTabs, nextArchivedTabs, nextDeletedCategories, nextAllArchivedTabs]) => {
+          if (
+            !isMounted ||
+            !nextCategories ||
+            !nextTabs ||
+            !nextDeletedTabs ||
+            !nextArchivedTabs ||
+            !nextDeletedCategories ||
+            !nextAllArchivedTabs
+          ) {
             return;
           }
 
@@ -786,6 +826,8 @@ function BrowserPilot({
           setTabs(nextTabs);
           setDeletedTabs(nextDeletedTabs);
           setArchivedTabs(nextArchivedTabs);
+          setDeletedCategories(nextDeletedCategories);
+          setAllArchivedTabs(nextAllArchivedTabs);
           setStorageStatus("ready");
         })
         .catch(() => {
@@ -813,6 +855,10 @@ function BrowserPilot({
     setDeletedTabs(storageRestoreResult.deletedTabs);
     setArchivedTabs(storageRestoreResult.archivedTabs);
     setStorageStatus("ready");
+    window.deskPilot
+      ?.listAllArchivedTabs()
+      .then((storedTabs: SessionTab[]) => setAllArchivedTabs(storedTabs))
+      .catch(() => undefined);
   }, [storageRestoreResult]);
 
   const isStorageWritable = storageStatus === "ready" && Boolean(window.deskPilot);
@@ -866,6 +912,18 @@ function BrowserPilot({
       .catch(() => undefined);
   }
 
+  function refreshAllArchivedTabs(): void {
+    if (!window.deskPilot) {
+      setAllArchivedTabs([]);
+      return;
+    }
+
+    window.deskPilot
+      .listAllArchivedTabs()
+      .then((storedTabs: SessionTab[]) => setAllArchivedTabs(storedTabs))
+      .catch(() => undefined);
+  }
+
   function updateRecoveryResult(result: CategoryRecoveryResult): void {
     updateCategories(result.categories);
     setDeletedCategories(result.deletedCategories);
@@ -902,6 +960,87 @@ function BrowserPilot({
       startScrollLeft: event.currentTarget.scrollLeft,
       moved: false
     };
+  }
+
+  function openCategoryCreation(): void {
+    setCategoryDraft({ name: "", description: "", icon: defaultCategoryIcon });
+    setPendingBrowserNavigation(null);
+    setBrowserSurface("create");
+  }
+
+  function openCategoryDetails(categoryId: string): void {
+    const category = categories.find((item) => item.id === categoryId);
+
+    if (!category) {
+      return;
+    }
+
+    setSelectedCategoryId(category.id);
+    setCategoryDetailsMode("session");
+    setEditingCategoryId(null);
+    setEditDraft({ name: category.name, description: category.description, icon: category.icon });
+    setPendingBrowserNavigation(null);
+    setBrowserSurface("details");
+  }
+
+  function handleCategoryDragStart(event: DragEvent<HTMLButtonElement>, categoryId: string): void {
+    event.stopPropagation();
+
+    if (!isStorageWritable) {
+      event.preventDefault();
+      setOperationMessage("Reordering Categories requires the Electron app.");
+      return;
+    }
+
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("application/x-deskpilot-category", categoryId);
+    setDraggedCategoryId(categoryId);
+  }
+
+  function handleCategoryDragOver(event: DragEvent<HTMLElement>, previewIndex: number): void {
+    if (!draggedCategoryId) {
+      return;
+    }
+
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    setCategoryReorderPreviewIndex(previewIndex);
+  }
+
+  function cancelCategoryDrag(): void {
+    setDraggedCategoryId(null);
+    setCategoryReorderPreviewIndex(null);
+  }
+
+  function handleCategoryDrop(event: DragEvent<HTMLElement>): void {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const categoryId =
+      event.dataTransfer.getData("application/x-deskpilot-category") || draggedCategoryId;
+    const previewIndex = categoryReorderPreviewIndex;
+
+    if (!categoryId || previewIndex === null || !isStorageWritable) {
+      cancelCategoryDrag();
+      return;
+    }
+
+    const sourceIndex = categories.findIndex((category) => category.id === categoryId);
+    const targetPosition = sourceIndex >= 0 && sourceIndex < previewIndex ? previewIndex - 1 : previewIndex;
+
+    if (sourceIndex === targetPosition) {
+      cancelCategoryDrag();
+      return;
+    }
+
+    window.deskPilot
+      ?.moveCategory(categoryId, targetPosition)
+      .then((nextCategories: SessionCategory[]) => {
+        updateCategories(nextCategories);
+        setOperationMessage("Category order updated.");
+      })
+      .catch(() => setOperationMessage("Could not reorder Categories. Existing order was left untouched."))
+      .finally(cancelCategoryDrag);
   }
 
   function handleCategoryListPointerMove(event: ReactPointerEvent<HTMLElement>): void {
@@ -1010,6 +1149,92 @@ function BrowserPilot({
       .finally(() => setDraggedTab(null));
   }
 
+  function handleDetailsTabDragStart(event: DragEvent<HTMLButtonElement>, tab: SessionTab): void {
+    event.stopPropagation();
+
+    if (!isStorageWritable) {
+      event.preventDefault();
+      setOperationMessage("Reordering Saved Tabs requires the Electron app.");
+      return;
+    }
+
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("application/x-deskpilot-tab", tab.id);
+    setDraggedTab({ id: tab.id, categoryId: tab.categoryId });
+  }
+
+  function handleDetailsTabDragOver(event: DragEvent<HTMLElement>, previewIndex: number): void {
+    if (!draggedTab || draggedTab.categoryId !== selectedCategoryId) {
+      return;
+    }
+
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    setTabReorderPreviewIndex(previewIndex);
+  }
+
+  function cancelDetailsTabDrag(): void {
+    setDraggedTab(null);
+    setTabReorderPreviewIndex(null);
+  }
+
+  function handleDetailsTabDrop(event: DragEvent<HTMLElement>, dropPosition?: number): void {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const tabId = event.dataTransfer.getData("application/x-deskpilot-tab") || draggedTab?.id;
+    const previewIndex = dropPosition ?? tabReorderPreviewIndex;
+
+    if (!tabId || previewIndex === null || !selectedCategoryId || !isStorageWritable) {
+      cancelDetailsTabDrag();
+      return;
+    }
+
+    const sourceIndex = tabs.findIndex((tab) => tab.id === tabId);
+    const targetPosition = sourceIndex >= 0 && sourceIndex < previewIndex ? previewIndex - 1 : previewIndex;
+
+    if (sourceIndex === targetPosition) {
+      cancelDetailsTabDrag();
+      return;
+    }
+
+    window.deskPilot
+      ?.moveTab(tabId, { targetCategoryId: selectedCategoryId, targetPosition })
+      .then((result: SessionMutationResult) => {
+        updateSessionResult(result);
+        setOperationMessage(`Updated tab order in ${selectedCategoryName()}.`);
+      })
+      .catch(() => setOperationMessage("Could not reorder Saved Tabs. Existing order was left untouched."))
+      .finally(cancelDetailsTabDrag);
+  }
+
+  function moveSavedTab(tab: SessionTab): void {
+    const targetCategoryId = tabMoveTargets[tab.id];
+
+    if (!targetCategoryId || targetCategoryId === tab.categoryId || !isStorageWritable) {
+      return;
+    }
+
+    window.deskPilot
+      ?.moveTab(tab.id, { targetCategoryId, targetPosition: Number.MAX_SAFE_INTEGER })
+      .then((result: SessionMutationResult) => {
+        updateCategories(result.categories);
+        return window.deskPilot?.listTabs(selectedCategoryId);
+      })
+      .then((nextTabs?: SessionTab[]) => {
+        if (nextTabs) {
+          setTabs(nextTabs);
+        }
+        setTabMoveTargets((current) => {
+          const next = { ...current };
+          delete next[tab.id];
+          return next;
+        });
+        setOperationMessage(`Moved URL to ${categoryName(targetCategoryId)}.`);
+      })
+      .catch(() => setOperationMessage("Could not move saved URL. Existing data was left untouched."));
+  }
+
   function handleOpenTab(tab: SessionTab): void {
     if (!window.deskPilot) {
       setOperationMessage("Opening a saved URL requires the Electron app.");
@@ -1022,35 +1247,6 @@ function BrowserPilot({
         setOperationMessage(openedTab ? `Opened ${openedTab.title}.` : "Saved URL is no longer active.");
       })
       .catch(() => setOperationMessage("Could not open saved URL."));
-  }
-
-  function handleSaveUrl(): void {
-    if (!tabDraft.url.trim()) {
-      setOperationMessage("Paste a URL before saving it.");
-      return;
-    }
-
-    if (!isStorageWritable) {
-      setOperationMessage("Saving URLs requires the Electron app.");
-      return;
-    }
-
-    window.deskPilot
-      ?.addTab({ ...tabDraft, categoryId: selectedCategoryId })
-      .then((result: SessionMutationResult) => {
-        updateSessionResult(result);
-        setTabDraft({ categoryId: selectedCategoryId, url: "", title: "" });
-        setOperationMessage(
-          result.saveStatus === "already-saved"
-            ? `Already saved in ${selectedCategoryName()}.`
-            : result.saveStatus === "restored"
-              ? `Restored URL in ${selectedCategoryName()}.`
-              : `Saved URL to ${selectedCategoryName()}.`
-        );
-      })
-      .catch(() => {
-        setOperationMessage("Could not save URL. Use a full http or https URL.");
-      });
   }
 
   function handleOpenCategory(categoryId = selectedCategoryId): void {
@@ -1127,6 +1323,7 @@ function BrowserPilot({
           refreshArchivedTabs();
         }
 
+        refreshAllArchivedTabs();
         setOperationMessage("Saved URL archived.");
       })
       .catch(handleStorageError);
@@ -1143,6 +1340,8 @@ function BrowserPilot({
       .then((result: SessionMutationResult) => {
         updateSessionResult(result);
         refreshArchivedTabs();
+        refreshAllArchivedTabs();
+        setCategoryDetailsMode("session");
         setOperationMessage("Archived URL returned to the active Session.");
       })
       .catch(handleStorageError);
@@ -1164,6 +1363,8 @@ function BrowserPilot({
       .then((result: SessionMutationResult) => {
         updateSessionResult(result);
         refreshArchivedTabs();
+        refreshAllArchivedTabs();
+        setCategoryDetailsMode("session");
         setOperationMessage("Archived URL permanently deleted.");
       })
       .catch(handleStorageError);
@@ -1180,6 +1381,7 @@ function BrowserPilot({
       .then((result: SessionMutationResult) => {
         updateSessionResult(result);
         refreshDeletedTabs();
+        setCategoryDetailsMode("session");
         setOperationMessage("Saved URL restored.");
       })
       .catch(handleStorageError);
@@ -1201,8 +1403,20 @@ function BrowserPilot({
     window.deskPilot
       ?.createCategory(categoryDraft)
       .then((nextCategories: SessionCategory[]) => {
+        const previousIds = new Set(categories.map((category) => category.id));
+        const createdCategory = nextCategories.find((category) => !previousIds.has(category.id));
+
         updateCategories(nextCategories);
         setCategoryDraft({ name: "", description: "", icon: defaultCategoryIcon });
+        if (createdCategory) {
+          setSelectedCategoryId(createdCategory.id);
+          setEditDraft({
+            name: createdCategory.name,
+            description: createdCategory.description,
+            icon: createdCategory.icon
+          });
+          setBrowserSurface("details");
+        }
         setOperationMessage("Category added.");
       })
       .catch(handleStorageError);
@@ -1284,6 +1498,7 @@ function BrowserPilot({
       ?.deleteCategory(id)
       .then((nextCategories: SessionCategory[]) => {
         updateCategories(nextCategories);
+        setBrowserSurface("overview");
         return window.deskPilot?.listDeletedCategories();
       })
       .then((nextDeletedCategories?: SessionCategory[]) => {
@@ -1305,9 +1520,903 @@ function BrowserPilot({
       ?.restoreCategory(id)
       .then((result: CategoryRecoveryResult) => {
         updateRecoveryResult(result);
+        refreshAllArchivedTabs();
         setOperationMessage("Category restored.");
       })
       .catch(handleStorageError);
+  }
+
+  function permanentlyDeleteAllArchivedTabs(): void {
+    if (!isStorageWritable || allArchivedTabs.length === 0) {
+      return;
+    }
+
+    const tabLabel = `${allArchivedTabs.length} Archived Tab${allArchivedTabs.length === 1 ? "" : "s"}`;
+    if (
+      !window.confirm(
+        `Permanently delete all ${tabLabel} across BrowserPilot? This cannot be recovered.`
+      )
+    ) {
+      setOperationMessage("Archived Tab cleanup canceled.");
+      return;
+    }
+
+    window.deskPilot
+      ?.deleteAllArchivedTabsPermanently()
+      .then((deletedCount: number) => {
+        setAllArchivedTabs([]);
+        setArchivedTabs([]);
+        setOperationMessage(
+          `Permanently deleted ${deletedCount} Archived Tab${deletedCount === 1 ? "" : "s"}.`
+        );
+      })
+      .catch(handleStorageError);
+  }
+
+  const creationDraftDirty =
+    categoryDraft.name !== "" ||
+    categoryDraft.description !== "" ||
+    (categoryDraft.icon ?? defaultCategoryIcon) !== defaultCategoryIcon;
+  const detailsDraftDirty =
+    Boolean(selectedCategory) &&
+    editingCategoryId === selectedCategory?.id &&
+    (editDraft.name !== selectedCategory?.name ||
+      editDraft.description !== selectedCategory?.description ||
+      (editDraft.icon ?? defaultCategoryIcon) !== selectedCategory?.icon);
+  const hasUnsavedCategoryChanges =
+    (browserSurface === "create" && creationDraftDirty) ||
+    (browserSurface === "details" && detailsDraftDirty);
+
+  function applyBrowserNavigation(target: BrowserNavigationTarget): void {
+    if (target.categoryId) {
+      setSelectedCategoryId(target.categoryId);
+    }
+    if (target.mode) {
+      setControlMode(target.mode);
+    }
+    if (target.settingsSection) {
+      setBrowserSettingsSection(target.settingsSection);
+    }
+    setPendingBrowserNavigation(null);
+    setBrowserSurface(target.surface);
+  }
+
+  function requestBrowserNavigation(target: BrowserNavigationTarget): void {
+    if (hasUnsavedCategoryChanges) {
+      setPendingBrowserNavigation(target);
+      return;
+    }
+
+    applyBrowserNavigation(target);
+  }
+
+  function discardCategoryChangesAndLeave(): void {
+    if (browserSurface === "create") {
+      setCategoryDraft({ name: "", description: "", icon: defaultCategoryIcon });
+    } else if (selectedCategory) {
+      setEditDraft({
+        name: selectedCategory.name,
+        description: selectedCategory.description,
+        icon: selectedCategory.icon
+      });
+      setEditingCategoryId(null);
+    }
+
+    if (pendingBrowserNavigation) {
+      applyBrowserNavigation(pendingBrowserNavigation);
+    }
+  }
+
+  function saveCategoryChangesAndLeave(): void {
+    const target = pendingBrowserNavigation;
+
+    if (!target || !isStorageWritable) {
+      return;
+    }
+
+    if (browserSurface === "create") {
+      if (!categoryDraft.name.trim()) {
+        setOperationMessage("Category name cannot be empty.");
+        return;
+      }
+
+      window.deskPilot
+        ?.createCategory(categoryDraft)
+        .then((nextCategories: SessionCategory[]) => {
+          updateCategories(nextCategories);
+          setCategoryDraft({ name: "", description: "", icon: defaultCategoryIcon });
+          setOperationMessage("Category added.");
+          applyBrowserNavigation(target);
+        })
+        .catch(handleStorageError);
+      return;
+    }
+
+    if (!selectedCategory || !editDraft.name.trim()) {
+      setOperationMessage("Category name cannot be empty.");
+      return;
+    }
+
+    window.deskPilot
+      ?.updateCategory(selectedCategory.id, editDraft)
+      .then((nextCategories: SessionCategory[]) => {
+        updateCategories(nextCategories);
+        setEditingCategoryId(null);
+        setOperationMessage("Category updated.");
+        applyBrowserNavigation(target);
+      })
+      .catch(handleStorageError);
+  }
+
+  function renderBrowserTopNavigation() {
+    return (
+      <header className="browserPilotTopNavigation">
+        <div>
+          <h1>BrowserPilot</h1>
+        </div>
+        <div className="browserPilotTopActions">
+          {appUpdateStatus?.status === "available" ? (
+            <button
+              type="button"
+              className="headerUpdateAction"
+              onClick={handleOpenAvailableUpdate}
+              aria-label={`Update available: version ${appUpdateStatus.availableVersion}. Update now.`}
+            >
+              <Download aria-hidden="true" />
+              <span>
+                Update v{appUpdateStatus.currentVersion} → v{appUpdateStatus.availableVersion}
+              </span>
+            </button>
+          ) : null}
+          <button
+            type="button"
+            className={bridgeStatus?.running ? "bridgeStatusAction bridgeStatusAction-ready" : "bridgeStatusAction bridgeStatusAction-unavailable"}
+            onClick={() =>
+              requestBrowserNavigation({ surface: "settings", settingsSection: "extension" })
+            }
+            aria-label={`Bridge ${bridgeStatus?.running ? "Ready" : "Unavailable"}. Open Extension settings.`}
+            title="Open BrowserPilot Extension settings"
+          >
+            <span aria-hidden="true" className="bridgeStatusDot" />
+            <span>{bridgeStatus?.running ? "Ready" : "Unavailable"}</span>
+          </button>
+          <button
+            type="button"
+            className="browserPilotSettingsAction"
+            onClick={() =>
+              requestBrowserNavigation({ surface: "settings", settingsSection: "extension" })
+            }
+            aria-label="BrowserPilot Settings"
+            title="BrowserPilot Settings"
+          >
+            <SlidersHorizontal aria-hidden="true" />
+          </button>
+        </div>
+      </header>
+    );
+  }
+
+  function renderUnsavedChangesDialog() {
+    if (!pendingBrowserNavigation) {
+      return null;
+    }
+
+    return (
+      <div className="browserPilotDialogBackdrop">
+        <section
+          className="browserPilotDialog"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="unsaved-category-title"
+        >
+          <h2 id="unsaved-category-title">Unsaved changes</h2>
+          <p>Choose what happens to the Category draft before leaving this view.</p>
+          <div className="browserPilotDialogActions">
+            <button type="button" className="primaryAction" onClick={saveCategoryChangesAndLeave}>
+              Save and leave
+            </button>
+            <button type="button" className="secondaryAction" onClick={discardCategoryChangesAndLeave}>
+              Discard changes and leave
+            </button>
+            <button type="button" className="secondaryAction" onClick={() => setPendingBrowserNavigation(null)}>
+              Keep editing
+            </button>
+          </div>
+        </section>
+      </div>
+    );
+  }
+
+  if (browserSurface === "overview") {
+    return (
+      <main
+        className={layoutMode === "touch" ? "browserPilot browserPilot-touch" : "browserPilot"}
+        data-pilot="browser"
+        aria-label="BrowserPilot"
+      >
+        {renderBrowserTopNavigation()}
+
+        <section className="browserPilotOverview" aria-label="BrowserPilot category overview">
+          {categories.length === 0 ? (
+            <aside className="categoryCreationCallout">
+              <strong>Create your first Category</strong>
+              <span>Use the outlined plus card to start a browser Session.</span>
+            </aside>
+          ) : null}
+          <div
+            className="categoryGrid"
+            onDragOver={(event) => {
+              if (event.target === event.currentTarget) {
+                handleCategoryDragOver(event, categories.length);
+              }
+            }}
+            onDrop={handleCategoryDrop}
+          >
+            {categories.map((category, index) => (
+              <article
+                className={[
+                  "compactCategoryCard",
+                  selectedCategoryId === category.id ? "compactCategoryCard-selected" : "",
+                  categoryReorderPreviewIndex === index ? "compactCategoryCard-reorderBefore" : "",
+                  categoryReorderPreviewIndex === categories.length && index === categories.length - 1
+                    ? "compactCategoryCard-reorderAfter"
+                    : ""
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+                data-category-id={category.id}
+                key={category.id}
+                onClick={() => setSelectedCategoryId(category.id)}
+                onDragOver={(event) => {
+                  const rect = event.currentTarget.getBoundingClientRect();
+                  const previewIndex = event.clientX >= rect.left + rect.width / 2 ? index + 1 : index;
+                  handleCategoryDragOver(event, previewIndex);
+                }}
+                onDrop={handleCategoryDrop}
+              >
+                <div className="compactCategoryIdentity">
+                  <div className="categoryIcon" data-category-icon={category.icon}>
+                    <CategoryGlyph icon={category.icon} />
+                  </div>
+                  <h2 title={category.name}>{category.name}</h2>
+                </div>
+                <div className="compactCategoryActions">
+                  <button
+                    type="button"
+                    className="categoryOpenAction"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      handleOpenCategory(category.id);
+                    }}
+                    aria-label={`Open ${category.name} category`}
+                    title={`Open ${category.name}`}
+                  >
+                    <PanelTopOpen aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    className="categoryDetailsAction"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      openCategoryDetails(category.id);
+                    }}
+                    aria-label={`View details for ${category.name}`}
+                    title={`Details for ${category.name}`}
+                  >
+                    <Pencil aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    className="categoryReorderHandle"
+                    draggable={isStorageWritable}
+                    onClick={(event) => event.stopPropagation()}
+                    onDragEnd={cancelCategoryDrag}
+                    onDragStart={(event) => handleCategoryDragStart(event, category.id)}
+                    aria-label={`Reorder ${category.name}`}
+                    title={`Reorder ${category.name}`}
+                  >
+                    <GripVertical aria-hidden="true" />
+                  </button>
+                </div>
+              </article>
+            ))}
+            <button
+              type="button"
+              className={[
+                "categoryCreationShell",
+                categoryReorderPreviewIndex === categories.length ? "categoryCreationShell-reorderTarget" : ""
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              onClick={openCategoryCreation}
+              onDragOver={(event) => handleCategoryDragOver(event, categories.length)}
+              onDrop={handleCategoryDrop}
+              aria-label="Create Category"
+              title="Create Category"
+            >
+              <Plus aria-hidden="true" />
+              <span>Create Category</span>
+            </button>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  if (browserSurface === "create") {
+    return (
+      <main className="browserPilot browserPilotSecondaryView" data-pilot="browser" aria-label="BrowserPilot">
+        {renderBrowserTopNavigation()}
+        <section className="categoryEditorView" aria-label="Create Category">
+          <header className="categoryEditorHeader">
+            <button
+              type="button"
+              className="backToOverviewAction"
+              onClick={() => requestBrowserNavigation({ surface: "overview" })}
+            >
+              <ChevronLeft aria-hidden="true" />
+              Overview
+            </button>
+            <div>
+              <span className="eyebrow">Category Creation</span>
+              <h2>Create Category</h2>
+            </div>
+          </header>
+          {creationDraftDirty ? (
+            <div className="unsavedChangesNotice" role="status">
+              Unsaved changes
+            </div>
+          ) : null}
+          <form className="categoryEditorForm" onSubmit={handleCreateCategory}>
+            <label className={categoryDraft.name !== "" ? "categoryEditorField categoryEditorField-dirty" : "categoryEditorField"}>
+              <span>
+                Category name <strong>Required</strong>
+                {categoryDraft.name !== "" ? <small>Changed</small> : null}
+              </span>
+              <input
+                aria-label="Category name"
+                maxLength={40}
+                onChange={(event) => setCategoryDraft({ ...categoryDraft, name: event.target.value })}
+                value={categoryDraft.name}
+              />
+            </label>
+            <label className={categoryDraft.description !== "" ? "categoryEditorField categoryEditorField-dirty" : "categoryEditorField"}>
+              <span>
+                Description <strong>Optional</strong>
+                {categoryDraft.description !== "" ? <small>Changed</small> : null}
+              </span>
+              <textarea
+                aria-label="Category description"
+                maxLength={140}
+                onChange={(event) => setCategoryDraft({ ...categoryDraft, description: event.target.value })}
+                value={categoryDraft.description}
+              />
+            </label>
+            <div
+              className={
+                (categoryDraft.icon ?? defaultCategoryIcon) !== defaultCategoryIcon
+                  ? "categoryEditorField categoryEditorField-dirty"
+                  : "categoryEditorField"
+              }
+            >
+              <CategoryIconPicker
+                label="Category icon (optional)"
+                value={categoryDraft.icon ?? defaultCategoryIcon}
+                onChange={(icon) => setCategoryDraft({ ...categoryDraft, icon })}
+              />
+            </div>
+            <div className="categoryEditorActions">
+              <button type="submit" className="primaryAction">
+                <Plus aria-hidden="true" />
+                Create Category
+              </button>
+              <button
+                type="button"
+                className="secondaryAction"
+                onClick={() => requestBrowserNavigation({ surface: "overview" })}
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </section>
+        {renderUnsavedChangesDialog()}
+      </main>
+    );
+  }
+
+  if (browserSurface === "details" && selectedCategory) {
+    const isEditingDetails = editingCategoryId === selectedCategory.id;
+
+    return (
+      <main className="browserPilot browserPilotSecondaryView" data-pilot="browser" aria-label="BrowserPilot">
+        {renderBrowserTopNavigation()}
+        <section className="categoryDetailsView" aria-label={`Category Details: ${selectedCategory.name}`}>
+          <header className="categoryDetailsHeader">
+            <button
+              type="button"
+              className="backToOverviewAction"
+              onClick={() => requestBrowserNavigation({ surface: "overview" })}
+            >
+              <ChevronLeft aria-hidden="true" />
+              Overview
+            </button>
+            <div className="categoryDetailsIdentity">
+              <div className="categoryIcon" data-category-icon={selectedCategory.icon}>
+                <CategoryGlyph icon={selectedCategory.icon} />
+              </div>
+              <div>
+                <span className="eyebrow">Category Details</span>
+                <h2>{selectedCategory.name}</h2>
+                <p>{selectedCategory.description || "No description"}</p>
+              </div>
+            </div>
+            <div className="categoryDetailsActions">
+              <button type="button" className="primaryAction" onClick={() => handleOpenCategory(selectedCategory.id)}>
+                <PanelTopOpen aria-hidden="true" />
+                Open
+              </button>
+              <button
+                type="button"
+                className="secondaryAction"
+                onClick={() => startEditingCategory(selectedCategory)}
+                disabled={isEditingDetails}
+              >
+                <Pencil aria-hidden="true" />
+                Edit
+              </button>
+              <button type="button" className="removeCategoryAction" onClick={() => removeCategory(selectedCategory.id)}>
+                <Trash2 aria-hidden="true" />
+                Remove Category
+              </button>
+            </div>
+          </header>
+
+          {isEditingDetails ? (
+            <section className="categoryDetailsEditor" aria-label="Edit Category">
+              {detailsDraftDirty ? (
+                <div className="unsavedChangesNotice" role="status">
+                  Unsaved changes
+                </div>
+              ) : null}
+              <div className="categoryEditorForm">
+                <label
+                  className={
+                    editDraft.name !== selectedCategory.name
+                      ? "categoryEditorField categoryEditorField-dirty"
+                      : "categoryEditorField"
+                  }
+                >
+                  <span>
+                    Category name
+                    {editDraft.name !== selectedCategory.name ? <small>Changed</small> : null}
+                  </span>
+                  <input
+                    aria-label="Category name"
+                    maxLength={40}
+                    onChange={(event) => setEditDraft({ ...editDraft, name: event.target.value })}
+                    value={editDraft.name}
+                  />
+                </label>
+                <label
+                  className={
+                    editDraft.description !== selectedCategory.description
+                      ? "categoryEditorField categoryEditorField-dirty"
+                      : "categoryEditorField"
+                  }
+                >
+                  <span>
+                    Description
+                    {editDraft.description !== selectedCategory.description ? <small>Changed</small> : null}
+                  </span>
+                  <textarea
+                    aria-label="Category description"
+                    maxLength={140}
+                    onChange={(event) => setEditDraft({ ...editDraft, description: event.target.value })}
+                    value={editDraft.description}
+                  />
+                </label>
+                <div
+                  className={
+                    (editDraft.icon ?? defaultCategoryIcon) !== selectedCategory.icon
+                      ? "categoryEditorField categoryEditorField-dirty"
+                      : "categoryEditorField"
+                  }
+                >
+                  <CategoryIconPicker
+                    label="Category icon"
+                    value={editDraft.icon ?? defaultCategoryIcon}
+                    onChange={(icon) => setEditDraft({ ...editDraft, icon })}
+                  />
+                </div>
+                <div className="categoryEditorActions">
+                  <button
+                    type="button"
+                    className="primaryAction"
+                    onClick={() => saveCategoryEdit(selectedCategory.id)}
+                  >
+                    <Save aria-hidden="true" />
+                    Save
+                  </button>
+                  <button type="button" className="secondaryAction" onClick={cancelEditingCategory}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </section>
+          ) : (
+            <section className="categoryTabWorkspace" aria-label={`Saved Tabs in ${selectedCategory.name}`}>
+              <div className="categoryDetailsTabs" role="tablist" aria-label="Category work areas">
+                <button
+                  type="button"
+                  className={categoryDetailsMode === "session" ? "modeButton modeButton-active" : "modeButton"}
+                  onClick={() => setCategoryDetailsMode("session")}
+                  role="tab"
+                  aria-selected={categoryDetailsMode === "session"}
+                >
+                  Session
+                </button>
+                <span title={archivedTabs.length === 0 ? "No Archived Tabs are available in this Category." : undefined}>
+                  <button
+                    type="button"
+                    className={categoryDetailsMode === "archive" ? "modeButton modeButton-active" : "modeButton"}
+                    onClick={() => setCategoryDetailsMode("archive")}
+                    disabled={archivedTabs.length === 0}
+                    role="tab"
+                    aria-selected={categoryDetailsMode === "archive"}
+                  >
+                    Archive
+                  </button>
+                </span>
+                <span title={deletedTabs.length === 0 ? "No removed Saved Tabs can be recovered in this Category." : undefined}>
+                  <button
+                    type="button"
+                    className={categoryDetailsMode === "recovery" ? "modeButton modeButton-active" : "modeButton"}
+                    onClick={() => setCategoryDetailsMode("recovery")}
+                    disabled={deletedTabs.length === 0}
+                    role="tab"
+                    aria-selected={categoryDetailsMode === "recovery"}
+                  >
+                    Recovery
+                  </button>
+                </span>
+              </div>
+              {archivedTabs.length === 0 || deletedTabs.length === 0 ? (
+                <div className="disabledActionExplanations">
+                  {archivedTabs.length === 0 ? <span>No Archived Tabs in this Category.</span> : null}
+                  {deletedTabs.length === 0 ? <span>No removed Saved Tabs to recover.</span> : null}
+                </div>
+              ) : null}
+
+              {categoryDetailsMode === "session" ? (
+                <div
+                  className="categoryDetailsTabList"
+                  role="list"
+                  onDragOver={(event) => handleDetailsTabDragOver(event, tabs.length)}
+                  onDrop={(event) => handleDetailsTabDrop(event, tabs.length)}
+                >
+                  {tabs.length === 0 ? (
+                    <div className="categoryDetailsEmptyState">
+                      <strong>No Saved Tabs yet</strong>
+                      <span>Use the Browser Extension to capture the current tab or window.</span>
+                    </div>
+                  ) : null}
+                  {tabs.map((tab, index) => (
+                    <article
+                      className={[
+                        "categoryDetailsTab",
+                        tabReorderPreviewIndex === index ? "categoryDetailsTab-reorderBefore" : "",
+                        tabReorderPreviewIndex === tabs.length && index === tabs.length - 1
+                          ? "categoryDetailsTab-reorderAfter"
+                          : ""
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                      data-tab-id={tab.id}
+                      key={tab.id}
+                      onDragOver={(event) => {
+                        const rect = event.currentTarget.getBoundingClientRect();
+                        const previewIndex = event.clientY >= rect.top + rect.height / 2 ? index + 1 : index;
+                        handleDetailsTabDragOver(event, previewIndex);
+                      }}
+                      onDrop={(event) => {
+                        const bounds = event.currentTarget.getBoundingClientRect();
+                        const dropPosition =
+                          event.clientY >= bounds.top + bounds.height / 2 ? index + 1 : index;
+                        handleDetailsTabDrop(event, dropPosition);
+                      }}
+                      role="listitem"
+                    >
+                      <button
+                        type="button"
+                        className="savedTabReorderHandle"
+                        draggable={isStorageWritable}
+                        onDragEnd={cancelDetailsTabDrag}
+                        onDragStart={(event) => handleDetailsTabDragStart(event, tab)}
+                        aria-label={`Reorder ${tab.title}`}
+                        title={`Reorder ${tab.title}`}
+                      >
+                        <GripVertical aria-hidden="true" />
+                      </button>
+                      <div className="categoryDetailsTabIdentity">
+                        <strong>{tab.title}</strong>
+                        <span>{getUrlHost(tab.url)}</span>
+                      </div>
+                      <div className="categoryDetailsTabActions">
+                        <button type="button" onClick={() => handleOpenTab(tab)} title="Open Saved Tab">
+                          <ExternalLink aria-hidden="true" />
+                          Open
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => archiveSavedTab(tab.id, selectedCategory.id)}
+                          title="Archive Saved Tab"
+                        >
+                          <Archive aria-hidden="true" />
+                          Archive
+                        </button>
+                        <button type="button" onClick={() => removeTab(tab)} title="Remove Saved Tab safely">
+                          <X aria-hidden="true" />
+                          Remove
+                        </button>
+                      </div>
+                      <div className="savedTabMoveControls">
+                        <select
+                          aria-label={`Move ${tab.title} to Category`}
+                          value={tabMoveTargets[tab.id] ?? ""}
+                          onChange={(event) =>
+                            setTabMoveTargets((current) => ({ ...current, [tab.id]: event.target.value }))
+                          }
+                        >
+                          <option value="">Move to…</option>
+                          {categories
+                            .filter((category) => category.id !== tab.categoryId)
+                            .map((category) => (
+                              <option value={category.id} key={category.id}>
+                                {category.name}
+                              </option>
+                            ))}
+                        </select>
+                        <button
+                          type="button"
+                          className="secondaryAction"
+                          disabled={!tabMoveTargets[tab.id]}
+                          onClick={() => moveSavedTab(tab)}
+                        >
+                          Move
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              ) : categoryDetailsMode === "archive" ? (
+                <div className="categoryDetailsTabList" role="list" aria-label={`Archived Tabs in ${selectedCategory.name}`}>
+                  {archivedTabs.map((tab) => (
+                    <article className="categoryDetailsTab" data-tab-id={tab.id} key={tab.id} role="listitem">
+                      <div className="categoryDetailsTabIdentity">
+                        <strong>{tab.title}</strong>
+                        <span>{getUrlHost(tab.url)}</span>
+                      </div>
+                      <div className="categoryDetailsTabActions">
+                        <button type="button" onClick={() => restoreArchivedTab(tab.id)}>
+                          <RotateCcw aria-hidden="true" />
+                          Return to Session
+                        </button>
+                        <button
+                          type="button"
+                          className="permanentDeleteAction"
+                          onClick={() => permanentlyDeleteArchivedTab(tab)}
+                        >
+                          <Trash2 aria-hidden="true" />
+                          Delete Permanently
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <div className="categoryDetailsTabList" role="list" aria-label={`Recover Saved Tabs in ${selectedCategory.name}`}>
+                  {deletedTabs.map((tab) => (
+                    <article className="categoryDetailsTab" data-tab-id={tab.id} key={tab.id} role="listitem">
+                      <div className="categoryDetailsTabIdentity">
+                        <strong>{tab.title}</strong>
+                        <span>{getUrlHost(tab.url)}</span>
+                      </div>
+                      <div className="categoryDetailsTabActions">
+                        <button type="button" onClick={() => restoreDeletedTab(tab.id)}>
+                          <RotateCcw aria-hidden="true" />
+                          Restore Saved Tab
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
+        </section>
+        {renderUnsavedChangesDialog()}
+      </main>
+    );
+  }
+
+  if (browserSurface === "settings") {
+    const archivedCategoryCount = new Set(allArchivedTabs.map((tab) => tab.categoryId)).size;
+
+    return (
+      <main
+        className={[
+          "browserPilot",
+          "browserPilotSecondaryView",
+          layoutMode === "touch" ? "browserPilotSettingsView-touch" : ""
+        ].filter(Boolean).join(" ")}
+        data-pilot="browser"
+        aria-label="BrowserPilot Settings"
+      >
+        {renderBrowserTopNavigation()}
+        <section className="browserPilotSettingsView">
+          <header className="browserPilotViewHeader">
+            <div>
+              <button
+                type="button"
+                className="backToOverviewAction"
+                onClick={() => requestBrowserNavigation({ surface: "overview" })}
+              >
+                <ChevronLeft aria-hidden="true" />
+                Overview
+              </button>
+              <span className="browserPilotEyebrow">BrowserPilot Settings</span>
+              <h2>Browser-wide controls and diagnostics</h2>
+              <p>Category-specific Session, Archive and Recovery actions stay in Category Details.</p>
+            </div>
+          </header>
+
+          <nav className="browserPilotSettingsSections" aria-label="BrowserPilot Settings sections">
+            <button
+              type="button"
+              className={browserSettingsSection === "extension" ? "settingsSectionAction settingsSectionAction-active" : "settingsSectionAction"}
+              aria-current={browserSettingsSection === "extension" ? "page" : undefined}
+              onClick={() => setBrowserSettingsSection("extension")}
+            >
+              <Puzzle aria-hidden="true" />
+              Extension
+            </button>
+            <div className="settingsSectionEntry">
+              <button
+                type="button"
+                className={browserSettingsSection === "recovery" ? "settingsSectionAction settingsSectionAction-active" : "settingsSectionAction"}
+                aria-current={browserSettingsSection === "recovery" ? "page" : undefined}
+                disabled={deletedCategories.length === 0}
+                onClick={() => setBrowserSettingsSection("recovery")}
+              >
+                <RotateCcw aria-hidden="true" />
+                BrowserPilot Recovery
+              </button>
+              {deletedCategories.length === 0 ? <small>No removed Categories to recover.</small> : null}
+            </div>
+            <div className="settingsSectionEntry">
+              <button
+                type="button"
+                className={browserSettingsSection === "cleanup" ? "settingsSectionAction settingsSectionAction-active" : "settingsSectionAction"}
+                aria-current={browserSettingsSection === "cleanup" ? "page" : undefined}
+                disabled={allArchivedTabs.length === 0}
+                onClick={() => setBrowserSettingsSection("cleanup")}
+              >
+                <Trash2 aria-hidden="true" />
+                Archived Tab Cleanup
+              </button>
+              {allArchivedTabs.length === 0 ? <small>No Archived Tabs to clean up.</small> : null}
+            </div>
+          </nav>
+
+          <section className="browserPilotSettingsPanel">
+            {browserSettingsSection === "extension" ? (
+              <>
+                <header>
+                  <span className="browserPilotEyebrow">Extension Details</span>
+                  <h2>Browser capture connection</h2>
+                  <p>The Browser Extension is the only path for adding current browser tabs and windows.</p>
+                </header>
+                <div className="extensionDiagnosticsGrid">
+                  <article className={bridgeStatus?.running ? "extensionDiagnostic extensionDiagnostic-ready" : "extensionDiagnostic extensionDiagnostic-warning"}>
+                    {bridgeStatus?.running ? <CheckCircle2 aria-hidden="true" /> : <AlertTriangle aria-hidden="true" />}
+                    <div>
+                      <strong>{bridgeStatus?.running ? "Bridge Ready" : "Bridge Unavailable"}</strong>
+                      <span>
+                        {bridgeStatus ? `${bridgeStatus.host}:${bridgeStatus.port}` : "No Bridge status was reported."}
+                      </span>
+                    </div>
+                  </article>
+                  <article className={extensionInfo?.manifestPresent ? "extensionDiagnostic extensionDiagnostic-ready" : "extensionDiagnostic extensionDiagnostic-warning"}>
+                    {extensionInfo?.manifestPresent ? <CheckCircle2 aria-hidden="true" /> : <AlertTriangle aria-hidden="true" />}
+                    <div>
+                      <strong>{extensionInfo?.manifestPresent ? "Manifest found" : "Manifest missing"}</strong>
+                      <code>{extensionInfo?.manifestPath ?? "browser-extension/manifest.json"}</code>
+                    </div>
+                  </article>
+                </div>
+                <dl className="extensionDetailsList">
+                  <div>
+                    <dt>Load unpacked</dt>
+                    <dd><code>{extensionPathText}</code></dd>
+                  </div>
+                  <div>
+                    <dt>Supported browsers</dt>
+                    <dd>{supportedBrowsers.join(", ")}</dd>
+                  </div>
+                  <div>
+                    <dt>Allowed origins</dt>
+                    <dd>{bridgeStatus?.allowedOrigins.join(", ") || "Unavailable"}</dd>
+                  </div>
+                  <div>
+                    <dt>Data profile</dt>
+                    <dd>{bridgeStatus?.dataProfile?.label ?? "Unavailable"}</dd>
+                  </div>
+                </dl>
+              </>
+            ) : browserSettingsSection === "recovery" ? (
+              <>
+                <header>
+                  <span className="browserPilotEyebrow">BrowserPilot Recovery</span>
+                  <h2>Removed Categories</h2>
+                  <p>Restoring a Category also returns its associated recoverable data.</p>
+                </header>
+                <div className="browserPilotRecoveryList" role="list">
+                  {deletedCategories.map((category) => (
+                    <article className="browserPilotRecoveryItem" key={category.id} role="listitem">
+                      <div className="categoryIcon" data-category-icon={category.icon}>
+                        <CategoryGlyph icon={category.icon} />
+                      </div>
+                      <div>
+                        <strong>{category.name}</strong>
+                        <span>{category.description || "No description"}</span>
+                      </div>
+                      <button type="button" onClick={() => restoreDeletedCategory(category.id)}>
+                        <RotateCcw aria-hidden="true" />
+                        Restore Category
+                      </button>
+                    </article>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <>
+                <header>
+                  <span className="browserPilotEyebrow">Archived Tab Cleanup</span>
+                  <h2>{allArchivedTabs.length} Archived Tab{allArchivedTabs.length === 1 ? "" : "s"}</h2>
+                  <p>
+                    These tabs span {archivedCategoryCount} Categor{archivedCategoryCount === 1 ? "y" : "ies"}.
+                    Category-local archive actions remain in Category Details.
+                  </p>
+                </header>
+                {allArchivedTabs.length > 0 ? (
+                  <>
+                    <div className="archivedCleanupSummary" role="list">
+                      {allArchivedTabs.map((tab) => (
+                        <div key={tab.id} role="listitem">
+                          <span>{tab.title}</span>
+                          <small>{categoryName(tab.categoryId)} · {getUrlHost(tab.url)}</small>
+                        </div>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      className="permanentCleanupAction"
+                      onClick={permanentlyDeleteAllArchivedTabs}
+                    >
+                      <Trash2 aria-hidden="true" />
+                      Permanently delete all Archived Tabs
+                    </button>
+                  </>
+                ) : (
+                  <p className="browserPilotSettingsEmpty">No Archived Tabs are available for cleanup.</p>
+                )}
+              </>
+            )}
+          </section>
+        </section>
+      </main>
+    );
   }
 
   return (
@@ -1330,6 +2439,10 @@ function BrowserPilot({
         >
         <header className="appHeader">
           <div>
+            <button type="button" className="backToOverviewAction" onClick={() => setBrowserSurface("overview")}>
+              <ChevronLeft aria-hidden="true" />
+              Overview
+            </button>
             <h1>BrowserPilot</h1>
           </div>
           <div className="headerMeta">
@@ -1354,10 +2467,6 @@ function BrowserPilot({
           <button type="button" className="primaryAction" onClick={() => handleOpenCategory()}>
             <PanelTopOpen aria-hidden="true" />
             Open Selected
-          </button>
-          <button type="button" className="secondaryAction" onClick={handleSaveUrl}>
-            <Save aria-hidden="true" />
-            Save URL
           </button>
         </section>
 
@@ -1400,24 +2509,11 @@ function BrowserPilot({
         </div>
 
         {controlMode === "session" ? (
-          <section className="tabForm" aria-label="Saved URL">
+          <section className="tabForm" aria-label="Browser Extension capture">
             <div className="selectedCategoryLabel">Target: {selectedCategoryName()}</div>
-            <input
-              aria-label="URL to save"
-              onChange={(event) => setTabDraft({ ...tabDraft, url: event.target.value })}
-              placeholder="https://example.com"
-              type="url"
-              value={tabDraft.url}
-            />
-            <input
-              aria-label="URL title"
-              maxLength={180}
-              onChange={(event) => setTabDraft({ ...tabDraft, title: event.target.value })}
-              placeholder="Optional title"
-              type="text"
-              value={tabDraft.title}
-            />
-            <div className="savedUrlCount">{tabs.length} saved URLs</div>
+            <span className="emptyRecoveryText">
+              Use the Browser Extension to capture the current tab or window.
+            </span>
           </section>
         ) : controlMode === "categories" ? (
           <section className="categoryManagementPanel" aria-label="Category management">

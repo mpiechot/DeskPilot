@@ -49,17 +49,15 @@ Current state:
 - The app shows the active data profile and Productive cutover status in the UI.
 - Productive storage copies existing prototype data once when it is first created and leaves the source untouched.
 - Categories and saved URLs use soft-delete recovery flows.
-- The horizontal category board can be panned by dragging, so off-screen categories remain reachable in the compact window.
-- Categories can be created, renamed, safely removed and assigned a persisted icon from a monochrome built-in set.
+- BrowserPilot opens on a compact responsive multi-row Category Grid with fixed cards, icon-only Open/Details actions and persisted drag ordering.
+- Categories have dedicated Creation and Details views with explicit drafts, unsaved-change choices, safe removal and persisted monochrome icons.
 - Saved URLs have persisted tab positions and are restored in that stored order.
-- The Session Board shows saved tabs in bounded scrollable lists that use the remaining height of each Category card.
-- Saved tabs can be moved between categories and reordered with mouse-first drag and drop.
-- Every category can be opened directly from its Session Board card, and individual saved tabs can be opened there too.
-- Saved URLs can be archived or safely removed directly from their category card without a duplicate sidebar list.
-- Saved tabs can be archived without deletion and returned to the active Session from the selected category's Archive view.
+- Category Details owns active Saved Tabs, explicit cross-category moves, release-based drag ordering, individual Open, Archive and recoverable Remove actions.
+- New tabs enter DeskPilot through the Browser Extension; the desktop manual Save URL path has been removed.
+- Saved tabs can be archived without deletion and returned to the active Session from the Category Details Archive view.
 - Saved URLs from a selected category open together in a new Chrome/Edge browser window named exactly after the Category.
-- The complete BrowserPilot control rail is collapsed to a narrow handle by default and slides open horizontally when session capture, category management, archive, recovery or extension controls are needed, giving the Session Board the freed width.
-- Category cards keep a fixed width while the control rail moves, place edit/remove actions in the upper-right corner and reveal additional cards instead of stretching visible cards.
+- BrowserPilot Top Navigation keeps measured Bridge Ready/Unavailable state and BrowserPilot Settings available across its views.
+- BrowserPilot Settings separates Extension diagnostics, global removed-Category Recovery and confirmed global Archived Tab Cleanup; Category-specific Archive and Recovery stay in Category Details.
 - Manual SQLite backup snapshots can be created, restored, exported and imported from shell-level Settings, and the latest automatic rolling backup can be restored safely.
 - A corrupted active database is recovered automatically from the valid rolling backup at startup, while the corrupted source file is preserved for diagnosis.
 - If both database copies are unusable, a native read-only recovery menu can export either file, show both paths and open the affected storage folder.
