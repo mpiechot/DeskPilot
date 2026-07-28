@@ -1234,3 +1234,35 @@ Current status:
 
 Next recommended step:
 - Start the Grill for #46 when ready, then derive only the focused implementation tickets supported by its decisions.
+
+### Cross-Pilot icon system Grill ticket
+
+Completed:
+- Published GitHub issue #47, `Grill: Define the DeskPilot icon system and custom user icons`.
+- Kept the ticket decision-only and separate from the BrowserPilot information-density Grill.
+- Connected the existing persisted monochrome Category icon picker (#23) to the broader question of built-in Pilot/action vocabulary and local custom assets.
+- Included local-first storage, backup/import, fallback, validation, accessibility and Theme-boundary questions before any icon implementation.
+
+Current status:
+- No icon assets, editor or storage behavior changed.
+- The icon Grill has not started yet.
+
+Next recommended step:
+- Finish the BrowserPilot UI Grill first, then run #47 as its own icon-system decision session when ready.
+
+### BrowserPilot UI Grill and implementation slices
+
+Completed:
+- Completed the BrowserPilot UI information-density Grill in `docs/GRILL_SESSION_2026-07-28_BROWSERPILOT_UI.md`.
+- Defined the compact responsive Category Grid, fixed compact Cards, icon-only actions, Category Creation Shell, Category Creation/Details Views, release-based reorder previews, explicit drafts and unsaved-change handling.
+- Separated Category Details from BrowserPilot Settings and explicitly kept global DeskPilot Settings, Themes and screenshot annotation colors out of this scope.
+- Defined BrowserPilot Settings as the home for Extension diagnostics, BrowserPilot-wide Recovery and Archived Tab Cleanup; Category-specific Archive and Recovery remain in Category Details.
+- Defined the measurable Bridge Status Indicator as Ready/Unavailable only; development-only `Electron app required` is not a normal product status.
+- Published implementation issues #48 through #52 under parent #46 in dependency order, all marked `ready-for-agent`.
+
+Current status:
+- The UI design is decision-complete and ready for implementation slicing.
+- No product code or stored browser-session data changed during the Grill.
+
+Next recommended step:
+- Implement #48 first, then proceed through #49, #50, #51 and #52 in dependency order; run the separate icon-system Grill #47 independently before expanding the shared icon vocabulary.

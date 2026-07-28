@@ -16,6 +16,22 @@ _Avoid_: Bookmark, live tab
 A saved tab deliberately removed from the active Browser Session while remaining recoverable inside its original Category.
 _Avoid_: Deleted tab, bookmark, sleeping tab
 
+**Archived Tab Cleanup**:
+An explicitly confirmed BrowserPilot Settings action that permanently deletes all Archived Tabs in one operation. It remains a stable, disabled action when no Archived Tabs exist. It is distinct from returning an Archived Tab to a Session and from recoverable soft-delete flows.
+_Avoid_: Archive, empty archive view, bulk soft-delete
+
+**Category Recovery**:
+The stable recovery surface inside a Category Details View for Saved Tabs that were removed from that Category through the recoverable soft-delete flow. It remains visible but disabled with an explanatory empty state when no such Saved Tabs exist. It does not restore whole Categories.
+_Avoid_: BrowserPilot Recovery, Archive, global recovery
+
+**BrowserPilot Recovery**:
+The stable BrowserPilot Settings surface for restoring removed Categories together with their associated recoverable data. It remains visible but disabled with an explanatory empty state when no removed Categories can be restored.
+_Avoid_: Category Recovery, Archive, database recovery
+
+**Disabled BrowserPilot Action**:
+A stable BrowserPilot control that remains present when its action is unavailable and explains the unavailable condition through accessible helper text or a tooltip-capable wrapper. Disabled appearance alone is not sufficient communication.
+_Avoid_: Hidden action, unexplained disabled control, color-only state
+
 **Category**:
 A user-facing container for one browser session, such as Work, Research, Entertainment, Projects, or Later / Inbox.
 _Avoid_: Folder, workspace, project
@@ -25,12 +41,64 @@ The user-defined order of saved tabs within a category, used when restoring that
 _Avoid_: Sort order, save time order
 
 **Session Board**:
-The app view where categories show their saved tabs and support drag-and-drop organization between categories and within each category.
-_Avoid_: Sidebar list, extension popup
+The BrowserPilot overview and Category Details workflow where a responsive Category grid provides Category selection, ordering and entry into Category work areas, while Category Details supports Saved Tab organization.
+_Avoid_: Sidebar list, extension popup, horizontal card strip
 
 **Category Card Summary**:
-The compact summary shown on a Session Board category card: an empty category shows `No saved tabs yet`, while a populated category shows its saved-tab count. It does not introduce a separate `Ready`, `Saved`, or `Unsaved` state.
+The compact identity shown on a Session Board category card: the Category icon, name, selected state, icon-only `Open` and `Details` actions, and Category Reorder Handle. It deliberately does not include the saved-tab list or a tab count.
 _Avoid_: Readiness badge, save-state indicator, live-tab count
+
+**Category Card Action Hierarchy**:
+The compact visual distinction between Category Card actions: `Open` is the primary action with the Theme's accent treatment, while `Details` is a secondary icon-only action using the Category panel's neutral/subtle surface. Both actions retain accessible names and discoverable tooltips.
+_Avoid_: Text button pair, color-only meaning, hidden card gesture
+
+**Category Reorder Handle**:
+A dedicated drag target used to change the order of Categories in the responsive Category grid. It is distinct from grid scrolling and must not make an ordinary Category selection or open action ambiguous.
+_Avoid_: Category drag surface, pan handle, tab drag handle
+
+**Category Reorder Preview**:
+The visible provisional insertion marker shown while a Category is being dragged. It communicates where the Category will be inserted; the new order is committed only when the drag is released successfully.
+_Avoid_: Selection highlight, permanent placeholder, board scroll indicator
+
+**Category Details View**:
+An in-app BrowserPilot surface for the selected Category's full information and less-frequent actions. It is a secondary view inside the existing DeskPilot window, not a second source of truth or a separate native window by default.
+_Avoid_: Separate Category window, modal details popup, second BrowserPilot
+
+**Pilot Top Navigation**:
+A narrow BrowserPilot header that keeps the current Pilot title, essential connection/status information and the BrowserPilot Settings entry visible without occupying the Category overview or a Category Details View. The global DeskPilot Settings entry remains a separate shell concern. The Bridge status is also an entry to BrowserPilot extension diagnostics.
+_Avoid_: Control rail, sidebar, global action drawer
+
+**Extension Details View**:
+An in-app BrowserPilot Settings section or subview for browser-extension installation guidance, manifest state, supported-browser information and Bridge diagnostics. It is reached from the compact Bridge status in Pilot Top Navigation and does not become part of the Category overview.
+_Avoid_: Extension control rail, Bridge popup, browser extension UI
+
+**Bridge Status Indicator**:
+A compact BrowserPilot Top Navigation status consisting of a semantic label and status icon. `Ready` means the local Bridge is running; `Unavailable` means the Bridge cannot be used. Extension package/setup diagnostics are shown in BrowserPilot Settings because the desktop app cannot currently detect whether a browser has loaded the Extension.
+_Avoid_: Host/port diagnostic, Electron app required, raw connection badge, inferred Extension heartbeat
+
+**Extension Setup Status**:
+A detailed BrowserPilot Settings status for the locally available Extension package, including whether its manifest exists at the expected path. It is not a claim that the browser has loaded or enabled the Extension.
+_Avoid_: Bridge Status Indicator, installed Extension guarantee, browser heartbeat
+
+**BrowserPilot Settings**:
+The BrowserPilot-owned secondary view reached from the BrowserPilot Settings button in Pilot Top Navigation. It contains the infrequent BrowserPilot controls moved out of the former expandable Control Rail; it is distinct from the global DeskPilot Settings view.
+_Avoid_: Global Settings, shell Settings, Control Rail
+
+**Category Creation Shell**:
+A hollow Session Board slot rendered at the same size as a Category Card. Its plus action starts creation of a new Category and routes directly to the Category Details View for completing its identity and configuration.
+_Avoid_: Empty Category Card, placeholder Category, add-category button
+
+**Category Creation Callout**:
+A short empty-overview hint that points visually to the Category Creation Shell when no active Categories exist. It explains the next action without becoming another Category control or a blocking empty state.
+_Avoid_: Empty Category error, onboarding wizard, disabled overview
+
+**Category Creation View**:
+A dedicated in-app BrowserPilot surface for creating a new Category from an unsaved draft. It is distinct from the Category Details View even when both reuse the same form controls; the Creation View commits a new Category, while the Details View edits an existing one.
+_Avoid_: New Category Details View, empty Category page, add-category modal
+
+**Unsaved Changes**:
+A visible editing state in a Category Creation View or Category Details View indicating that the current form differs from the last committed Category data. It requires an explicit Save or Cancel outcome before the draft is treated as settled.
+_Avoid_: Autosave pending, temporary value, dirty form without user-facing state
 
 **Productive Use**:
 Using DeskPilot as the user's real local browser-session system, where saved windows and tabs must remain trustworthy independently of ongoing development.
@@ -109,7 +177,7 @@ The product requirement that a DeskPilot touch action leaves the system cursor w
 _Avoid_: Display resolution, responsive layout, cursor restoration
 
 **Touch Mode**:
-The DeskPilot operating state in which the application is shown on a user-selected attached touch display and uses the touch-oriented Control Surface. The presence of a touch display alone does not move DeskPilot or claim the display for the application.
+The DeskPilot operating state in which the application is shown on a user-selected attached touch display with touch-oriented sizing, spacing and interaction geometry. Touch Mode keeps the same Pilot responsibilities and user-facing functions as Standard layout; it does not create a different BrowserPilot. The presence of a touch display alone does not move DeskPilot or claim the display for the application.
 _Avoid_: Automatic display takeover, kiosk mode, touch detection
 
 **Attached Touch Display**:
