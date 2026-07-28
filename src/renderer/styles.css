@@ -588,7 +588,7 @@ textarea {
 .compactCategoryActions {
   display: grid;
   grid-template-columns: repeat(3, 34px);
-  justify-content: end;
+  justify-content: center;
   gap: 6px;
 }
 

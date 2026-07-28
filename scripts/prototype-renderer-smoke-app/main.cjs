@@ -664,6 +664,9 @@ async function runElectronSmoke() {
                 Boolean(button.getAttribute("title"))
             )
           ),
+          categoryActionsCentered: cards.every(
+            (card) => getComputedStyle(card.querySelector(".compactCategoryActions")).justifyContent === "center"
+          ),
           creationShellFinal: grid?.lastElementChild === creationShell,
           longNameEllipsized:
             Boolean(longNameHeading) &&
@@ -681,6 +684,7 @@ async function runElectronSmoke() {
       }, 100);
     })
   `);
+  assert(overviewGridResult.categoryActionsCentered, "Expected compact Category actions to be centered");
 
   if (smokeScope === "browserpilot-settings") {
     archivedTabsByCategory.set("work", [

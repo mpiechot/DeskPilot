@@ -1272,6 +1272,7 @@ Next recommended step:
 Completed:
 - Replaced the daily BrowserPilot entry surface with a fixed-size responsive multi-row Category Grid that scrolls vertically.
 - Reduced each compact Category Card to icon, one-line name, selection, icon-only Open/Details actions and a dedicated reorder handle.
+- Centered the three compact Category Card actions so the control group stays visually balanced regardless of Category name length.
 - Added the final hollow Category Creation Shell and the responsive first-Category callout.
 - Added the narrow BrowserPilot Top Navigation with measurable Ready/Unavailable Bridge status and a separate BrowserPilot Settings entry.
 - Added persisted Category ordering behind the existing storage/preload seam, including provisional insertion feedback, successful-drop commit and cancellation without writes.
