@@ -140,8 +140,8 @@ _Avoid_: Release day, manual switch
 A planning milestone focused on making the current save, restore, manage, backup, and recovery loop reliable enough for productive use before adding larger workflows.
 _Avoid_: Stability sprint, polish pass
 
-**DeskPilot Shell**:
-The product-level application layer that provides responsive navigation, shared presentation, and access to the active Pilot or Settings.
+**DeskPilot-Rahmen (DeskPilot Shell)**:
+The fixed outer DeskPilot application layer that provides responsive navigation, shared presentation, global Settings access and access to the active Pilot or Settings. It is visually distinct from the active Pilot surface.
 _Avoid_: Plugin host, generic dashboard
 
 **Pilot Navigation**:
@@ -215,3 +215,11 @@ _Avoid_: Color scheme, CSS skin, plugin
 **Default Theme**:
 The complete fallback Theme that represents the current DeskPilot appearance. Other Themes override only explicitly defined presentation values; every missing value, including animations and sounds, inherits from the Default Theme. An empty Theme therefore behaves exactly like the Default Theme. The Default Theme intentionally defines no animation or sound behavior for the current product.
 _Avoid_: Browser default, incomplete base theme
+
+**DeskPilot Product Mark**:
+The visual identity of the complete DeskPilot product across the application, Windows tray, installer, shortcuts, extension branding and large-format presentation. It is distinct from semantic Category, Pilot and action icons and is defined by its own identity decision.
+_Avoid_: BrowserPilot icon, Category icon, action icon, Theme decoration
+
+**Roman Theme Direction**:
+A purely visual Theme direction for the existing DeskPilot product, using classical Roman material and form language such as stone, bronze, parchment, laurel and restrained engraving. Its visual vocabulary is primarily civic and architectural—arches, plaques, laurel and inscriptions—with military or gladiator motifs limited to rare accents. Its palette is grounded in dark warm red-brown and charcoal, with aged ivory work surfaces and muted bronze accents; the mood is dignified and calm. DeskPilot frames and panels use material cues such as restrained relief, inset lines, stone-like layering or bronze edging, not color changes alone, and may use moderate chamfered plaque-like geometry rather than strongly rounded cards. The DeskPilot Shell keeps the strongest Roman identity as a stable frame, including its unchanged navigation and global Settings boundary, while each Pilot surface remains calmer and task-focused so Shell and Pilot UI are visibly distinct. Classical serif typography is limited to branding and large headings; functional content uses a neutral sans-serif. Existing functional icons retain their clear semantic forms while receiving Roman visual treatment; Roman motifs remain decorative or limited to brand and frame assets. Theme-specific state colors may be adapted to the Roman palette, but state meaning must remain clear through role, contrast, text, icon and border—not color or ornament alone. Accessibility and focus visibility remain first-class constraints. The initial direction is silent and mostly still, with only restrained functional transitions and reduced-motion support. The Theme must control the complete presentation through a shared declarative token and asset vocabulary; no Theme may add React components, feature code, navigation behavior or workflow semantics. Gladiator references are limited to subtle accents; the direction does not introduce arena, combat, progression, scoring or other game semantics.
+_Avoid_: Game UI, fantasy quest system, military dashboard, decorative theme-specific workflow

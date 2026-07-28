@@ -1250,6 +1250,21 @@ Current status:
 Next recommended step:
 - Finish the BrowserPilot UI Grill first, then run #47 as its own icon-system decision session when ready.
 
+### DeskPilot product-logo Grill ticket (#54)
+
+Completed:
+- Confirmed that the existing #47 icon-system Grill concerns semantic Category, Pilot and action icons and must not be reused for the DeskPilot product logo.
+- Added broad prework in `docs/DESKPILOT_BRAND_ICON_GRILL_PREWORK.md` covering wordmark, lettermark, abstract geometry, product metaphor, architectural/emblematic mark and combination mark families without selecting a winner.
+- Recorded the current baseline: the shell uses a `DP` lettermark, while the existing extension icon reads primarily as a browser-window symbol and therefore risks being mistaken for BrowserPilot.
+- Created GitHub issue #54, `Grill: Find the DeskPilot product logo and app icon`, with explicit separation from #47, broad prework requirements and no feature or icon-system implementation scope.
+
+Current status:
+- The product-logo Grill has not started; its prework and decision ticket are ready.
+- No product assets, logo files or icon behavior changed.
+
+Next recommended step:
+- Continue the Roman Theme Grill independently, then run #54 as a separate product-identity session when ready.
+
 ### BrowserPilot UI Grill and implementation slices
 
 Completed:

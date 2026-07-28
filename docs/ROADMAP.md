@@ -62,6 +62,7 @@ BrowserPilot UI implementation tickets derived from #46:
 
 Cross-Pilot visual decision tickets:
 - #47 define the DeskPilot icon system, expanded built-in vocabulary and custom user icons - ready for Grill
+- #54 find the DeskPilot product logo and application icon through broad, decision-first prework - ready for Grill; deliberately separate from #47
 
 Recommended next implementation step:
 - Continue with #52 Touch Mode presentation after the #48–#51 BrowserPilot UI branch passes its Working PR quality gate.
