@@ -643,13 +643,192 @@ async function runElectronSmoke() {
     })
   `);
 
-  await window.webContents.executeJavaScript(`
-    (() => {
-      const workCard = document.querySelector('.compactCategoryCard[data-category-id="work"]');
-      workCard?.querySelector('.categoryDetailsAction')?.click();
-    })()
+  const categoryViewsResult = await window.webContents.executeJavaScript(`
+    new Promise((resolve) => {
+      const wait = (milliseconds) => new Promise((done) => setTimeout(done, milliseconds));
+      const setInputValue = (input, value) => {
+        const valueSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
+        const previousValue = input.value;
+        valueSetter.call(input, value);
+        input._valueTracker?.setValue(previousValue);
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+      };
+      const setTextareaValue = (textarea, value) => {
+        const valueSetter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value").set;
+        const previousValue = textarea.value;
+        valueSetter.call(textarea, value);
+        textarea._valueTracker?.setValue(previousValue);
+        textarea.dispatchEvent(new Event("input", { bubbles: true }));
+        textarea.dispatchEvent(new Event("change", { bubbles: true }));
+      };
+      const buttonByText = (text) =>
+        Array.from(document.querySelectorAll("button")).find((button) => button.textContent.trim() === text);
+      const waitFor = async (predicate, attempts = 120) => {
+        for (let attempt = 0; attempt < attempts; attempt += 1) {
+          if (predicate()) {
+            return true;
+          }
+          await wait(25);
+        }
+        return false;
+      };
+      const findCompactCard = (name) =>
+        Array.from(document.querySelectorAll(".compactCategoryCard")).find(
+          (card) => card.querySelector("h2")?.textContent.trim() === name
+        );
+
+      let stage = "open Category Creation";
+      setTimeout(async () => {
+        try {
+        const initialCategoryCount = document.querySelectorAll(".compactCategoryCard").length;
+        document.querySelector(".categoryCreationShell")?.click();
+        await waitFor(() => Boolean(document.querySelector('[aria-label="Create Category"]')));
+
+        const creationHasUnsavedDraft =
+          Boolean(document.querySelector('.categoryEditorView input[aria-label="Category name"]')) &&
+          Boolean(document.querySelector('.categoryEditorView button[aria-label="Folder icon"][aria-pressed="true"]')) &&
+          !document.querySelector(".categoryEditorView .sessionBoardList, .categoryEditorView .removeCategoryAction");
+
+        setInputValue(document.querySelector('.categoryEditorView input[aria-label="Category name"]'), "Discard me");
+        buttonByText("Cancel")?.click();
+        await waitFor(() => Boolean(document.querySelector('[role="dialog"]')));
+        const leaveChoicesPresent = ["Save and leave", "Discard changes and leave", "Keep editing"].every((label) =>
+          Boolean(buttonByText(label))
+        );
+        buttonByText("Keep editing")?.click();
+        await wait(25);
+        const keepEditingWorked = Boolean(document.querySelector(".categoryEditorView"));
+        buttonByText("Cancel")?.click();
+        await waitFor(() => Boolean(document.querySelector('[role="dialog"]')));
+        buttonByText("Discard changes and leave")?.click();
+        await waitFor(() => Boolean(document.querySelector(".categoryGrid")));
+        const canceledCreationDidNotPersist =
+          document.querySelectorAll(".compactCategoryCard").length === initialCategoryCount &&
+          !findCompactCard("Discard me");
+
+        stage = "create Category";
+        document.querySelector(".categoryCreationShell")?.click();
+        await waitFor(() => Boolean(document.querySelector(".categoryEditorView")));
+        setInputValue(document.querySelector('.categoryEditorView input[aria-label="Category name"]'), "Smoke Created");
+        setTextareaValue(
+          document.querySelector('.categoryEditorView textarea[aria-label="Category description"]'),
+          "Created through the dedicated draft."
+        );
+        document.querySelector('.categoryEditorView button[aria-label="Code icon"]')?.click();
+        await waitFor(() =>
+          document
+            .querySelector('.categoryEditorView button[aria-label="Code icon"]')
+            ?.getAttribute("aria-pressed") === "true"
+        );
+        buttonByText("Create Category")?.click();
+        await waitFor(
+          () => document.querySelector(".categoryDetailsIdentity h2")?.textContent.trim() === "Smoke Created"
+        );
+        const creationPersistedToDetails =
+          document.querySelector(".categoryDetailsIdentity p")?.textContent.trim() ===
+            "Created through the dedicated draft." &&
+          Boolean(document.querySelector('.categoryDetailsIdentity [data-category-icon="code"]'));
+
+        stage = "edit and save Category Details";
+        buttonByText("Edit")?.click();
+        await waitFor(() => Boolean(document.querySelector(".categoryDetailsEditor")));
+        setInputValue(document.querySelector('.categoryDetailsEditor input[aria-label="Category name"]'), "Smoke Updated");
+        setTextareaValue(
+          document.querySelector('.categoryDetailsEditor textarea[aria-label="Category description"]'),
+          "Updated explicitly."
+        );
+        const unsavedIndicatorsPresent =
+          document.querySelector(".unsavedChangesNotice")?.textContent.includes("Unsaved changes") &&
+          document.querySelectorAll(".categoryEditorField-dirty").length >= 2;
+        buttonByText("Overview")?.click();
+        await waitFor(() => Boolean(document.querySelector('[role="dialog"]')));
+        buttonByText("Keep editing")?.click();
+        await wait(25);
+        const keepEditingFromDetailsWorked = Boolean(document.querySelector(".categoryDetailsEditor"));
+        buttonByText("Overview")?.click();
+        await waitFor(() => Boolean(document.querySelector('[role="dialog"]')));
+        buttonByText("Save and leave")?.click();
+        await waitFor(() => Boolean(findCompactCard("Smoke Updated")));
+        const saveAndLeavePersisted = Boolean(findCompactCard("Smoke Updated"));
+
+        stage = "discard Category Details edit";
+        findCompactCard("Smoke Updated")?.querySelector(".categoryDetailsAction")?.click();
+        await waitFor(() => Boolean(document.querySelector(".categoryDetailsView")));
+        buttonByText("Edit")?.click();
+        await waitFor(() => Boolean(document.querySelector(".categoryDetailsEditor")));
+        setInputValue(document.querySelector('.categoryDetailsEditor input[aria-label="Category name"]'), "Discarded Edit");
+        buttonByText("Overview")?.click();
+        await waitFor(() => Boolean(document.querySelector('[role="dialog"]')));
+        buttonByText("Discard changes and leave")?.click();
+        await waitFor(() => Boolean(findCompactCard("Smoke Updated")));
+        const discardFromDetailsPreservedCommittedValue =
+          Boolean(findCompactCard("Smoke Updated")) && !findCompactCard("Discarded Edit");
+
+        stage = "remove and recover Category";
+        findCompactCard("Smoke Updated")?.querySelector(".categoryDetailsAction")?.click();
+        await waitFor(() => Boolean(document.querySelector(".categoryDetailsView")));
+        let removalMessage = "";
+        window.confirm = (message) => {
+          removalMessage = message;
+          return true;
+        };
+        buttonByText("Remove Category")?.click();
+        await waitFor(() => Boolean(document.querySelector(".categoryGrid")) && !findCompactCard("Smoke Updated"));
+        const safeRemovalReturnedToOverview =
+          removalMessage.includes("Smoke Updated") &&
+          removalMessage.includes("remain available in Recovery") &&
+          !findCompactCard("Smoke Updated");
+
+        document.querySelector(".browserPilotSettingsAction")?.click();
+        await waitFor(() => Boolean(document.querySelector(".controlRail")));
+        buttonByText("Recovery")?.click();
+        await waitFor(() => Boolean(buttonByText("Restore Smoke Updated")));
+        buttonByText("Restore Smoke Updated")?.click();
+        await waitFor(() =>
+          Array.from(document.querySelectorAll(".categoryCard")).some(
+            (card) => card.querySelector("h2")?.textContent.trim() === "Smoke Updated"
+          )
+        );
+        const removedCategoryRecoverable = Array.from(document.querySelectorAll(".categoryCard")).some(
+          (card) => card.querySelector("h2")?.textContent.trim() === "Smoke Updated"
+        );
+
+        resolve({
+          creationHasUnsavedDraft,
+          leaveChoicesPresent,
+          keepEditingWorked,
+          canceledCreationDidNotPersist,
+          creationPersistedToDetails,
+          unsavedIndicatorsPresent,
+          keepEditingFromDetailsWorked,
+          saveAndLeavePersisted,
+          discardFromDetailsPreservedCommittedValue,
+          safeRemovalReturnedToOverview,
+          removedCategoryRecoverable
+        });
+        } catch (error) {
+          resolve({
+            stage,
+            error: error instanceof Error ? error.message : String(error),
+            bodyText: document.body.textContent
+          });
+        }
+      }, 50);
+    })
   `);
-  await new Promise((resolve) => setTimeout(resolve, 100));
+  console.log("Prototype renderer smoke: Category views", categoryViewsResult);
+  if (process.env.DESKPILOT_SMOKE_SCOPE === "category-views") {
+    assert(
+      Object.values(categoryViewsResult).every(Boolean),
+      `Expected Category Creation/Details workflow to pass: ${JSON.stringify(categoryViewsResult)}`
+    );
+    window.destroy();
+    app.quit();
+    console.log(JSON.stringify({ renderer: "dist/index.html", categoryViews: "ok" }, null, 2));
+    process.exit(0);
+    return;
+  }
 
   const browserPilotLayoutResult = await window.webContents.executeJavaScript(`
     new Promise((resolve) => {
@@ -1515,6 +1694,23 @@ async function runElectronSmoke() {
     overviewGridResult.cancellationPreviewVisible && overviewGridResult.cancellationPreservedOrder,
     "Expected canceled Category reorder to clear its preview without changing order"
   );
+  if (!Object.values(categoryViewsResult).every(Boolean)) {
+    console.error(JSON.stringify(categoryViewsResult, null, 2));
+  }
+  assert(categoryViewsResult.creationHasUnsavedDraft, "Expected Category Creation to start as a dedicated unsaved draft");
+  assert(categoryViewsResult.leaveChoicesPresent, "Expected all three explicit unsaved-change navigation choices");
+  assert(categoryViewsResult.keepEditingWorked, "Expected Keep editing to preserve the Category Creation draft");
+  assert(categoryViewsResult.canceledCreationDidNotPersist, "Expected canceled Category Creation not to persist an empty Category");
+  assert(categoryViewsResult.creationPersistedToDetails, "Expected Create Category to persist and open Category Details");
+  assert(categoryViewsResult.unsavedIndicatorsPresent, "Expected visible global and field-level Unsaved Changes indicators");
+  assert(categoryViewsResult.keepEditingFromDetailsWorked, "Expected Keep editing to preserve the Category Details draft");
+  assert(categoryViewsResult.saveAndLeavePersisted, "Expected Save and leave to persist Details changes");
+  assert(
+    categoryViewsResult.discardFromDetailsPreservedCommittedValue,
+    "Expected Discard changes and leave to retain the committed Category identity"
+  );
+  assert(categoryViewsResult.safeRemovalReturnedToOverview, "Expected safe Category removal to return to the overview");
+  assert(categoryViewsResult.removedCategoryRecoverable, "Expected removed Category data to remain recoverable");
   if (!Object.values(browserPilotLayoutResult).every(Boolean)) {
     console.error(JSON.stringify(browserPilotLayoutResult, null, 2));
   }

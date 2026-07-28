@@ -55,8 +55,8 @@ BrowserPilot UI decision tickets:
 
 BrowserPilot UI implementation tickets derived from #46:
 - #48 implement the compact responsive BrowserPilot overview grid - done
-- #49 add BrowserPilot Category Creation and Details Views - in progress; #48 complete
-- #50 move Saved Tab management into Category Details - ready for agent; blocked by #49
+- #49 add BrowserPilot Category Creation and Details Views - done
+- #50 move Saved Tab management into Category Details - in progress; #49 complete
 - #51 add the BrowserPilot Settings View - ready for agent; blocked by #48 and #50
 - #52 apply Touch Mode presentation across BrowserPilot views - ready for agent; blocked by #48 through #51
 
@@ -64,7 +64,7 @@ Cross-Pilot visual decision tickets:
 - #47 define the DeskPilot icon system, expanded built-in vocabulary and custom user icons - ready for Grill
 
 Recommended next implementation step:
-- Complete #49 Category Creation/Details, then continue through #50 and #51 on the same BrowserPilot UI branch.
+- Complete #50 Saved Tab management in Category Details, then finish the shared branch with #51 BrowserPilot Settings.
 
 ## v0.1 - Control Panel Skeleton
 

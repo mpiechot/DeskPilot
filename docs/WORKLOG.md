@@ -1285,3 +1285,23 @@ Current status:
 
 Next recommended step:
 - Implement #49 Category Creation and Details Views, including explicit drafts and unsaved-change navigation.
+
+### BrowserPilot Category Creation and Details Views (#49)
+
+Completed:
+- Added a dedicated Category Creation View backed by an unsaved draft with required name, default Folder icon, optional icon and description.
+- Made Create Category persist exactly once and route to the newly created Category Details View; Cancel can discard without creating a Category.
+- Added an in-app Category Details View with explicit Overview navigation and Open, Edit and recoverable Remove actions.
+- Added explicit Details editing with Save/Cancel, a visible `Unsaved changes` state and per-field `Changed` indicators that do not rely on color.
+- Added a three-choice navigation dialog for dirty Creation/Details drafts: Save and leave, Discard changes and leave or Keep editing.
+- Kept empty Category Details usable while reserving Saved Tab-specific management for dependent ticket #50.
+- Kept recoverable Category removal behavior intact and verified the removed Category can be restored.
+- Added a focused packaged Electron renderer flow covering draft create/cancel, create-to-details routing, edit save/discard, dirty navigation and safe removal/recovery.
+- Verified `npm run lint`, `npm run build`, `npm run package:prototype` and the focused packaged Category Views smoke.
+
+Current status:
+- Issue #49 is implemented on the shared BrowserPilot UI branch.
+- The temporary legacy surface still hosts Saved Tab and BrowserPilot-wide settings workflows until #50 and #51 replace them.
+
+Next recommended step:
+- Implement #50 by moving active Saved Tabs plus Category Archive/Recovery into Category Details and removing the desktop manual Save URL path.

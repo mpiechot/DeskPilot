@@ -147,6 +147,14 @@ function getUrlHost(value: string): string {
   }
 }
 
+type BrowserSurface = "overview" | "create" | "details" | "legacy";
+
+type BrowserNavigationTarget = {
+  surface: BrowserSurface;
+  mode?: "session" | "categories" | "archive" | "recovery" | "extension";
+  categoryId?: string;
+};
+
 function SettingsPilot({
   onOperationMessage,
   onStorageRestore,
@@ -584,7 +592,8 @@ function BrowserPilot({
   const [extensionInfo, setExtensionInfo] = useState<ExtensionInstallInfo | null>(null);
   const [draggedTab, setDraggedTab] = useState<{ id: string; categoryId: string } | null>(null);
   const [isCategoryListDragging, setIsCategoryListDragging] = useState(false);
-  const [browserSurface, setBrowserSurface] = useState<"overview" | "legacy">("overview");
+  const [browserSurface, setBrowserSurface] = useState<BrowserSurface>("overview");
+  const [pendingBrowserNavigation, setPendingBrowserNavigation] = useState<BrowserNavigationTarget | null>(null);
   const [draggedCategoryId, setDraggedCategoryId] = useState<string | null>(null);
   const [categoryReorderPreviewIndex, setCategoryReorderPreviewIndex] = useState<number | null>(null);
   const categoryListDrag = useRef<{
@@ -908,12 +917,24 @@ function BrowserPilot({
     };
   }
 
-  function openLegacySurface(mode: typeof controlMode, categoryId = selectedCategoryId): void {
-    if (categoryId) {
-      setSelectedCategoryId(categoryId);
+  function openCategoryCreation(): void {
+    setCategoryDraft({ name: "", description: "", icon: defaultCategoryIcon });
+    setPendingBrowserNavigation(null);
+    setBrowserSurface("create");
+  }
+
+  function openCategoryDetails(categoryId: string): void {
+    const category = categories.find((item) => item.id === categoryId);
+
+    if (!category) {
+      return;
     }
-    setControlMode(mode);
-    setBrowserSurface("legacy");
+
+    setSelectedCategoryId(category.id);
+    setEditingCategoryId(null);
+    setEditDraft({ name: category.name, description: category.description, icon: category.icon });
+    setPendingBrowserNavigation(null);
+    setBrowserSurface("details");
   }
 
   function handleCategoryDragStart(event: DragEvent<HTMLButtonElement>, categoryId: string): void {
@@ -1273,8 +1294,20 @@ function BrowserPilot({
     window.deskPilot
       ?.createCategory(categoryDraft)
       .then((nextCategories: SessionCategory[]) => {
+        const previousIds = new Set(categories.map((category) => category.id));
+        const createdCategory = nextCategories.find((category) => !previousIds.has(category.id));
+
         updateCategories(nextCategories);
         setCategoryDraft({ name: "", description: "", icon: defaultCategoryIcon });
+        if (createdCategory) {
+          setSelectedCategoryId(createdCategory.id);
+          setEditDraft({
+            name: createdCategory.name,
+            description: createdCategory.description,
+            icon: createdCategory.icon
+          });
+          setBrowserSurface("details");
+        }
         setOperationMessage("Category added.");
       })
       .catch(handleStorageError);
@@ -1356,6 +1389,7 @@ function BrowserPilot({
       ?.deleteCategory(id)
       .then((nextCategories: SessionCategory[]) => {
         updateCategories(nextCategories);
+        setBrowserSurface("overview");
         return window.deskPilot?.listDeletedCategories();
       })
       .then((nextDeletedCategories?: SessionCategory[]) => {
@@ -1382,6 +1416,173 @@ function BrowserPilot({
       .catch(handleStorageError);
   }
 
+  const creationDraftDirty =
+    categoryDraft.name !== "" ||
+    categoryDraft.description !== "" ||
+    (categoryDraft.icon ?? defaultCategoryIcon) !== defaultCategoryIcon;
+  const detailsDraftDirty =
+    Boolean(selectedCategory) &&
+    editingCategoryId === selectedCategory?.id &&
+    (editDraft.name !== selectedCategory?.name ||
+      editDraft.description !== selectedCategory?.description ||
+      (editDraft.icon ?? defaultCategoryIcon) !== selectedCategory?.icon);
+  const hasUnsavedCategoryChanges =
+    (browserSurface === "create" && creationDraftDirty) ||
+    (browserSurface === "details" && detailsDraftDirty);
+
+  function applyBrowserNavigation(target: BrowserNavigationTarget): void {
+    if (target.categoryId) {
+      setSelectedCategoryId(target.categoryId);
+    }
+    if (target.mode) {
+      setControlMode(target.mode);
+    }
+    setPendingBrowserNavigation(null);
+    setBrowserSurface(target.surface);
+  }
+
+  function requestBrowserNavigation(target: BrowserNavigationTarget): void {
+    if (hasUnsavedCategoryChanges) {
+      setPendingBrowserNavigation(target);
+      return;
+    }
+
+    applyBrowserNavigation(target);
+  }
+
+  function discardCategoryChangesAndLeave(): void {
+    if (browserSurface === "create") {
+      setCategoryDraft({ name: "", description: "", icon: defaultCategoryIcon });
+    } else if (selectedCategory) {
+      setEditDraft({
+        name: selectedCategory.name,
+        description: selectedCategory.description,
+        icon: selectedCategory.icon
+      });
+      setEditingCategoryId(null);
+    }
+
+    if (pendingBrowserNavigation) {
+      applyBrowserNavigation(pendingBrowserNavigation);
+    }
+  }
+
+  function saveCategoryChangesAndLeave(): void {
+    const target = pendingBrowserNavigation;
+
+    if (!target || !isStorageWritable) {
+      return;
+    }
+
+    if (browserSurface === "create") {
+      if (!categoryDraft.name.trim()) {
+        setOperationMessage("Category name cannot be empty.");
+        return;
+      }
+
+      window.deskPilot
+        ?.createCategory(categoryDraft)
+        .then((nextCategories: SessionCategory[]) => {
+          updateCategories(nextCategories);
+          setCategoryDraft({ name: "", description: "", icon: defaultCategoryIcon });
+          setOperationMessage("Category added.");
+          applyBrowserNavigation(target);
+        })
+        .catch(handleStorageError);
+      return;
+    }
+
+    if (!selectedCategory || !editDraft.name.trim()) {
+      setOperationMessage("Category name cannot be empty.");
+      return;
+    }
+
+    window.deskPilot
+      ?.updateCategory(selectedCategory.id, editDraft)
+      .then((nextCategories: SessionCategory[]) => {
+        updateCategories(nextCategories);
+        setEditingCategoryId(null);
+        setOperationMessage("Category updated.");
+        applyBrowserNavigation(target);
+      })
+      .catch(handleStorageError);
+  }
+
+  function renderBrowserTopNavigation() {
+    return (
+      <header className="browserPilotTopNavigation">
+        <div>
+          <h1>BrowserPilot</h1>
+        </div>
+        <div className="browserPilotTopActions">
+          {appUpdateStatus?.status === "available" ? (
+            <button
+              type="button"
+              className="headerUpdateAction"
+              onClick={handleOpenAvailableUpdate}
+              aria-label={`Update available: version ${appUpdateStatus.availableVersion}. Update now.`}
+            >
+              <Download aria-hidden="true" />
+              <span>
+                Update v{appUpdateStatus.currentVersion} → v{appUpdateStatus.availableVersion}
+              </span>
+            </button>
+          ) : null}
+          <button
+            type="button"
+            className={bridgeStatus?.running ? "bridgeStatusAction bridgeStatusAction-ready" : "bridgeStatusAction bridgeStatusAction-unavailable"}
+            onClick={() => requestBrowserNavigation({ surface: "legacy", mode: "extension" })}
+            aria-label={`Bridge ${bridgeStatus?.running ? "Ready" : "Unavailable"}. Open Extension settings.`}
+            title="Open BrowserPilot Extension settings"
+          >
+            <span aria-hidden="true" className="bridgeStatusDot" />
+            <span>{bridgeStatus?.running ? "Ready" : "Unavailable"}</span>
+          </button>
+          <button
+            type="button"
+            className="browserPilotSettingsAction"
+            onClick={() => requestBrowserNavigation({ surface: "legacy", mode: "extension" })}
+            aria-label="BrowserPilot Settings"
+            title="BrowserPilot Settings"
+          >
+            <SlidersHorizontal aria-hidden="true" />
+          </button>
+        </div>
+      </header>
+    );
+  }
+
+  function renderUnsavedChangesDialog() {
+    if (!pendingBrowserNavigation) {
+      return null;
+    }
+
+    return (
+      <div className="browserPilotDialogBackdrop">
+        <section
+          className="browserPilotDialog"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="unsaved-category-title"
+        >
+          <h2 id="unsaved-category-title">Unsaved changes</h2>
+          <p>Choose what happens to the Category draft before leaving this view.</p>
+          <div className="browserPilotDialogActions">
+            <button type="button" className="primaryAction" onClick={saveCategoryChangesAndLeave}>
+              Save and leave
+            </button>
+            <button type="button" className="secondaryAction" onClick={discardCategoryChangesAndLeave}>
+              Discard changes and leave
+            </button>
+            <button type="button" className="secondaryAction" onClick={() => setPendingBrowserNavigation(null)}>
+              Keep editing
+            </button>
+          </div>
+        </section>
+      </div>
+    );
+  }
+
   if (browserSurface === "overview") {
     return (
       <main
@@ -1389,45 +1590,7 @@ function BrowserPilot({
         data-pilot="browser"
         aria-label="BrowserPilot"
       >
-        <header className="browserPilotTopNavigation">
-          <div>
-            <h1>BrowserPilot</h1>
-          </div>
-          <div className="browserPilotTopActions">
-            {appUpdateStatus?.status === "available" ? (
-              <button
-                type="button"
-                className="headerUpdateAction"
-                onClick={handleOpenAvailableUpdate}
-                aria-label={`Update available: version ${appUpdateStatus.availableVersion}. Update now.`}
-              >
-                <Download aria-hidden="true" />
-                <span>
-                  Update v{appUpdateStatus.currentVersion} → v{appUpdateStatus.availableVersion}
-                </span>
-              </button>
-            ) : null}
-            <button
-              type="button"
-              className={bridgeStatus?.running ? "bridgeStatusAction bridgeStatusAction-ready" : "bridgeStatusAction bridgeStatusAction-unavailable"}
-              onClick={() => openLegacySurface("extension")}
-              aria-label={`Bridge ${bridgeStatus?.running ? "Ready" : "Unavailable"}. Open Extension settings.`}
-              title="Open BrowserPilot Extension settings"
-            >
-              <span aria-hidden="true" className="bridgeStatusDot" />
-              <span>{bridgeStatus?.running ? "Ready" : "Unavailable"}</span>
-            </button>
-            <button
-              type="button"
-              className="browserPilotSettingsAction"
-              onClick={() => openLegacySurface("extension")}
-              aria-label="BrowserPilot Settings"
-              title="BrowserPilot Settings"
-            >
-              <SlidersHorizontal aria-hidden="true" />
-            </button>
-          </div>
-        </header>
+        {renderBrowserTopNavigation()}
 
         <section className="browserPilotOverview" aria-label="BrowserPilot category overview">
           {categories.length === 0 ? (
@@ -1491,7 +1654,7 @@ function BrowserPilot({
                     className="categoryDetailsAction"
                     onClick={(event) => {
                       event.stopPropagation();
-                      openLegacySurface("categories", category.id);
+                      openCategoryDetails(category.id);
                     }}
                     aria-label={`View details for ${category.name}`}
                     title={`Details for ${category.name}`}
@@ -1521,7 +1684,7 @@ function BrowserPilot({
               ]
                 .filter(Boolean)
                 .join(" ")}
-              onClick={() => openLegacySurface("categories")}
+              onClick={openCategoryCreation}
               onDragOver={(event) => handleCategoryDragOver(event, categories.length)}
               onDrop={handleCategoryDrop}
               aria-label="Create Category"
@@ -1532,6 +1695,219 @@ function BrowserPilot({
             </button>
           </div>
         </section>
+      </main>
+    );
+  }
+
+  if (browserSurface === "create") {
+    return (
+      <main className="browserPilot browserPilotSecondaryView" data-pilot="browser" aria-label="BrowserPilot">
+        {renderBrowserTopNavigation()}
+        <section className="categoryEditorView" aria-label="Create Category">
+          <header className="categoryEditorHeader">
+            <button
+              type="button"
+              className="backToOverviewAction"
+              onClick={() => requestBrowserNavigation({ surface: "overview" })}
+            >
+              <ChevronLeft aria-hidden="true" />
+              Overview
+            </button>
+            <div>
+              <span className="eyebrow">Category Creation</span>
+              <h2>Create Category</h2>
+            </div>
+          </header>
+          {creationDraftDirty ? (
+            <div className="unsavedChangesNotice" role="status">
+              Unsaved changes
+            </div>
+          ) : null}
+          <form className="categoryEditorForm" onSubmit={handleCreateCategory}>
+            <label className={categoryDraft.name !== "" ? "categoryEditorField categoryEditorField-dirty" : "categoryEditorField"}>
+              <span>
+                Category name <strong>Required</strong>
+                {categoryDraft.name !== "" ? <small>Changed</small> : null}
+              </span>
+              <input
+                aria-label="Category name"
+                maxLength={40}
+                onChange={(event) => setCategoryDraft({ ...categoryDraft, name: event.target.value })}
+                value={categoryDraft.name}
+              />
+            </label>
+            <label className={categoryDraft.description !== "" ? "categoryEditorField categoryEditorField-dirty" : "categoryEditorField"}>
+              <span>
+                Description <strong>Optional</strong>
+                {categoryDraft.description !== "" ? <small>Changed</small> : null}
+              </span>
+              <textarea
+                aria-label="Category description"
+                maxLength={140}
+                onChange={(event) => setCategoryDraft({ ...categoryDraft, description: event.target.value })}
+                value={categoryDraft.description}
+              />
+            </label>
+            <div
+              className={
+                (categoryDraft.icon ?? defaultCategoryIcon) !== defaultCategoryIcon
+                  ? "categoryEditorField categoryEditorField-dirty"
+                  : "categoryEditorField"
+              }
+            >
+              <CategoryIconPicker
+                label="Category icon (optional)"
+                value={categoryDraft.icon ?? defaultCategoryIcon}
+                onChange={(icon) => setCategoryDraft({ ...categoryDraft, icon })}
+              />
+            </div>
+            <div className="categoryEditorActions">
+              <button type="submit" className="primaryAction">
+                <Plus aria-hidden="true" />
+                Create Category
+              </button>
+              <button
+                type="button"
+                className="secondaryAction"
+                onClick={() => requestBrowserNavigation({ surface: "overview" })}
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </section>
+        {renderUnsavedChangesDialog()}
+      </main>
+    );
+  }
+
+  if (browserSurface === "details" && selectedCategory) {
+    const isEditingDetails = editingCategoryId === selectedCategory.id;
+
+    return (
+      <main className="browserPilot browserPilotSecondaryView" data-pilot="browser" aria-label="BrowserPilot">
+        {renderBrowserTopNavigation()}
+        <section className="categoryDetailsView" aria-label={`Category Details: ${selectedCategory.name}`}>
+          <header className="categoryDetailsHeader">
+            <button
+              type="button"
+              className="backToOverviewAction"
+              onClick={() => requestBrowserNavigation({ surface: "overview" })}
+            >
+              <ChevronLeft aria-hidden="true" />
+              Overview
+            </button>
+            <div className="categoryDetailsIdentity">
+              <div className="categoryIcon" data-category-icon={selectedCategory.icon}>
+                <CategoryGlyph icon={selectedCategory.icon} />
+              </div>
+              <div>
+                <span className="eyebrow">Category Details</span>
+                <h2>{selectedCategory.name}</h2>
+                <p>{selectedCategory.description || "No description"}</p>
+              </div>
+            </div>
+            <div className="categoryDetailsActions">
+              <button type="button" className="primaryAction" onClick={() => handleOpenCategory(selectedCategory.id)}>
+                <PanelTopOpen aria-hidden="true" />
+                Open
+              </button>
+              <button
+                type="button"
+                className="secondaryAction"
+                onClick={() => startEditingCategory(selectedCategory)}
+                disabled={isEditingDetails}
+              >
+                <Pencil aria-hidden="true" />
+                Edit
+              </button>
+              <button type="button" className="removeCategoryAction" onClick={() => removeCategory(selectedCategory.id)}>
+                <Trash2 aria-hidden="true" />
+                Remove Category
+              </button>
+            </div>
+          </header>
+
+          {isEditingDetails ? (
+            <section className="categoryDetailsEditor" aria-label="Edit Category">
+              {detailsDraftDirty ? (
+                <div className="unsavedChangesNotice" role="status">
+                  Unsaved changes
+                </div>
+              ) : null}
+              <div className="categoryEditorForm">
+                <label
+                  className={
+                    editDraft.name !== selectedCategory.name
+                      ? "categoryEditorField categoryEditorField-dirty"
+                      : "categoryEditorField"
+                  }
+                >
+                  <span>
+                    Category name
+                    {editDraft.name !== selectedCategory.name ? <small>Changed</small> : null}
+                  </span>
+                  <input
+                    aria-label="Category name"
+                    maxLength={40}
+                    onChange={(event) => setEditDraft({ ...editDraft, name: event.target.value })}
+                    value={editDraft.name}
+                  />
+                </label>
+                <label
+                  className={
+                    editDraft.description !== selectedCategory.description
+                      ? "categoryEditorField categoryEditorField-dirty"
+                      : "categoryEditorField"
+                  }
+                >
+                  <span>
+                    Description
+                    {editDraft.description !== selectedCategory.description ? <small>Changed</small> : null}
+                  </span>
+                  <textarea
+                    aria-label="Category description"
+                    maxLength={140}
+                    onChange={(event) => setEditDraft({ ...editDraft, description: event.target.value })}
+                    value={editDraft.description}
+                  />
+                </label>
+                <div
+                  className={
+                    (editDraft.icon ?? defaultCategoryIcon) !== selectedCategory.icon
+                      ? "categoryEditorField categoryEditorField-dirty"
+                      : "categoryEditorField"
+                  }
+                >
+                  <CategoryIconPicker
+                    label="Category icon"
+                    value={editDraft.icon ?? defaultCategoryIcon}
+                    onChange={(icon) => setEditDraft({ ...editDraft, icon })}
+                  />
+                </div>
+                <div className="categoryEditorActions">
+                  <button
+                    type="button"
+                    className="primaryAction"
+                    onClick={() => saveCategoryEdit(selectedCategory.id)}
+                  >
+                    <Save aria-hidden="true" />
+                    Save
+                  </button>
+                  <button type="button" className="secondaryAction" onClick={cancelEditingCategory}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </section>
+          ) : (
+            <section className="categoryDetailsEmptyState">
+              <strong>Category workspace</strong>
+              <span>Saved Tab management is available in the next BrowserPilot slice.</span>
+            </section>
+          )}
+        </section>
+        {renderUnsavedChangesDialog()}
       </main>
     );
   }
