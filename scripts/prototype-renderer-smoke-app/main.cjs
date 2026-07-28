@@ -358,6 +358,28 @@ async function runElectronSmoke() {
       tabs: affectedCategoryId ? getActiveTabs(affectedCategoryId) : []
     };
   });
+  ipcMain.handle("tabs:restore", (_event, id) => {
+    let affectedCategoryId = "";
+
+    for (const [categoryId, tabs] of deletedTabsByCategory.entries()) {
+      const restoredTab = tabs.find((tab) => tab.id === id);
+
+      if (restoredTab) {
+        affectedCategoryId = categoryId;
+        deletedTabsByCategory.set(
+          categoryId,
+          tabs.filter((tab) => tab.id !== id)
+        );
+        setActiveTabs(categoryId, [...getActiveTabs(categoryId), restoredTab]);
+        break;
+      }
+    }
+
+    return {
+      categories,
+      tabs: affectedCategoryId ? getActiveTabs(affectedCategoryId) : []
+    };
+  });
   ipcMain.handle("tabs:move", (_event, id, input) => {
     let movedTab = null;
     let sourceCategoryId = "";
@@ -642,6 +664,233 @@ async function runElectronSmoke() {
       }, 100);
     })
   `);
+
+  if (process.env.DESKPILOT_SMOKE_SCOPE === "saved-tab-details") {
+    setActiveTabs("work", [
+      {
+        id: "details-alpha",
+        categoryId: "work",
+        title: "Details Alpha",
+        url: "https://alpha.example.com"
+      },
+      {
+        id: "details-beta",
+        categoryId: "work",
+        title: "Details Beta",
+        url: "https://beta.example.com"
+      },
+      {
+        id: "details-gamma",
+        categoryId: "work",
+        title: "Details Gamma",
+        url: "https://gamma.example.com"
+      }
+    ]);
+    window.webContents.send("sessions:changed");
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    const savedTabDetailsResult = await window.webContents.executeJavaScript(`
+      new Promise((resolve) => {
+        const wait = (milliseconds) => new Promise((done) => setTimeout(done, milliseconds));
+        const waitFor = async (predicate, attempts = 120) => {
+          for (let attempt = 0; attempt < attempts; attempt += 1) {
+            if (predicate()) {
+              return true;
+            }
+            await wait(25);
+          }
+          return false;
+        };
+        const buttonByText = (text) =>
+          Array.from(document.querySelectorAll("button")).find((button) => button.textContent.trim() === text);
+        const findCard = (name) =>
+          Array.from(document.querySelectorAll(".compactCategoryCard")).find(
+            (card) => card.querySelector("h2")?.textContent.trim() === name
+          );
+        const findTab = (title) =>
+          Array.from(document.querySelectorAll(".categoryDetailsTab")).find(
+            (tab) => tab.querySelector(".categoryDetailsTabIdentity strong")?.textContent.trim() === title
+          );
+        const activeTitles = () =>
+          Array.from(document.querySelectorAll('.categoryDetailsTabList[role="list"] .categoryDetailsTabIdentity strong'))
+            .map((item) => item.textContent.trim());
+        const setSelectValue = (select, value) => {
+          const valueSetter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value").set;
+          valueSetter.call(select, value);
+          select.dispatchEvent(new Event("change", { bubbles: true }));
+        };
+        const dragTab = async (sourceTitle, targetTitle, shouldDrop) => {
+          let source = findTab(sourceTitle)?.querySelector(".savedTabReorderHandle");
+          const dataTransfer = new DataTransfer();
+          source?.dispatchEvent(new DragEvent("dragstart", { bubbles: true, cancelable: true, dataTransfer }));
+          await wait(25);
+          source = findTab(sourceTitle)?.querySelector(".savedTabReorderHandle");
+          const target = findTab(targetTitle);
+          const rect = target?.getBoundingClientRect();
+          target?.dispatchEvent(
+            new DragEvent("dragover", {
+              bubbles: true,
+              cancelable: true,
+              dataTransfer,
+              clientY: rect ? rect.top + 1 : 0
+            })
+          );
+          await wait(25);
+          const previewVisible = Boolean(
+            document.querySelector(".categoryDetailsTab-reorderBefore, .categoryDetailsTab-reorderAfter")
+          );
+          if (shouldDrop) {
+            const dropTarget = findTab(targetTitle);
+            const dropRect = dropTarget?.getBoundingClientRect();
+            dropTarget?.dispatchEvent(
+              new DragEvent("drop", {
+                bubbles: true,
+                cancelable: true,
+                dataTransfer,
+                clientY: dropRect ? dropRect.top + 1 : 0
+              })
+            );
+            await wait(75);
+          }
+          findTab(sourceTitle)
+            ?.querySelector(".savedTabReorderHandle")
+            ?.dispatchEvent(new DragEvent("dragend", { bubbles: true, cancelable: true, dataTransfer }));
+          return previewVisible;
+        };
+
+        setTimeout(async () => {
+          try {
+            findCard("Work")?.querySelector(".categoryDetailsAction")?.click();
+            await waitFor(() => Boolean(document.querySelector(".categoryTabWorkspace")));
+            const activeTabsRendered =
+              activeTitles().join("|") === "Details Alpha|Details Beta|Details Gamma" &&
+              findTab("Details Alpha")?.textContent.includes("alpha.example.com");
+            const manualSaveUrlRemoved =
+              !document.querySelector('input[aria-label="URL to save"], input[aria-label="URL title"]') &&
+              !Array.from(document.querySelectorAll("button")).some(
+                (button) => button.textContent.trim() === "Save URL"
+              );
+
+            findTab("Details Alpha")?.querySelector('button[title="Open Saved Tab"]')?.click();
+            const individualOpenWorked = await waitFor(() =>
+              document.body.textContent.includes("Opened Details Alpha.")
+            );
+
+            const gammaSelect = findTab("Details Gamma")?.querySelector("select");
+            setSelectValue(gammaSelect, "projects");
+            await wait(25);
+            findTab("Details Gamma")?.querySelector(".savedTabMoveControls button")?.click();
+            const explicitMoveWorked = await waitFor(() => !findTab("Details Gamma"));
+
+            const reorderPreviewVisible = await dragTab("Details Beta", "Details Alpha", true);
+            const reorderCommitted = await waitFor(
+              () => activeTitles().slice(0, 2).join("|") === "Details Beta|Details Alpha"
+            );
+            const titlesAfterReorder = activeTitles();
+            const reorderMessage = document.querySelector(".shellToast")?.textContent ?? "";
+            const beforeCancellation = activeTitles().join("|");
+            const cancellationPreviewVisible = await dragTab("Details Beta", "Details Alpha", false);
+            await wait(50);
+            const cancellationPreservedOrder = activeTitles().join("|") === beforeCancellation;
+
+            findTab("Details Alpha")?.querySelector('button[title="Archive Saved Tab"]')?.click();
+            await waitFor(() => !findTab("Details Alpha"));
+            const archiveTab = buttonByText("Archive");
+            const archiveEntryEnabled = archiveTab && !archiveTab.disabled;
+            archiveTab?.click();
+            await waitFor(() => Boolean(findTab("Details Alpha")));
+            let permanentDeleteMessage = "";
+            window.confirm = (message) => {
+              permanentDeleteMessage = message;
+              return false;
+            };
+            findTab("Details Alpha")?.querySelector(".permanentDeleteAction")?.click();
+            const permanentDeleteConfirmedExplicitly =
+              permanentDeleteMessage.includes("Details Alpha") &&
+              permanentDeleteMessage.includes("cannot be recovered");
+            buttonByText("Return to Session")?.click();
+            await waitFor(
+              () =>
+                buttonByText("Session")?.getAttribute("aria-selected") === "true" &&
+                Boolean(findTab("Details Alpha")?.querySelector('button[title="Remove Saved Tab safely"]'))
+            );
+
+            let removeMessage = "";
+            window.confirm = (message) => {
+              removeMessage = message;
+              return true;
+            };
+            findTab("Details Alpha")?.querySelector('button[title="Remove Saved Tab safely"]')?.click();
+            await waitFor(() => !findTab("Details Alpha"));
+            await waitFor(() => {
+              const recoveryButton = buttonByText("Recovery");
+              return Boolean(recoveryButton && !recoveryButton.disabled);
+            });
+            const recoveryTab = buttonByText("Recovery");
+            const safeRemoveEnabledRecovery =
+              removeMessage.includes("Details Alpha") &&
+              removeMessage.includes("Recovery") &&
+              recoveryTab &&
+              !recoveryTab.disabled;
+            const recoveryWasEnabled = Boolean(recoveryTab && !recoveryTab.disabled);
+            recoveryTab?.click();
+            await waitFor(() => Boolean(findTab("Details Alpha")));
+            buttonByText("Restore Saved Tab")?.click();
+            const recoveryRestoredTab = await waitFor(
+              () =>
+                buttonByText("Session")?.getAttribute("aria-selected") === "true" &&
+                Boolean(findTab("Details Alpha")?.querySelector('button[title="Open Saved Tab"]'))
+            );
+
+            const archiveDisabledExplanation =
+              buttonByText("Archive")?.disabled &&
+              document.body.textContent.includes("No Archived Tabs in this Category.");
+            const recoveryDisabledExplanation =
+              buttonByText("Recovery")?.disabled &&
+              document.body.textContent.includes("No removed Saved Tabs to recover.");
+
+            resolve({
+              activeTabsRendered,
+              manualSaveUrlRemoved,
+              individualOpenWorked,
+              explicitMoveWorked,
+              reorderPreviewVisible,
+              reorderCommitted,
+              cancellationPreviewVisible,
+              cancellationPreservedOrder,
+              archiveEntryEnabled,
+              permanentDeleteConfirmedExplicitly,
+              safeRemoveEnabledRecovery,
+              recoveryRestoredTab,
+              archiveDisabledExplanation,
+              recoveryDisabledExplanation,
+              titlesAfterReorder,
+              reorderMessage,
+              removeMessage,
+              recoveryWasEnabled
+            });
+          } catch (error) {
+            resolve({
+              error: error instanceof Error ? error.message : String(error)
+            });
+          }
+        }, 50);
+      })
+    `);
+
+    if (!Object.values(savedTabDetailsResult).every(Boolean)) {
+      console.error(JSON.stringify(savedTabDetailsResult, null, 2));
+    }
+    assert(
+      Object.values(savedTabDetailsResult).every(Boolean),
+      "Expected Saved Tab management to work entirely inside Category Details"
+    );
+    window.destroy();
+    app.quit();
+    console.log(JSON.stringify({ renderer: "dist/index.html", savedTabDetails: "ok" }, null, 2));
+    process.exit(0);
+    return;
+  }
 
   const categoryViewsResult = await window.webContents.executeJavaScript(`
     new Promise((resolve) => {

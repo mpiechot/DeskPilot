@@ -1305,3 +1305,21 @@ Current status:
 
 Next recommended step:
 - Implement #50 by moving active Saved Tabs plus Category Archive/Recovery into Category Details and removing the desktop manual Save URL path.
+
+### Saved Tab management in Category Details (#50)
+
+Completed:
+- Moved active Saved Tab management into Category Details with title, host, individual Open, Archive, recoverable Remove and explicit Move controls.
+- Removed the desktop manual `Save URL` path; new browser tabs continue to enter DeskPilot through the Browser Extension capture workflow.
+- Added release-based Saved Tab reorder previews with persisted drop commits and cancellation without storage writes.
+- Added Category-local Session, Archive and Recovery modes with stable disabled entries and explanatory empty states.
+- Kept archived tabs reversible, required an explicit confirmation before permanent deletion and kept safely removed tabs recoverable.
+- Added a focused packaged Electron renderer flow covering individual Open, explicit Move, reorder commit/cancel, Archive return/permanent-delete confirmation and Recovery restore.
+- Verified `npm run lint`, `npm run build`, `npm run package:prototype` and the focused packaged Saved Tab Details smoke.
+
+Current status:
+- Issue #50 is implemented on the shared BrowserPilot UI branch.
+- BrowserPilot-wide Extension diagnostics, Category Recovery and Archived Tab Cleanup remain on the temporary legacy surface until #51 replaces it.
+
+Next recommended step:
+- Implement #51 BrowserPilot Settings and remove the remaining legacy BrowserPilot management surface.

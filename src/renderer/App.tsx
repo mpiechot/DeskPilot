@@ -49,7 +49,6 @@ import type {
   ExtensionInstallInfo,
   SessionMutationResult,
   SessionTab,
-  SessionTabInput,
   StorageExportResult,
   StorageBackupInfo,
   StorageRestoreResult,
@@ -583,7 +582,6 @@ function BrowserPilot({
   const [archivedTabs, setArchivedTabs] = useState<SessionTab[]>([]);
   const [tabs, setTabs] = useState<SessionTab[]>([]);
   const [boardTabsByCategory, setBoardTabsByCategory] = useState<Record<string, SessionTab[]>>({});
-  const [tabDraft, setTabDraft] = useState<SessionTabInput>({ categoryId: selectedCategoryId, url: "", title: "" });
   const [controlMode, setControlMode] = useState<"session" | "categories" | "archive" | "recovery" | "extension">("session");
   const [controlRailCollapsed, setControlRailCollapsed] = useState(true);
   const [operationMessage, setOperationMessage] = useState("");
@@ -596,6 +594,9 @@ function BrowserPilot({
   const [pendingBrowserNavigation, setPendingBrowserNavigation] = useState<BrowserNavigationTarget | null>(null);
   const [draggedCategoryId, setDraggedCategoryId] = useState<string | null>(null);
   const [categoryReorderPreviewIndex, setCategoryReorderPreviewIndex] = useState<number | null>(null);
+  const [categoryDetailsMode, setCategoryDetailsMode] = useState<"session" | "archive" | "recovery">("session");
+  const [tabReorderPreviewIndex, setTabReorderPreviewIndex] = useState<number | null>(null);
+  const [tabMoveTargets, setTabMoveTargets] = useState<Record<string, string>>({});
   const categoryListDrag = useRef<{
     pointerId: number;
     startX: number;
@@ -700,8 +701,6 @@ function BrowserPilot({
   }, []);
 
   useEffect(() => {
-    setTabDraft((currentDraft) => ({ ...currentDraft, categoryId: selectedCategoryId }));
-
     if (!window.deskPilot || !selectedCategoryId) {
       setTabs([]);
       setDeletedTabs([]);
@@ -931,6 +930,7 @@ function BrowserPilot({
     }
 
     setSelectedCategoryId(category.id);
+    setCategoryDetailsMode("session");
     setEditingCategoryId(null);
     setEditDraft({ name: category.name, description: category.description, icon: category.icon });
     setPendingBrowserNavigation(null);
@@ -1103,6 +1103,92 @@ function BrowserPilot({
       .finally(() => setDraggedTab(null));
   }
 
+  function handleDetailsTabDragStart(event: DragEvent<HTMLButtonElement>, tab: SessionTab): void {
+    event.stopPropagation();
+
+    if (!isStorageWritable) {
+      event.preventDefault();
+      setOperationMessage("Reordering Saved Tabs requires the Electron app.");
+      return;
+    }
+
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("application/x-deskpilot-tab", tab.id);
+    setDraggedTab({ id: tab.id, categoryId: tab.categoryId });
+  }
+
+  function handleDetailsTabDragOver(event: DragEvent<HTMLElement>, previewIndex: number): void {
+    if (!draggedTab || draggedTab.categoryId !== selectedCategoryId) {
+      return;
+    }
+
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    setTabReorderPreviewIndex(previewIndex);
+  }
+
+  function cancelDetailsTabDrag(): void {
+    setDraggedTab(null);
+    setTabReorderPreviewIndex(null);
+  }
+
+  function handleDetailsTabDrop(event: DragEvent<HTMLElement>, dropPosition?: number): void {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const tabId = event.dataTransfer.getData("application/x-deskpilot-tab") || draggedTab?.id;
+    const previewIndex = dropPosition ?? tabReorderPreviewIndex;
+
+    if (!tabId || previewIndex === null || !selectedCategoryId || !isStorageWritable) {
+      cancelDetailsTabDrag();
+      return;
+    }
+
+    const sourceIndex = tabs.findIndex((tab) => tab.id === tabId);
+    const targetPosition = sourceIndex >= 0 && sourceIndex < previewIndex ? previewIndex - 1 : previewIndex;
+
+    if (sourceIndex === targetPosition) {
+      cancelDetailsTabDrag();
+      return;
+    }
+
+    window.deskPilot
+      ?.moveTab(tabId, { targetCategoryId: selectedCategoryId, targetPosition })
+      .then((result: SessionMutationResult) => {
+        updateSessionResult(result);
+        setOperationMessage(`Updated tab order in ${selectedCategoryName()}.`);
+      })
+      .catch(() => setOperationMessage("Could not reorder Saved Tabs. Existing order was left untouched."))
+      .finally(cancelDetailsTabDrag);
+  }
+
+  function moveSavedTab(tab: SessionTab): void {
+    const targetCategoryId = tabMoveTargets[tab.id];
+
+    if (!targetCategoryId || targetCategoryId === tab.categoryId || !isStorageWritable) {
+      return;
+    }
+
+    window.deskPilot
+      ?.moveTab(tab.id, { targetCategoryId, targetPosition: Number.MAX_SAFE_INTEGER })
+      .then((result: SessionMutationResult) => {
+        updateCategories(result.categories);
+        return window.deskPilot?.listTabs(selectedCategoryId);
+      })
+      .then((nextTabs?: SessionTab[]) => {
+        if (nextTabs) {
+          setTabs(nextTabs);
+        }
+        setTabMoveTargets((current) => {
+          const next = { ...current };
+          delete next[tab.id];
+          return next;
+        });
+        setOperationMessage(`Moved URL to ${categoryName(targetCategoryId)}.`);
+      })
+      .catch(() => setOperationMessage("Could not move saved URL. Existing data was left untouched."));
+  }
+
   function handleOpenTab(tab: SessionTab): void {
     if (!window.deskPilot) {
       setOperationMessage("Opening a saved URL requires the Electron app.");
@@ -1115,35 +1201,6 @@ function BrowserPilot({
         setOperationMessage(openedTab ? `Opened ${openedTab.title}.` : "Saved URL is no longer active.");
       })
       .catch(() => setOperationMessage("Could not open saved URL."));
-  }
-
-  function handleSaveUrl(): void {
-    if (!tabDraft.url.trim()) {
-      setOperationMessage("Paste a URL before saving it.");
-      return;
-    }
-
-    if (!isStorageWritable) {
-      setOperationMessage("Saving URLs requires the Electron app.");
-      return;
-    }
-
-    window.deskPilot
-      ?.addTab({ ...tabDraft, categoryId: selectedCategoryId })
-      .then((result: SessionMutationResult) => {
-        updateSessionResult(result);
-        setTabDraft({ categoryId: selectedCategoryId, url: "", title: "" });
-        setOperationMessage(
-          result.saveStatus === "already-saved"
-            ? `Already saved in ${selectedCategoryName()}.`
-            : result.saveStatus === "restored"
-              ? `Restored URL in ${selectedCategoryName()}.`
-              : `Saved URL to ${selectedCategoryName()}.`
-        );
-      })
-      .catch(() => {
-        setOperationMessage("Could not save URL. Use a full http or https URL.");
-      });
   }
 
   function handleOpenCategory(categoryId = selectedCategoryId): void {
@@ -1236,6 +1293,7 @@ function BrowserPilot({
       .then((result: SessionMutationResult) => {
         updateSessionResult(result);
         refreshArchivedTabs();
+        setCategoryDetailsMode("session");
         setOperationMessage("Archived URL returned to the active Session.");
       })
       .catch(handleStorageError);
@@ -1257,6 +1315,7 @@ function BrowserPilot({
       .then((result: SessionMutationResult) => {
         updateSessionResult(result);
         refreshArchivedTabs();
+        setCategoryDetailsMode("session");
         setOperationMessage("Archived URL permanently deleted.");
       })
       .catch(handleStorageError);
@@ -1273,6 +1332,7 @@ function BrowserPilot({
       .then((result: SessionMutationResult) => {
         updateSessionResult(result);
         refreshDeletedTabs();
+        setCategoryDetailsMode("session");
         setOperationMessage("Saved URL restored.");
       })
       .catch(handleStorageError);
@@ -1901,9 +1961,193 @@ function BrowserPilot({
               </div>
             </section>
           ) : (
-            <section className="categoryDetailsEmptyState">
-              <strong>Category workspace</strong>
-              <span>Saved Tab management is available in the next BrowserPilot slice.</span>
+            <section className="categoryTabWorkspace" aria-label={`Saved Tabs in ${selectedCategory.name}`}>
+              <div className="categoryDetailsTabs" role="tablist" aria-label="Category work areas">
+                <button
+                  type="button"
+                  className={categoryDetailsMode === "session" ? "modeButton modeButton-active" : "modeButton"}
+                  onClick={() => setCategoryDetailsMode("session")}
+                  role="tab"
+                  aria-selected={categoryDetailsMode === "session"}
+                >
+                  Session
+                </button>
+                <span title={archivedTabs.length === 0 ? "No Archived Tabs are available in this Category." : undefined}>
+                  <button
+                    type="button"
+                    className={categoryDetailsMode === "archive" ? "modeButton modeButton-active" : "modeButton"}
+                    onClick={() => setCategoryDetailsMode("archive")}
+                    disabled={archivedTabs.length === 0}
+                    role="tab"
+                    aria-selected={categoryDetailsMode === "archive"}
+                  >
+                    Archive
+                  </button>
+                </span>
+                <span title={deletedTabs.length === 0 ? "No removed Saved Tabs can be recovered in this Category." : undefined}>
+                  <button
+                    type="button"
+                    className={categoryDetailsMode === "recovery" ? "modeButton modeButton-active" : "modeButton"}
+                    onClick={() => setCategoryDetailsMode("recovery")}
+                    disabled={deletedTabs.length === 0}
+                    role="tab"
+                    aria-selected={categoryDetailsMode === "recovery"}
+                  >
+                    Recovery
+                  </button>
+                </span>
+              </div>
+              {archivedTabs.length === 0 || deletedTabs.length === 0 ? (
+                <div className="disabledActionExplanations">
+                  {archivedTabs.length === 0 ? <span>No Archived Tabs in this Category.</span> : null}
+                  {deletedTabs.length === 0 ? <span>No removed Saved Tabs to recover.</span> : null}
+                </div>
+              ) : null}
+
+              {categoryDetailsMode === "session" ? (
+                <div
+                  className="categoryDetailsTabList"
+                  role="list"
+                  onDragOver={(event) => handleDetailsTabDragOver(event, tabs.length)}
+                  onDrop={(event) => handleDetailsTabDrop(event, tabs.length)}
+                >
+                  {tabs.length === 0 ? (
+                    <div className="categoryDetailsEmptyState">
+                      <strong>No Saved Tabs yet</strong>
+                      <span>Use the Browser Extension to capture the current tab or window.</span>
+                    </div>
+                  ) : null}
+                  {tabs.map((tab, index) => (
+                    <article
+                      className={[
+                        "categoryDetailsTab",
+                        tabReorderPreviewIndex === index ? "categoryDetailsTab-reorderBefore" : "",
+                        tabReorderPreviewIndex === tabs.length && index === tabs.length - 1
+                          ? "categoryDetailsTab-reorderAfter"
+                          : ""
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                      data-tab-id={tab.id}
+                      key={tab.id}
+                      onDragOver={(event) => {
+                        const rect = event.currentTarget.getBoundingClientRect();
+                        const previewIndex = event.clientY >= rect.top + rect.height / 2 ? index + 1 : index;
+                        handleDetailsTabDragOver(event, previewIndex);
+                      }}
+                      onDrop={(event) => {
+                        const bounds = event.currentTarget.getBoundingClientRect();
+                        const dropPosition =
+                          event.clientY >= bounds.top + bounds.height / 2 ? index + 1 : index;
+                        handleDetailsTabDrop(event, dropPosition);
+                      }}
+                      role="listitem"
+                    >
+                      <button
+                        type="button"
+                        className="savedTabReorderHandle"
+                        draggable={isStorageWritable}
+                        onDragEnd={cancelDetailsTabDrag}
+                        onDragStart={(event) => handleDetailsTabDragStart(event, tab)}
+                        aria-label={`Reorder ${tab.title}`}
+                        title={`Reorder ${tab.title}`}
+                      >
+                        <GripVertical aria-hidden="true" />
+                      </button>
+                      <div className="categoryDetailsTabIdentity">
+                        <strong>{tab.title}</strong>
+                        <span>{getUrlHost(tab.url)}</span>
+                      </div>
+                      <div className="categoryDetailsTabActions">
+                        <button type="button" onClick={() => handleOpenTab(tab)} title="Open Saved Tab">
+                          <ExternalLink aria-hidden="true" />
+                          Open
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => archiveSavedTab(tab.id, selectedCategory.id)}
+                          title="Archive Saved Tab"
+                        >
+                          <Archive aria-hidden="true" />
+                          Archive
+                        </button>
+                        <button type="button" onClick={() => removeTab(tab)} title="Remove Saved Tab safely">
+                          <X aria-hidden="true" />
+                          Remove
+                        </button>
+                      </div>
+                      <div className="savedTabMoveControls">
+                        <select
+                          aria-label={`Move ${tab.title} to Category`}
+                          value={tabMoveTargets[tab.id] ?? ""}
+                          onChange={(event) =>
+                            setTabMoveTargets((current) => ({ ...current, [tab.id]: event.target.value }))
+                          }
+                        >
+                          <option value="">Move to…</option>
+                          {categories
+                            .filter((category) => category.id !== tab.categoryId)
+                            .map((category) => (
+                              <option value={category.id} key={category.id}>
+                                {category.name}
+                              </option>
+                            ))}
+                        </select>
+                        <button
+                          type="button"
+                          className="secondaryAction"
+                          disabled={!tabMoveTargets[tab.id]}
+                          onClick={() => moveSavedTab(tab)}
+                        >
+                          Move
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              ) : categoryDetailsMode === "archive" ? (
+                <div className="categoryDetailsTabList" role="list" aria-label={`Archived Tabs in ${selectedCategory.name}`}>
+                  {archivedTabs.map((tab) => (
+                    <article className="categoryDetailsTab" data-tab-id={tab.id} key={tab.id} role="listitem">
+                      <div className="categoryDetailsTabIdentity">
+                        <strong>{tab.title}</strong>
+                        <span>{getUrlHost(tab.url)}</span>
+                      </div>
+                      <div className="categoryDetailsTabActions">
+                        <button type="button" onClick={() => restoreArchivedTab(tab.id)}>
+                          <RotateCcw aria-hidden="true" />
+                          Return to Session
+                        </button>
+                        <button
+                          type="button"
+                          className="permanentDeleteAction"
+                          onClick={() => permanentlyDeleteArchivedTab(tab)}
+                        >
+                          <Trash2 aria-hidden="true" />
+                          Delete Permanently
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <div className="categoryDetailsTabList" role="list" aria-label={`Recover Saved Tabs in ${selectedCategory.name}`}>
+                  {deletedTabs.map((tab) => (
+                    <article className="categoryDetailsTab" data-tab-id={tab.id} key={tab.id} role="listitem">
+                      <div className="categoryDetailsTabIdentity">
+                        <strong>{tab.title}</strong>
+                        <span>{getUrlHost(tab.url)}</span>
+                      </div>
+                      <div className="categoryDetailsTabActions">
+                        <button type="button" onClick={() => restoreDeletedTab(tab.id)}>
+                          <RotateCcw aria-hidden="true" />
+                          Restore Saved Tab
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
             </section>
           )}
         </section>
@@ -1961,10 +2205,6 @@ function BrowserPilot({
             <PanelTopOpen aria-hidden="true" />
             Open Selected
           </button>
-          <button type="button" className="secondaryAction" onClick={handleSaveUrl}>
-            <Save aria-hidden="true" />
-            Save URL
-          </button>
         </section>
 
         <div className="modeSwitch" role="tablist" aria-label="Control mode">
@@ -2006,24 +2246,11 @@ function BrowserPilot({
         </div>
 
         {controlMode === "session" ? (
-          <section className="tabForm" aria-label="Saved URL">
+          <section className="tabForm" aria-label="Browser Extension capture">
             <div className="selectedCategoryLabel">Target: {selectedCategoryName()}</div>
-            <input
-              aria-label="URL to save"
-              onChange={(event) => setTabDraft({ ...tabDraft, url: event.target.value })}
-              placeholder="https://example.com"
-              type="url"
-              value={tabDraft.url}
-            />
-            <input
-              aria-label="URL title"
-              maxLength={180}
-              onChange={(event) => setTabDraft({ ...tabDraft, title: event.target.value })}
-              placeholder="Optional title"
-              type="text"
-              value={tabDraft.title}
-            />
-            <div className="savedUrlCount">{tabs.length} saved URLs</div>
+            <span className="emptyRecoveryText">
+              Use the Browser Extension to capture the current tab or window.
+            </span>
           </section>
         ) : controlMode === "categories" ? (
           <section className="categoryManagementPanel" aria-label="Category management">

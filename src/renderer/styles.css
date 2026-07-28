@@ -820,6 +820,170 @@ textarea {
   color: var(--theme-color-text-strong);
 }
 
+.categoryTabWorkspace {
+  display: grid;
+  min-height: 0;
+  align-content: start;
+  gap: 9px;
+  margin-top: 14px;
+}
+
+.categoryDetailsTabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.categoryDetailsTabs > span {
+  display: inline-flex;
+}
+
+.categoryDetailsTabs .modeButton {
+  min-width: 96px;
+  padding: 0 12px;
+}
+
+.categoryDetailsTabs .modeButton:disabled,
+.savedTabMoveControls button:disabled {
+  background: var(--theme-surface-disabled);
+  color: var(--theme-color-text-disabled);
+  cursor: not-allowed;
+}
+
+.disabledActionExplanations {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  color: var(--theme-color-text-subtle);
+  font-size: var(--theme-font-size-caption);
+}
+
+.categoryDetailsTabList {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  min-height: 0;
+}
+
+.categoryDetailsTab {
+  position: relative;
+  display: grid;
+  grid-template-columns: 32px minmax(150px, 1fr) auto minmax(170px, 230px);
+  align-items: center;
+  gap: 8px;
+  border: var(--theme-border-width) solid var(--theme-border-subtle);
+  border-radius: var(--theme-radius-control);
+  background: var(--theme-surface-panel-tab);
+  padding: 8px;
+}
+
+.categoryDetailsTab-reorderBefore::before,
+.categoryDetailsTab-reorderAfter::after {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  right: 5px;
+  left: 5px;
+  height: 4px;
+  border-radius: var(--theme-radius-pill);
+  background: var(--theme-surface-accent-strong);
+}
+
+.categoryDetailsTab-reorderBefore::before {
+  top: -6px;
+}
+
+.categoryDetailsTab-reorderAfter::after {
+  bottom: -6px;
+}
+
+.savedTabReorderHandle {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  min-height: 32px;
+  place-items: center;
+  border: var(--theme-border-width) solid var(--theme-border-control);
+  border-radius: var(--theme-radius-compact);
+  background: var(--theme-surface-panel);
+  color: var(--theme-color-text-muted);
+  cursor: grab;
+}
+
+.savedTabReorderHandle svg {
+  width: 16px;
+  height: 16px;
+}
+
+.categoryDetailsTabIdentity {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.categoryDetailsTabIdentity strong,
+.categoryDetailsTabIdentity span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.categoryDetailsTabIdentity strong {
+  color: var(--theme-color-text-strong);
+  font-size: var(--theme-font-size-control);
+}
+
+.categoryDetailsTabIdentity span {
+  color: var(--theme-color-text-subtle);
+  font-size: var(--theme-font-size-caption);
+}
+
+.categoryDetailsTabActions,
+.savedTabMoveControls {
+  display: flex;
+  min-width: 0;
+  gap: 5px;
+}
+
+.categoryDetailsTabActions button,
+.savedTabMoveControls button {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: var(--theme-border-width) solid var(--theme-border-control);
+  border-radius: var(--theme-radius-compact);
+  background: var(--theme-surface-panel);
+  color: var(--theme-color-text-control);
+  cursor: pointer;
+  padding: 0 8px;
+  font-size: var(--theme-font-size-caption);
+  font-weight: var(--theme-font-weight-control);
+}
+
+.categoryDetailsTabActions svg {
+  width: 14px;
+  height: 14px;
+}
+
+.categoryDetailsTabActions .permanentDeleteAction {
+  border-color: var(--theme-border-danger-strong);
+  background: var(--theme-surface-danger);
+  color: var(--theme-color-text-danger-strong);
+}
+
+.savedTabMoveControls select {
+  min-width: 0;
+  width: 100%;
+  min-height: 34px;
+  border: var(--theme-border-width) solid var(--theme-border-control);
+  border-radius: var(--theme-radius-compact);
+  background: var(--theme-surface-panel);
+  color: var(--theme-color-text-control);
+  padding: 0 7px;
+}
+
 .browserPilotDialogBackdrop {
   position: absolute;
   z-index: 20;
