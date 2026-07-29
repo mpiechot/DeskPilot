@@ -50,6 +50,9 @@ Shell implementation tickets:
 - #33 move Display and Safety controls into shell-level Settings - done; BrowserPilot keeps only browser-session controls and Settings owns Display, Safety and Theme selection
 - #34 introduce the declarative Default Theme foundation - done; the current appearance is a complete semantic fallback with sparse overlay and optional-effect disabling rules
 
+Theme decision tickets:
+- #41 define the Gladiator/Roman visual Theme - decision complete; two implementation slices remain for the declarative Theme contract and the sparse Roman overlay
+
 BrowserPilot UI decision tickets:
 - #46 critically review BrowserPilot information density, compact Category representations and a possible Details view - decision complete
 

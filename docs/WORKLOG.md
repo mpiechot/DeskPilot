@@ -1346,6 +1346,23 @@ Current status:
 Next recommended step:
 - Run the complete repository validation, push the shared branch and use its single Working PR as the quality gate before starting #52.
 
+### Gladiator/Roman Theme Grill (#41)
+
+Completed:
+- Completed the #41 visual Theme Grill without introducing product features, game semantics, navigation changes or workflow changes.
+- Defined the civic/architectural Roman direction, calm warm palette, five-level DeskPilot-Rahmen/Pilot surface hierarchy, typography, icon treatment, state colors, empty-state decoration, accessibility, silent/reduced-motion policy and flat material treatment.
+- Confirmed that the Roman Theme is a sparse declarative overlay: every omitted value inherits from the corresponding Default Theme value, while only explicit `off`/`disabled` suppresses inherited optional effects.
+- Defined two implementation follow-ups: complete the declarative Theme contract/token vocabulary, then implement the Roman sparse overlay with renderer and visual verification.
+- Corrected the local #41 ticket-plan wording so it no longer suggests QuestBook/progression semantics.
+
+Current status:
+- #41 is decision-complete in `docs/GRILL_SESSION_2026-07-28_GLADIATOR_ROMAN_THEME.md`.
+- The separate DeskPilot product-logo decision remains #54; the semantic Category/Pilot/action icon system remains #47.
+- No product code, stored browser-session data or user assets changed.
+
+Next recommended step:
+- Create the two focused Theme implementation tickets when implementation is scheduled; do not fold product-logo work from #54 or semantic icon work from #47 into the Roman Theme implementation.
+
 ### Productive version 1.1.0 installer
 
 Completed:
