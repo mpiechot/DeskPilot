@@ -27,6 +27,7 @@ Commands:
 - `npm run dev:electron:productive` starts the Electron shell in the Productive data profile.
 - `npm run lint` checks TypeScript and React source files.
 - `npm run build` builds the Electron main/preload code and renderer.
+- `npm run test:shutdown` verifies the main-process shutdown handlers with isolated OS and storage boundaries.
 - `npm run test:extension` loads the real extension popup in an isolated Electron smoke app and verifies a Productive current-tab save.
 - `npm run test:update` verifies stable release comparison, one startup request, Development isolation and validated release-page opening.
 - `npm run package:prototype` creates a local Windows prototype folder under `dist-prototype/DeskPilot`.

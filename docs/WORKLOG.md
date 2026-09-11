@@ -1381,3 +1381,23 @@ Current status:
 
 Next recommended step:
 - Review the release branch through the single Working PR, then merge it before manually installing or separately publishing version 1.1.0.
+
+### 2026-09-11 - Windows shutdown crash investigation
+
+Completed:
+- Inspected the main-process close/quit flow and window-settings persistence after a reported crash during Windows shutdown.
+- Added an isolated harness that executes the real TypeScript main entry point with fake Electron and storage boundaries. Before the fix, six of seven checks failed: settings write errors escaped close handlers, Windows session events had no cleanup/save handling, and a closed native window remained referenced.
+- Catch and report window-geometry persistence failures locally so they cannot escape the close handler; session storage behavior is unchanged.
+- Save geometry on Windows query-session-end and share bridge cleanup between confirmed session-end and before-quit. A shutdown query alone does not put the app into quitting state because Windows shutdown may be cancelled.
+- Clear the closed window reference and prevent activation/second-instance from reopening it after shutdown starts.
+- Added npm run test:shutdown and included it in test:prototype.
+- Verified all eight regression checks, npm run lint and npm run build with bundled Node 24.19.0.
+
+Limits / current status:
+- These tests simulate lifecycle events and injected I/O errors; they do not reproduce a real Windows shutdown or identify the user's exact error dialog. The changes fix demonstrable code defects, but the reported crash remains subject to real-world confirmation.
+- No shutdown, restart, installation or productive-data modification was performed.
+- GitHub CLI configuration identifies mpiechot, which AGENTS.md forbids for API/gh operations. No PR/API/gh operation was attempted; the working PR and its quality gates could not be inspected. Changes are committed locally on the existing branch, without push or creation of a parallel PR.
+- Existing untracked portfolio images and docs/PRIVATE_PROJECT_PROFILE.md predate this task and remain untouched.
+
+Next recommended step:
+- With the permitted portfolio-pirat GitHub identity available, inspect the single working PR and its feedback before pushing this local fix. Build/install the corrected version for a normal Windows shutdown check; capture the full error text or a screenshot if the crash persists.
