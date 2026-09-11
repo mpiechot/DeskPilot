@@ -1419,3 +1419,11 @@ Next recommended step:
 - Built the unsigned local 1.1.0 installer and applied it to the existing, non-running installation at C:/MARPIE/DeskPilot as requested. The installer process completed; installed EXE and tray PNG SHA-256 hashes match the newly built files. The build also includes the already committed Windows shutdown fix.
 - No session-data editing, GitHub API operation or push was performed. Existing untracked portfolio artwork and private project profile remain untouched.
 - Next: collect feedback on the icon in the actual Windows taskbar. This specific icon request establishes the implemented application mark; the broader logo exploration in #54 remains optional follow-up. Inspect the working PR using the permitted GitHub identity before pushing.
+
+### 2026-09-11 - Aviator-goggles icon iteration
+
+- Replaced the compass pointer with brass-framed aviator goggles at the user's request. The leather strap wraps across the monitor edges so the monitor appears to wear the goggles.
+- Preserved the monitor/tile structure and existing icon integrations; regenerated all nine PNG/ICO sizes and the light/dark contact sheet from the editable SVG.
+- Visually checked 16–256 pixel variants, parsed the SVG, verified ICO size entries, and passed build, tray and installer checks. No executable source logic changed.
+- Rebuilt the local unsigned installer and updated the existing non-running C:/MARPIE/DeskPilot installation. Installed EXE and tray icon hashes match the new build.
+- Next: user feedback on the aviator-goggles variant at actual taskbar size. Existing unrelated untracked assets remain untouched; no GitHub operations or push.

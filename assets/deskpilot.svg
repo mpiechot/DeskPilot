@@ -1,11 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" fill="none">
-<title>DeskPilot — desktop navigation</title>
-<desc>A bright desktop monitor with a gold compass pointer on a deep blue rounded tile.</desc>
+<title>DeskPilot — monitor with aviator goggles</title>
+<desc>A desktop monitor wearing vintage pilot goggles. A continuous leather strap, paired rounded lenses and a short nose bridge form one recognizable silhouette.</desc>
 <defs>
 <linearGradient id="tile" x1="40" y1="12" x2="218" y2="250" gradientUnits="userSpaceOnUse"><stop stop-color="#245f8c"/><stop offset=".5" stop-color="#153c61"/><stop offset="1" stop-color="#0b203c"/></linearGradient>
 <linearGradient id="frame" x1="69" y1="52" x2="194" y2="173" gradientUnits="userSpaceOnUse"><stop stop-color="#ffffff"/><stop offset=".55" stop-color="#e4f4ff"/><stop offset="1" stop-color="#95c3df"/></linearGradient>
 <linearGradient id="screen" x1="56" y1="68" x2="197" y2="151" gradientUnits="userSpaceOnUse"><stop stop-color="#0a233d"/><stop offset="1" stop-color="#205779"/></linearGradient>
-<linearGradient id="gold" x1="157" y1="78" x2="101" y2="139" gradientUnits="userSpaceOnUse"><stop stop-color="#fff1a3"/><stop offset=".5" stop-color="#ffd36b"/><stop offset="1" stop-color="#ed9b37"/></linearGradient>
+<linearGradient id="brass" x1="80" y1="78" x2="115" y2="145" gradientUnits="userSpaceOnUse"><stop stop-color="#fff0ba"/><stop offset=".45" stop-color="#e4b66a"/><stop offset="1" stop-color="#a96d33"/></linearGradient>
+<linearGradient id="glass" x1="70" y1="88" x2="98" y2="133" gradientUnits="userSpaceOnUse"><stop stop-color="#9be6f4"/><stop offset=".3" stop-color="#4caac9"/><stop offset=".65" stop-color="#1d638d"/><stop offset="1" stop-color="#123752"/></linearGradient>
+<linearGradient id="leather" x1="0" y1="99" x2="0" y2="128" gradientUnits="userSpaceOnUse"><stop stop-color="#bb8050"/><stop offset=".3" stop-color="#86502d"/><stop offset="1" stop-color="#4b2d22"/></linearGradient>
+<g id="eyepiece">
+<path d="M55 86Q78 73 109 84Q122 89 121 110L117 128Q112 146 93 149Q72 150 60 138Q47 121 48 103Q48 92 55 86Z" fill="#3d281f"/>
+<path d="M59 88Q80 77 108 87Q118 91 116 108L112 128Q108 141 92 143Q76 143 65 132Q54 119 54 104Q54 94 59 88Z" fill="url(#brass)"/>
+<path d="M66 95Q82 86 104 94Q110 97 108 108L104 125Q101 134 91 135Q80 135 72 126Q63 116 62 105Q62 99 66 95Z" fill="url(#glass)" stroke="#634728" stroke-width="2"/>
+<path d="M64 92Q82 83 106 91" stroke="#fff5d1" stroke-width="2.5" stroke-linecap="round"/>
+<path d="M69 100Q82 92 96 97L76 119Q68 110 69 100Z" fill="#e5fbff" opacity=".35"/>
+<path d="M80 134Q92 141 104 130" stroke="#e8c385" stroke-opacity=".55" stroke-width="2" stroke-linecap="round"/>
+</g>
 </defs>
 <rect x="8" y="8" width="240" height="240" rx="54" fill="url(#tile)"/>
 <rect x="10" y="10" width="236" height="236" rx="52" stroke="#8bd8ff" stroke-opacity=".23" stroke-width="2"/>
@@ -16,9 +26,14 @@
 <rect x="34" y="46" width="188" height="128" rx="18" fill="url(#frame)"/>
 <rect x="49" y="61" width="158" height="94" rx="5" fill="url(#screen)"/>
 <path d="M55 63H201" stroke="#051c31" stroke-width="3" stroke-linecap="round" opacity=".55"/>
-<path d="M90 145L115 101L170 75L145 128Z" fill="#041a2e" opacity=".7" transform="translate(1 4)"/>
-<path d="M88 143L114 101L169 76L143 119Z" fill="url(#gold)"/>
-<path d="M88 143L129 111L169 76L143 119Z" fill="#db892b"/>
-<path d="M114 101L169 76L129 111Z" fill="#ffe49a"/>
-<path d="M91 141L129 111L167 78" stroke="#fff2b8" stroke-opacity=".7" stroke-width="1.8"/>
+<g id="aviator-goggles">
+<path d="M31 99H66V124H31Q27 124 27 120V103Q27 99 31 99Z M190 99H225Q229 99 229 103V120Q229 124 225 124H190Z" fill="url(#leather)"/>
+<path d="M30 104H57M199 104H226" stroke="#e7be84" stroke-opacity=".65" stroke-width="2"/>
+<rect x="34" y="99" width="9" height="25" rx="2" fill="url(#brass)"/>
+<rect x="213" y="99" width="9" height="25" rx="2" fill="url(#brass)"/>
+<path d="M113 112Q128 94 143 112" stroke="#34251e" stroke-width="15" stroke-linecap="round"/>
+<path d="M113 109Q128 95 143 109" stroke="url(#brass)" stroke-width="9" stroke-linecap="round"/>
+<use href="#eyepiece"/>
+<use href="#eyepiece" transform="translate(256 0) scale(-1 1)"/>
+</g>
 </svg>
