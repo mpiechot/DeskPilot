@@ -1401,3 +1401,11 @@ Limits / current status:
 
 Next recommended step:
 - With the permitted portfolio-pirat GitHub identity available, inspect the single working PR and its feedback before pushing this local fix. Build/install the corrected version for a normal Windows shutdown check; capture the full error text or a screenshot if the crash persists.
+
+### 2026-09-11 - Laurel wreath SVG drawing test
+
+- Created assets/roman-laurel-shield.svg: transparent vector artwork with curved, veined gold leaves, a red Roman-inspired scutum, brass trim, winged thunderbolt ornament and a shaded shield boss.
+- Included a reproducible Python drawing script and a 1000 x 1000 PNG preview. Individual leaves have stable IDs; gradients and vector paths remain editable.
+- Parsed the SVG successfully and visually checked its Electron-rendered PNG. No application code changed; an application rebuild was unnecessary.
+- This is a standalone artwork trial, not an implemented Theme or approved product logo. Next step: obtain the user's visual feedback before any integration.
+- Existing untracked portfolio files remain untouched. No GitHub operation or push performed.
