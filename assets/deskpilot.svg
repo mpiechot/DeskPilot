@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" fill="none">
+<title>DeskPilot — desktop navigation</title>
+<desc>A bright desktop monitor with a gold compass pointer on a deep blue rounded tile.</desc>
+<defs>
+<linearGradient id="tile" x1="40" y1="12" x2="218" y2="250" gradientUnits="userSpaceOnUse"><stop stop-color="#245f8c"/><stop offset=".5" stop-color="#153c61"/><stop offset="1" stop-color="#0b203c"/></linearGradient>
+<linearGradient id="frame" x1="69" y1="52" x2="194" y2="173" gradientUnits="userSpaceOnUse"><stop stop-color="#ffffff"/><stop offset=".55" stop-color="#e4f4ff"/><stop offset="1" stop-color="#95c3df"/></linearGradient>
+<linearGradient id="screen" x1="56" y1="68" x2="197" y2="151" gradientUnits="userSpaceOnUse"><stop stop-color="#0a233d"/><stop offset="1" stop-color="#205779"/></linearGradient>
+<linearGradient id="gold" x1="157" y1="78" x2="101" y2="139" gradientUnits="userSpaceOnUse"><stop stop-color="#fff1a3"/><stop offset=".5" stop-color="#ffd36b"/><stop offset="1" stop-color="#ed9b37"/></linearGradient>
+</defs>
+<rect x="8" y="8" width="240" height="240" rx="54" fill="url(#tile)"/>
+<rect x="10" y="10" width="236" height="236" rx="52" stroke="#8bd8ff" stroke-opacity=".23" stroke-width="2"/>
+<path d="M112 167H144V197H174Q184 197 184 207V215H72V207Q72 197 82 197H112Z" fill="#071c32" opacity=".65"/>
+<path d="M116 162H140V191H170Q180 191 180 201V207H76V201Q76 191 86 191H116Z" fill="url(#frame)"/>
+<path d="M116 174H140V183H116Z" fill="#6396b9"/>
+<rect x="37" y="51" width="186" height="128" rx="18" fill="#071c32" opacity=".65"/>
+<rect x="34" y="46" width="188" height="128" rx="18" fill="url(#frame)"/>
+<rect x="49" y="61" width="158" height="94" rx="5" fill="url(#screen)"/>
+<path d="M55 63H201" stroke="#051c31" stroke-width="3" stroke-linecap="round" opacity=".55"/>
+<path d="M90 145L115 101L170 75L145 128Z" fill="#041a2e" opacity=".7" transform="translate(1 4)"/>
+<path d="M88 143L114 101L169 76L143 119Z" fill="url(#gold)"/>
+<path d="M88 143L129 111L169 76L143 119Z" fill="#db892b"/>
+<path d="M114 101L169 76L129 111Z" fill="#ffe49a"/>
+<path d="M91 141L129 111L167 78" stroke="#fff2b8" stroke-opacity=".7" stroke-width="1.8"/>
+</svg>

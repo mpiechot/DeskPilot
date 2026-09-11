@@ -1409,3 +1409,13 @@ Next recommended step:
 - Parsed the SVG successfully and visually checked its Electron-rendered PNG. No application code changed; an application rebuild was unnecessary.
 - This is a standalone artwork trial, not an implemented Theme or approved product logo. Next step: obtain the user's visual feedback before any integration.
 - Existing untracked portfolio files remain untouched. No GitHub operation or push performed.
+
+### 2026-09-11 - DeskPilot application icon replacement
+
+- Replaced the old abstract icon with an editable monitor-and-gold-compass SVG, representing desktop control and navigation independently of any Pilot or Theme.
+- Rendered PNG variants at 16, 20, 24, 32, 40, 48, 64, 128 and 256 pixels and embedded all nine sizes in assets/deskpilot.ico. Added npm run icons:generate for reproducible exports and assets/deskpilot-icon-sizes.png for light/dark visual review.
+- Updated the existing extension/tray assets and explicitly assigned the 256-pixel icon to BrowserWindow. Windows packaging already references the updated ICO for EXE and shortcuts.
+- Verified the original-size contact sheet, ICO entries, actual EXE-embedded icon, lint, build, all eight shutdown regression checks, tray loading and installer configuration.
+- Built the unsigned local 1.1.0 installer and applied it to the existing, non-running installation at C:/MARPIE/DeskPilot as requested. The installer process completed; installed EXE and tray PNG SHA-256 hashes match the newly built files. The build also includes the already committed Windows shutdown fix.
+- No session-data editing, GitHub API operation or push was performed. Existing untracked portfolio artwork and private project profile remain untouched.
+- Next: collect feedback on the icon in the actual Windows taskbar. This specific icon request establishes the implemented application mark; the broader logo exploration in #54 remains optional follow-up. Inspect the working PR using the permitted GitHub identity before pushing.

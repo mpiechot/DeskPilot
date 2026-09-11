@@ -119,6 +119,7 @@ function createMainWindow(): void {
     minHeight: 320,
     kiosk: preferences.kiosk,
     title: "DeskPilot",
+    icon: path.join(projectRoot, "browser-extension", "icons", "deskpilot-256.png"),
     backgroundColor: nativeTheme.shouldUseDarkColors ? "#181a1f" : "#f7f5ef",
     autoHideMenuBar: true,
     webPreferences: {
