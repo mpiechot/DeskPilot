@@ -1345,3 +1345,105 @@ Current status:
 
 Next recommended step:
 - Run the complete repository validation, push the shared branch and use its single Working PR as the quality gate before starting #52.
+
+### Gladiator/Roman Theme Grill (#41)
+
+Completed:
+- Completed the #41 visual Theme Grill without introducing product features, game semantics, navigation changes or workflow changes.
+- Defined the civic/architectural Roman direction, calm warm palette, five-level DeskPilot-Rahmen/Pilot surface hierarchy, typography, icon treatment, state colors, empty-state decoration, accessibility, silent/reduced-motion policy and flat material treatment.
+- Confirmed that the Roman Theme is a sparse declarative overlay: every omitted value inherits from the corresponding Default Theme value, while only explicit `off`/`disabled` suppresses inherited optional effects.
+- Defined two implementation follow-ups: complete the declarative Theme contract/token vocabulary, then implement the Roman sparse overlay with renderer and visual verification.
+- Corrected the local #41 ticket-plan wording so it no longer suggests QuestBook/progression semantics.
+
+Current status:
+- #41 is decision-complete in `docs/GRILL_SESSION_2026-07-28_GLADIATOR_ROMAN_THEME.md`.
+- The separate DeskPilot product-logo decision remains #54; the semantic Category/Pilot/action icon system remains #47.
+- No product code, stored browser-session data or user assets changed.
+
+Next recommended step:
+- Create the two focused Theme implementation tickets when implementation is scheduled; do not fold product-logo work from #54 or semantic icon work from #47 into the Roman Theme implementation.
+
+### Productive version 1.1.0 installer
+
+Completed:
+- Classified the BrowserPilot #48–#51 release as version 1.1.0 because it adds backward-compatible functionality; version 1.0.1 remains reserved for a bugfix-only release.
+- Raised the package, package-lock, preload-reported and renderer-fallback versions from 1.0.0 to 1.1.0.
+- Updated renderer and installed-update smoke fixtures to use 1.1.0 as the current release and 1.1.1 as the hypothetical next stable patch.
+- Added installer-version consistency checks across package metadata and the preload API.
+- Built `dist-installer/DeskPilot-Setup-1.1.0.exe` with the bundled Node 24 runtime.
+- Verified the installer at 105,609,026 bytes with SHA-256 `DCDA57AD9DFCB31089C8230B6A6EA176C3CD27F0EA7315993AA1758CE64B3F44`.
+- Verified the artifact is `NotSigned`, matching the guarded unsigned packaging workflow.
+- Verified `npm run lint`, `npm run test:storage`, `npm run test:prototype`, `npm run test:update` and `npm run test:installer`.
+
+Current status:
+- The local unsigned 1.1.0 installer is ready for deliberate manual installation.
+- No GitHub Release was created and no installer was published or installed automatically.
+
+Next recommended step:
+- Review the release branch through the single Working PR, then merge it before manually installing or separately publishing version 1.1.0.
+
+### 2026-09-11 - Windows shutdown crash investigation
+
+Completed:
+- Inspected the main-process close/quit flow and window-settings persistence after a reported crash during Windows shutdown.
+- Added an isolated harness that executes the real TypeScript main entry point with fake Electron and storage boundaries. Before the fix, six of seven checks failed: settings write errors escaped close handlers, Windows session events had no cleanup/save handling, and a closed native window remained referenced.
+- Catch and report window-geometry persistence failures locally so they cannot escape the close handler; session storage behavior is unchanged.
+- Save geometry on Windows query-session-end and share bridge cleanup between confirmed session-end and before-quit. A shutdown query alone does not put the app into quitting state because Windows shutdown may be cancelled.
+- Clear the closed window reference and prevent activation/second-instance from reopening it after shutdown starts.
+- Added npm run test:shutdown and included it in test:prototype.
+- Verified all eight regression checks, npm run lint and npm run build with bundled Node 24.19.0.
+
+Limits / current status:
+- These tests simulate lifecycle events and injected I/O errors; they do not reproduce a real Windows shutdown or identify the user's exact error dialog. The changes fix demonstrable code defects, but the reported crash remains subject to real-world confirmation.
+- No shutdown, restart, installation or productive-data modification was performed.
+- GitHub CLI configuration identifies mpiechot, which AGENTS.md forbids for API/gh operations. No PR/API/gh operation was attempted; the working PR and its quality gates could not be inspected. Changes are committed locally on the existing branch, without push or creation of a parallel PR.
+- Existing untracked portfolio images and docs/PRIVATE_PROJECT_PROFILE.md predate this task and remain untouched.
+
+Next recommended step:
+- With the permitted portfolio-pirat GitHub identity available, inspect the single working PR and its feedback before pushing this local fix. Build/install the corrected version for a normal Windows shutdown check; capture the full error text or a screenshot if the crash persists.
+
+### 2026-09-11 - Laurel wreath SVG drawing test
+
+- Created assets/roman-laurel-shield.svg: transparent vector artwork with curved, veined gold leaves, a red Roman-inspired scutum, brass trim, winged thunderbolt ornament and a shaded shield boss.
+- Included a reproducible Python drawing script and a 1000 x 1000 PNG preview. Individual leaves have stable IDs; gradients and vector paths remain editable.
+- Parsed the SVG successfully and visually checked its Electron-rendered PNG. No application code changed; an application rebuild was unnecessary.
+- This is a standalone artwork trial, not an implemented Theme or approved product logo. Next step: obtain the user's visual feedback before any integration.
+- Existing untracked portfolio files remain untouched. No GitHub operation or push performed.
+
+### 2026-09-11 - DeskPilot application icon replacement
+
+- Replaced the old abstract icon with an editable monitor-and-gold-compass SVG, representing desktop control and navigation independently of any Pilot or Theme.
+- Rendered PNG variants at 16, 20, 24, 32, 40, 48, 64, 128 and 256 pixels and embedded all nine sizes in assets/deskpilot.ico. Added npm run icons:generate for reproducible exports and assets/deskpilot-icon-sizes.png for light/dark visual review.
+- Updated the existing extension/tray assets and explicitly assigned the 256-pixel icon to BrowserWindow. Windows packaging already references the updated ICO for EXE and shortcuts.
+- Verified the original-size contact sheet, ICO entries, actual EXE-embedded icon, lint, build, all eight shutdown regression checks, tray loading and installer configuration.
+- Built the unsigned local 1.1.0 installer and applied it to the existing, non-running installation at C:/MARPIE/DeskPilot as requested. The installer process completed; installed EXE and tray PNG SHA-256 hashes match the newly built files. The build also includes the already committed Windows shutdown fix.
+- No session-data editing, GitHub API operation or push was performed. Existing untracked portfolio artwork and private project profile remain untouched.
+- Next: collect feedback on the icon in the actual Windows taskbar. This specific icon request establishes the implemented application mark; the broader logo exploration in #54 remains optional follow-up. Inspect the working PR using the permitted GitHub identity before pushing.
+
+### 2026-09-11 - Aviator-goggles icon iteration
+
+- Replaced the compass pointer with brass-framed aviator goggles at the user's request. The leather strap wraps across the monitor edges so the monitor appears to wear the goggles.
+- Preserved the monitor/tile structure and existing icon integrations; regenerated all nine PNG/ICO sizes and the light/dark contact sheet from the editable SVG.
+- Visually checked 16–256 pixel variants, parsed the SVG, verified ICO size entries, and passed build, tray and installer checks. No executable source logic changed.
+- Rebuilt the local unsigned installer and updated the existing non-running C:/MARPIE/DeskPilot installation. Installed EXE and tray icon hashes match the new build.
+- Next: user feedback on the aviator-goggles variant at actual taskbar size. Existing unrelated untracked assets remain untouched; no GitHub operations or push.
+
+### 2026-10-06 - Namensrecherche Produktnamen
+
+Completed:
+- Created docs/NAMING_RESEARCH.md: full product-name research for the DeskPilot project per user request.
+- Documented the finding that the current name DeskPilot is blocked by multiple existing products, including Techlosoft's workspace-opener "DeskPilot" (direct functional competitor), Deskpilot GmbH (Vienna, Austria), an npm package "deskpilot", and several GitHub products (DeskPilot AI, clawdia-org, 3xcaffeine).
+- Documented that the "-Pilot" sub-brand family is equally saturated (BrowserPilot, TabPilot, SessionPilot, WorkPilot, PilotDeck, PanelPilot, FlightDeck all taken).
+- Documented ~40 examined alternative names across tab/session-descriptive, deck/panel-descriptive, Latin/antique and coined categories with concrete collision evidence.
+- Verified domain availability via DNS A-records (com/app/io/dev/de), npm registry head-requests and GitHub org availability for the shortlist on 2026-10-06.
+- Shortlist outcome: coined name "Tabtory" is the only candidate with zero product usage, free domains on all five checked TLDs (including .de), free npm name and free GitHub org; alternatives Tabmatic, Tabfolio, Deskshift are partially blocked; rare Latin words (Tabularium, Horreum, Specula, Signifer, Alidade, Orrery) are fully parked on domains.
+- Added a weighted evaluation matrix and a recommendation: Tabtory as primary candidate, formal trademark search (DPMA/EUIPO/USPTO classes 9/42), store checks and domain securing before final decision; rename the Pilot sub-brand family afterwards.
+- Updated docs/ROADMAP.md with the naming decision entry.
+- Verified repository-local Git identity portfolio-pirat <mattzeal@gmail.com> before committing; single open working PR #55 (draft) confirmed on the current branch with no unresolved review comments.
+
+Limits / current status:
+- No code, behavior or product vision changed; this is a documentation-only session. No build/lint/test run was necessary for Markdown-only changes.
+- Research limitations (DNS is no whois, no formal trademark register search, no full app-store scan) are documented in the research file; the recommendation is decision support, not legal advice.
+
+Next recommended step:
+- User decision on the name shortlist (Tabtory recommended). After a decision: secure the domains, run the formal trademark search, then plan the rename as its own work package (app title, installer, tray, monogram, GitHub repo, extension, sub-brand family).

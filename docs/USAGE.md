@@ -194,7 +194,7 @@ When a newer stable semantic version is available, the version badge in the Desk
 
 Development, renderer-only and generated prototype/Productive launcher runs do not perform this request automatically. Offline, rate-limit and invalid-response failures remain silent so the local browser-session workflow continues normally.
 
-The current Productive release is version 1.0.0. Existing 0.1.x installations need one manual installer run to move to this first stable version. Creating or publishing the corresponding GitHub Release remains a separate release operation.
+The current Productive release is version 1.1.0. It adds the compact BrowserPilot Grid, dedicated Category views, Saved Tab management in Category Details and BrowserPilot Settings while preserving existing Productive session data. The local unsigned installer is generated as `dist-installer/DeskPilot-Setup-1.1.0.exe`. Creating or publishing the corresponding GitHub Release remains a separate release operation.
 
 ## Shell Settings
 

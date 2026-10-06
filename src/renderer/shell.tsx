@@ -213,10 +213,10 @@ export function DeskPilotShell({
           <div
             className={dataProfile.id === "productive" ? "pilotNavigationMeta pilotNavigationMeta-productive" : "pilotNavigationMeta"}
             data-shell-meta
-            aria-label={`DeskPilot version ${window.deskPilot?.version ?? "1.0.0"}, ${dataProfile.label} data profile`}
+            aria-label={`DeskPilot version ${window.deskPilot?.version ?? "1.1.0"}, ${dataProfile.label} data profile`}
           >
             <strong>DeskPilot</strong>
-            <span>v{window.deskPilot?.version ?? "1.0.0"}</span>
+            <span>v{window.deskPilot?.version ?? "1.1.0"}</span>
             <span>{dataProfile.label}</span>
           </div>
         </div>

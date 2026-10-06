@@ -54,7 +54,7 @@ These are independent specification sessions under [#34](https://github.com/mpie
 ### [#41 Gladiator/Roman Theme Grill](https://github.com/mpiechot/DeskPilot/issues/41)
 
 - **Blocked by:** None
-- **Goal:** Explore a restrained Roman Empire / gladiator direction with a QuestBook-like sense of quests, surfaces and progression without turning DeskPilot into a game UI.
+- **Goal:** Explore a restrained Roman Empire / gladiator visual direction for the existing DeskPilot product. The Theme may use classical Roman materials, forms and subtle gladiator references, but it must not introduce game semantics, new features or workflow changes.
 - **Required output:** The same complete theme specification, including how the direction remains usable for browser-session management and how its decorative language maps to semantic Theme tokens.
 
 ### [#42 Cyberpunk/Glitch Theme Grill](https://github.com/mpiechot/DeskPilot/issues/42)

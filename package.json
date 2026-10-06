@@ -1,6 +1,6 @@
 {
   "name": "deskpilot",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "description": "Local desktop control panel for browser session management and workflow switching.",
   "author": "portfolio-pirat <mattzeal@gmail.com>",
@@ -21,14 +21,16 @@
     "package:windows": "npm run build && electron-builder --win nsis",
     "package:windows:signed": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-windows-signed.ps1",
     "preview": "vite preview --host 127.0.0.1",
+    "test:shutdown": "node --test scripts/shutdown-smoke.mjs",
     "test:storage": "npm run build:electron && node scripts/storage-smoke.mjs",
     "test:extension": "node scripts/run-extension-popup-smoke.mjs",
     "test:productive-launcher": "node scripts/productive-launcher-smoke.mjs",
     "test:installer": "node scripts/installer-config-smoke.mjs",
     "test:update": "npm run build:electron && node scripts/update-smoke.mjs",
+    "icons:generate": "electron scripts/generate-app-icons.cjs",
     "test:tray": "npm run build:electron && electron scripts/tray-icon-smoke.cjs",
     "test:theme": "tsc -p tsconfig.theme-test.json && node --test dist-theme-test/tests/theme.test.js",
-    "test:prototype": "npm run test:theme && npm run package:prototype && node scripts/prototype-launcher-smoke.mjs && npm run package:productive && npm run test:productive-launcher && electron scripts/prototype-renderer-smoke-app && npm run test:extension && npm run test:update && npm run test:tray"
+    "test:prototype": "npm run test:shutdown && npm run test:theme && npm run package:prototype && node scripts/prototype-launcher-smoke.mjs && npm run package:productive && npm run test:productive-launcher && electron scripts/prototype-renderer-smoke-app && npm run test:extension && npm run test:update && npm run test:tray"
   },
   "dependencies": {
     "lucide-react": "0.468.0",

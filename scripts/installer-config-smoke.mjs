@@ -3,12 +3,27 @@ import path from "node:path";
 
 const projectRoot = process.cwd();
 const packageJson = JSON.parse(fs.readFileSync(path.join(projectRoot, "package.json"), "utf-8"));
+const packageLock = JSON.parse(fs.readFileSync(path.join(projectRoot, "package-lock.json"), "utf-8"));
+const preloadSource = fs.readFileSync(path.join(projectRoot, "src", "preload", "index.cts"), "utf-8");
+const rendererShellSource = fs.readFileSync(path.join(projectRoot, "src", "renderer", "shell.tsx"), "utf-8");
 const signedScriptPath = path.join(projectRoot, "scripts", "package-windows-signed.ps1");
 const installerPath = path.join(projectRoot, "dist-installer", `DeskPilot-Setup-${packageJson.version}.exe`);
+const updateMetadataPath = path.join(projectRoot, "dist-installer", "latest.yml");
 const unpackedExecutablePath = path.join(projectRoot, "dist-installer", "win-unpacked", "DeskPilot.exe");
 const packagedMainPath = path.join(projectRoot, "dist-electron", "main", "index.js");
 
 assert(packageJson.engines?.node === ">=22.12.0", "Expected installer tooling to declare its supported Node runtime");
+assert(packageJson.version === "1.1.0", "Expected the BrowserPilot feature installer to use version 1.1.0");
+assert(packageLock.version === packageJson.version, "Expected package-lock version to match package.json");
+assert(packageLock.packages?.[""]?.version === packageJson.version, "Expected root package-lock version to match package.json");
+assert(
+  preloadSource.includes(`version: "${packageJson.version}"`),
+  "Expected the preload-reported app version to match package.json"
+);
+assert(
+  rendererShellSource.includes(`window.deskPilot?.version ?? "${packageJson.version}"`),
+  "Expected the renderer fallback version to match package.json"
+);
 assert(packageJson.scripts?.["package:windows"]?.includes("electron-builder --win nsis"), "Expected an NSIS installer command");
 assert(packageJson.scripts?.["package:windows:signed"]?.includes("package-windows-signed.ps1"), "Expected a guarded signing command");
 assert(packageJson.build?.win?.target === "nsis", "Expected Windows installer target to be NSIS");
@@ -29,6 +44,13 @@ assert(signedScript.includes("exit 1"), "Expected signed packaging to fail close
 if (fs.existsSync(installerPath)) {
   assert(fs.statSync(installerPath).size > 1_000_000, "Expected generated installer to contain the application payload");
   assert(fs.existsSync(unpackedExecutablePath), "Expected installer build to produce an unpacked executable for smoke inspection");
+  assert(fs.existsSync(updateMetadataPath), "Expected installer build to produce update metadata");
+  const updateMetadata = fs.readFileSync(updateMetadataPath, "utf-8");
+  assert(updateMetadata.includes(`version: ${packageJson.version}`), "Expected update metadata version to match package.json");
+  assert(
+    updateMetadata.includes(`DeskPilot-Setup-${packageJson.version}.exe`),
+    "Expected update metadata artifact name to match package.json"
+  );
 }
 
 if (fs.existsSync(packagedMainPath)) {

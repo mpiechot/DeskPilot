@@ -25,8 +25,10 @@ Commands:
 - `npm run dev` starts the React renderer in Vite for quick UI work.
 - `npm run dev:electron` starts the Electron shell with the renderer in the Development data profile.
 - `npm run dev:electron:productive` starts the Electron shell in the Productive data profile.
+- `npm run icons:generate` renders the editable monitor/aviator-goggles SVG into taskbar-size PNGs, the multi-resolution Windows ICO and a light/dark preview.
 - `npm run lint` checks TypeScript and React source files.
 - `npm run build` builds the Electron main/preload code and renderer.
+- `npm run test:shutdown` verifies the main-process shutdown handlers with isolated OS and storage boundaries.
 - `npm run test:extension` loads the real extension popup in an isolated Electron smoke app and verifies a Productive current-tab save.
 - `npm run test:update` verifies stable release comparison, one startup request, Development isolation and validated release-page opening.
 - `npm run package:prototype` creates a local Windows prototype folder under `dist-prototype/DeskPilot`.
@@ -41,7 +43,7 @@ Current state:
 - The DeskPilot Shell now hosts BrowserPilot, DesktopPilot and EnvironmentPilot, with the latter two presenting explicit development empty states.
 - Pilot Navigation is icon-only, visually separated from Pilot content, and switches between vertical rail and compact horizontal layout responsively; the light DeskPilot `DP` brand sits outside the dark navigation surface and shell-level Settings is available separately.
 - The navigation keeps DeskPilot's version and active data profile visible in a small footer and uses a styleable monochrome BrowserPilot SVG icon.
-- DeskPilot uses a real PNG/ICO application icon for its Windows tray, installer and shortcuts.
+- DeskPilot uses a monitor wearing brass-framed aviator goggles as its application icon. The window, Windows tray, installer, shortcuts and browser extension share the artwork; the ICO includes 16–256 pixel variants.
 - Shell-owned Toast Messages keep BrowserPilot errors visible and provide copyable details.
 - The Electron control panel exists in a wide, low touch-display layout.
 - Categories and saved URLs are stored locally in a SQLite database.
@@ -71,4 +73,4 @@ Current state:
 - Installed builds check the latest stable public GitHub Release once at app startup and highlight a newer installer in the header.
 - Starting DeskPilot again while it is already running focuses the existing instance instead of opening a second bridge.
 - Browser-extension saves refresh the visible category counts in the Electron UI.
-- The current Productive build is version `1.0.0`; the unsigned Windows installer is generated as `DeskPilot-Setup-1.0.0.exe`.
+- The current Productive build is version `1.1.0`; the unsigned Windows installer is generated as `DeskPilot-Setup-1.1.0.exe`.

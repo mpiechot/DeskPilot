@@ -84,11 +84,11 @@ function notifySessionsChanged(): void {
 }
 
 function showMainWindow(): void {
-  if (!isStorageInitialized) {
+  if (!isStorageInitialized || isQuitting) {
     return;
   }
 
-  if (!mainWindow) {
+  if (!mainWindow || mainWindow.isDestroyed()) {
     createMainWindow();
     return;
   }
@@ -119,6 +119,7 @@ function createMainWindow(): void {
     minHeight: 320,
     kiosk: preferences.kiosk,
     title: "DeskPilot",
+    icon: path.join(projectRoot, "browser-extension", "icons", "deskpilot-256.png"),
     backgroundColor: nativeTheme.shouldUseDarkColors ? "#181a1f" : "#f7f5ef",
     autoHideMenuBar: true,
     webPreferences: {
@@ -128,14 +129,35 @@ function createMainWindow(): void {
     }
   });
 
-  mainWindow.on("close", (event) => {
-    if (mainWindow) {
-      saveWindowBounds(app.getPath("userData"), mainWindow.getBounds());
+  const window = mainWindow;
+  const persistBounds = (): void => {
+    if (window.isDestroyed()) {
+      return;
     }
+
+    try {
+      saveWindowBounds(userDataPath, window.getBounds());
+    } catch (error) {
+      // Geometry is best-effort; an I/O error must not crash or block shutdown.
+      console.error("DeskPilot could not save window bounds.", error);
+    }
+  };
+
+  // Windows shutdown/logoff does not emit app.before-quit. Save while the
+  // native window is alive, but keep running if another app cancels shutdown.
+  window.on("query-session-end", persistBounds);
+  window.on("session-end", beginQuit);
+  window.on("close", (event) => {
+    persistBounds();
 
     if (!isQuitting) {
       event.preventDefault();
-      mainWindow?.hide();
+      window.hide();
+    }
+  });
+  window.on("closed", () => {
+    if (mainWindow === window) {
+      mainWindow = null;
     }
   });
 
@@ -143,6 +165,13 @@ function createMainWindow(): void {
     void mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
   } else {
     void mainWindow.loadFile(path.join(__dirname, "../../dist/index.html"));
+  }
+}
+
+function beginQuit(): void {
+  isQuitting = true;
+  if (bridgeServer?.listening) {
+    bridgeServer.close();
   }
 }
 
@@ -424,6 +453,10 @@ if (!hasSingleInstanceLock) {
     }
 
     app.on("activate", () => {
+      if (isQuitting) {
+        return;
+      }
+
       if (BrowserWindow.getAllWindows().length === 0) {
         createMainWindow();
       } else {
@@ -438,10 +471,5 @@ if (!hasSingleInstanceLock) {
     }
   });
 
-  app.on("before-quit", () => {
-    isQuitting = true;
-    if (bridgeServer?.listening) {
-      bridgeServer.close();
-    }
-  });
+  app.on("before-quit", beginQuit);
 }

@@ -50,6 +50,9 @@ Shell implementation tickets:
 - #33 move Display and Safety controls into shell-level Settings - done; BrowserPilot keeps only browser-session controls and Settings owns Display, Safety and Theme selection
 - #34 introduce the declarative Default Theme foundation - done; the current appearance is a complete semantic fallback with sparse overlay and optional-effect disabling rules
 
+Theme decision tickets:
+- #41 define the Gladiator/Roman visual Theme - decision complete; two implementation slices remain for the declarative Theme contract and the sparse Roman overlay
+
 BrowserPilot UI decision tickets:
 - #46 critically review BrowserPilot information density, compact Category representations and a possible Details view - decision complete
 
@@ -62,6 +65,13 @@ BrowserPilot UI implementation tickets derived from #46:
 
 Cross-Pilot visual decision tickets:
 - #47 define the DeskPilot icon system, expanded built-in vocabulary and custom user icons - ready for Grill
+
+Product naming decision:
+- The full product-name research is documented in [NAMING_RESEARCH.md](NAMING_RESEARCH.md).
+- Key result: the current name DeskPilot is blocked by multiple existing products, including a direct functional competitor (Techlosoft "DeskPilot"), the Austrian Deskpilot GmbH, an npm package "deskpilot" and several GitHub products; the "-Pilot" sub-brand family is equally saturated.
+- Recommended candidate: the coined name "Tabtory" (zero product usage, free domains on all checked TLDs including .de, free npm and GitHub names as of 2026-10-06).
+- Status: user decision pending. Until the decision is made, no new public artifacts (release assets, store entries, landing pages) should be published under the name DeskPilot.
+- After a decision: formal trademark search (DPMA/EUIPO/USPTO, classes 9/42), store checks, domain securing, then a separate rename work package including the Pilot sub-brand family.
 
 Recommended next implementation step:
 - Continue with #52 Touch Mode presentation after the #48–#51 BrowserPilot UI branch passes its Working PR quality gate.
@@ -183,7 +193,7 @@ Goal:
 Make DeskPilot easy to launch for local trial use.
 
 Status:
-Started. Separate generated folders now provide a guarded Development prototype launcher and an explicitly named Productive double-click launcher.
+Started. Separate generated folders provide a guarded Development prototype launcher and an explicitly named Productive double-click launcher. The current unsigned Productive installer is version 1.1.0.
 
 Expected features:
 - local prototype folder - initial pass done
@@ -198,3 +208,8 @@ Expected features:
 
 Recent tracking issue:
 - #24 one-time installed-app startup update check and explicit update action - done
+
+Current installer artifact:
+- `dist-installer/DeskPilot-Setup-1.1.0.exe`
+- unsigned by design until a code-signing certificate is supplied
+- publishing a matching GitHub Release remains a separate explicit operation
