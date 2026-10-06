@@ -1427,3 +1427,23 @@ Next recommended step:
 - Visually checked 16–256 pixel variants, parsed the SVG, verified ICO size entries, and passed build, tray and installer checks. No executable source logic changed.
 - Rebuilt the local unsigned installer and updated the existing non-running C:/MARPIE/DeskPilot installation. Installed EXE and tray icon hashes match the new build.
 - Next: user feedback on the aviator-goggles variant at actual taskbar size. Existing unrelated untracked assets remain untouched; no GitHub operations or push.
+
+### 2026-10-06 - Namensrecherche Produktnamen
+
+Completed:
+- Created docs/NAMING_RESEARCH.md: full product-name research for the DeskPilot project per user request.
+- Documented the finding that the current name DeskPilot is blocked by multiple existing products, including Techlosoft's workspace-opener "DeskPilot" (direct functional competitor), Deskpilot GmbH (Vienna, Austria), an npm package "deskpilot", and several GitHub products (DeskPilot AI, clawdia-org, 3xcaffeine).
+- Documented that the "-Pilot" sub-brand family is equally saturated (BrowserPilot, TabPilot, SessionPilot, WorkPilot, PilotDeck, PanelPilot, FlightDeck all taken).
+- Documented ~40 examined alternative names across tab/session-descriptive, deck/panel-descriptive, Latin/antique and coined categories with concrete collision evidence.
+- Verified domain availability via DNS A-records (com/app/io/dev/de), npm registry head-requests and GitHub org availability for the shortlist on 2026-10-06.
+- Shortlist outcome: coined name "Tabtory" is the only candidate with zero product usage, free domains on all five checked TLDs (including .de), free npm name and free GitHub org; alternatives Tabmatic, Tabfolio, Deskshift are partially blocked; rare Latin words (Tabularium, Horreum, Specula, Signifer, Alidade, Orrery) are fully parked on domains.
+- Added a weighted evaluation matrix and a recommendation: Tabtory as primary candidate, formal trademark search (DPMA/EUIPO/USPTO classes 9/42), store checks and domain securing before final decision; rename the Pilot sub-brand family afterwards.
+- Updated docs/ROADMAP.md with the naming decision entry.
+- Verified repository-local Git identity portfolio-pirat <mattzeal@gmail.com> before committing; single open working PR #55 (draft) confirmed on the current branch with no unresolved review comments.
+
+Limits / current status:
+- No code, behavior or product vision changed; this is a documentation-only session. No build/lint/test run was necessary for Markdown-only changes.
+- Research limitations (DNS is no whois, no formal trademark register search, no full app-store scan) are documented in the research file; the recommendation is decision support, not legal advice.
+
+Next recommended step:
+- User decision on the name shortlist (Tabtory recommended). After a decision: secure the domains, run the formal trademark search, then plan the rename as its own work package (app title, installer, tray, monogram, GitHub repo, extension, sub-brand family).
